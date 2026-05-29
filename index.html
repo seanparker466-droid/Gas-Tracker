@@ -4,6 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Gas Bottle Tracker</title>
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#09090b" id="pwa-theme-color">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Gas Tracker">
+  <meta name="application-name" content="Gas Bottle Tracker">
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
@@ -137,6 +145,7 @@
       <div class="bg-zinc-950 px-3 py-2 rounded-lg border border-zinc-800 flex items-center gap-1.5 whitespace-nowrap"><i class="fa-solid fa-box-archive text-zinc-500 text-xs"></i><span class="text-zinc-300 font-bold">Retired: <span id="ticker-retired" class="text-zinc-400 font-black">0</span></span></div>
       <div class="flex items-center gap-2 ml-1 bg-zinc-900 border border-zinc-700 px-3 py-1.5 rounded-lg whitespace-nowrap" style="min-height:36px;"><i id="user-role-icon" class="fa-solid fa-shield-halved text-emerald-400 text-xs"></i><span id="user-badge" class="text-zinc-200 font-black text-xs"></span><button onclick="logout()" class="text-zinc-600 hover:text-red-400 transition ml-1"><i class="fa-solid fa-right-from-bracket text-xs"></i></button></div>
       <button id="manage-accounts-btn" onclick="openAccountsModal()" class="hidden bg-zinc-800 border border-zinc-700 hover:border-emerald-700 px-3 py-1.5 rounded-lg text-zinc-300 hover:text-emerald-400 text-xs font-black transition flex items-center gap-1.5" style="min-height:36px;"><i class="fa-solid fa-users text-xs"></i> Accounts</button>
+      <button id="pwa-install-btn" onclick="pwaInstall()" class="hidden bg-emerald-700 hover:bg-emerald-600 border border-emerald-600 px-3 py-1.5 rounded-lg text-white text-xs font-black transition flex items-center gap-1.5" style="min-height:36px;"><i class="fa-solid fa-download text-xs"></i> Install App</button>
     </div>
   </div>
 </header>
@@ -1151,6 +1160,29 @@ function updateSystemCanvas(){
   else if(currentTab===7)renderOfficeStockSummary();
   else renderBottles();
 }
+
+// ── PWA ───────────────────────────────────────────────────
+if("serviceWorker" in navigator){
+  navigator.serviceWorker.register("sw.js").catch(()=>{});
+}
+let _pwaPrompt=null;
+window.addEventListener("beforeinstallprompt",e=>{
+  e.preventDefault();
+  _pwaPrompt=e;
+  const btn=document.getElementById("pwa-install-btn");
+  if(btn)btn.classList.remove("hidden");
+});
+window.addEventListener("appinstalled",()=>{
+  _pwaPrompt=null;
+  const btn=document.getElementById("pwa-install-btn");
+  if(btn)btn.classList.add("hidden");
+});
+function pwaInstall(){
+  if(!_pwaPrompt)return;
+  _pwaPrompt.prompt();
+  _pwaPrompt.userChoice.then(()=>{_pwaPrompt=null;document.getElementById("pwa-install-btn").classList.add("hidden");});
+}
 </script>
 </body>
+</html>
 </html>
