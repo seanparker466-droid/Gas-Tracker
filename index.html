@@ -523,8 +523,8 @@ function setAddMode(mode){document.getElementById("single-add-panel").classList.
 // ── TABS & NAV ────────────────────────────────────────────
 function renderLocationTabs(){
   const vis=visibleVehicles();
-  let html=vis.map(v=>`<button onclick="switchLocation('${v}')" class="px-4 py-2 rounded-lg text-sm font-black border transition-all whitespace-nowrap flex items-center gap-2 ${v===currentLocation&&currentTab<2?"bg-white text-zinc-950 border-white":"bg-zinc-900 text-zinc-300 border-zinc-800 hover:border-zinc-700 hover:text-white"}"><i class="fa-solid fa-truck"></i> ${v}</button>`).join("");
-  html+=`<button onclick="switchToOffice()" class="px-4 py-2 rounded-lg text-sm font-black border transition-all whitespace-nowrap flex items-center gap-2 ${currentTab===2?"bg-white text-zinc-950 border-white":"bg-zinc-900 text-zinc-300 border-zinc-800 hover:border-zinc-700 hover:text-white"}"><i class="fa-solid fa-warehouse"></i> Office / Shop Stock</button>`;
+  let html=vis.map(v=>`<button onclick="switchLocation('${v}')" class="px-4 py-2 rounded-lg text-base font-black border transition-all whitespace-nowrap flex items-center gap-2 ${v===currentLocation&&currentTab<2?"bg-white text-zinc-950 border-white":"bg-zinc-900 text-zinc-300 border-zinc-800 hover:border-zinc-700 hover:text-white"}"><i class="fa-solid fa-truck"></i> ${v}</button>`).join("");
+  html+=`<button onclick="switchToOffice()" class="px-4 py-2 rounded-lg text-base font-black border transition-all whitespace-nowrap flex items-center gap-2 ${currentTab===2?"bg-white text-zinc-950 border-white":"bg-zinc-900 text-zinc-300 border-zinc-800 hover:border-zinc-700 hover:text-white"}"><i class="fa-solid fa-warehouse"></i> Office / Shop Stock</button>`;
   if(isSupervisor())html+=`<button onclick="addNewVehicle()" class="ml-auto px-4 py-2 rounded-lg text-xs font-black bg-blue-950 border border-blue-800 text-blue-400 hover:bg-blue-900 hover:text-blue-300 transition flex items-center gap-1.5 whitespace-nowrap"><i class="fas fa-plus"></i> Add Vehicle</button>`;
   document.getElementById("location-tabs").innerHTML=html;
 }
@@ -536,15 +536,15 @@ function renderMainTabs(){
   document.getElementById("action-tabs").innerHTML=`<div class="flex flex-wrap items-center gap-2">
   <div class="bg-zinc-950 border border-zinc-800 rounded-lg p-1 flex gap-1 text-sm font-black flex-wrap">
     ${isOfficeLoc
-      ?`<button onclick="switchToOffice()" class="px-4 py-1.5 rounded-md transition ${currentTab===2?"bg-zinc-800 text-white":"text-zinc-400 hover:text-white"}">Office Stock</button>
-         <button onclick="setTab(7)" class="px-4 py-1.5 rounded-md transition ${currentTab===7?"bg-zinc-800 text-white":"text-zinc-400 hover:text-white"}"><i class="fa-solid fa-list-check mr-1 text-amber-400"></i>Office Summary</button>`
-      :`<button onclick="setTab(0)" class="px-4 py-1.5 rounded-md transition ${currentTab===0?"bg-zinc-800 text-white":"text-zinc-400 hover:text-white"}">Truck Stock</button>
-        <button onclick="setTab(1)" class="px-4 py-1.5 rounded-md transition ${currentTab===1?"bg-zinc-800 text-white":"text-zinc-400 hover:text-white"}">In Use (Cart)</button>
-        <button onclick="setTab(6)" class="px-4 py-1.5 rounded-md transition ${currentTab===6?"bg-zinc-800 text-white":"text-zinc-400 hover:text-white"}"><i class="fa-solid fa-list-check mr-1 text-emerald-400"></i>Summary</button>`
+      ?`<button onclick="switchToOffice()" class="px-4 py-2 rounded-md transition ${currentTab===2?"bg-zinc-800 text-white":"text-zinc-400 hover:text-white"}">Office Stock</button>
+         <button onclick="setTab(7)" class="px-4 py-2 rounded-md transition ${currentTab===7?"bg-zinc-800 text-white":"text-zinc-400 hover:text-white"}"><i class="fa-solid fa-list-check mr-1 text-amber-400"></i>Office Summary</button>`
+      :`<button onclick="setTab(0)" class="px-4 py-2 rounded-md transition ${currentTab===0?"bg-zinc-800 text-white":"text-zinc-400 hover:text-white"}">Truck Stock</button>
+        <button onclick="setTab(1)" class="px-4 py-2 rounded-md transition ${currentTab===1?"bg-zinc-800 text-white":"text-zinc-400 hover:text-white"}">In Use (Cart)</button>
+        <button onclick="setTab(6)" class="px-4 py-2 rounded-md transition ${currentTab===6?"bg-zinc-800 text-white":"text-zinc-400 hover:text-white"}"><i class="fa-solid fa-list-check mr-1 text-emerald-400"></i>Summary</button>`
     }
-    <button onclick="setTab(3)" class="px-4 py-1.5 rounded-md transition ${currentTab===3?"bg-zinc-800 text-white":"text-zinc-400 hover:text-white"}"><i class="fa-solid fa-chart-pie mr-1 text-amber-400"></i>Overview</button>
-    ${isSup?`<button onclick="setTab(4)" class="px-4 py-1.5 rounded-md transition ${currentTab===4?"bg-zinc-800 text-white":"text-zinc-400 hover:text-white"}"><i class="fa-solid fa-box-archive mr-1 text-zinc-500"></i>Retired${retiredStock.length>0?` <span class="ml-1 bg-zinc-700 text-zinc-300 text-xs px-1.5 py-0.5 rounded-full">${retiredStock.length}</span>`:""}</button>`:""}
-    ${isSup?`<button onclick="setTab(5)" class="px-4 py-1.5 rounded-md transition ${currentTab===5?"bg-zinc-800 text-white":"text-zinc-400 hover:text-white"}"><i class="fa-solid fa-clock-rotate-left mr-1 text-zinc-500"></i>History</button>`:""}
+    <button onclick="setTab(3)" class="px-4 py-2 rounded-md transition ${currentTab===3?"bg-zinc-800 text-white":"text-zinc-400 hover:text-white"}"><i class="fa-solid fa-chart-pie mr-1 text-amber-400"></i>Overview</button>
+    ${isSup?`<button onclick="setTab(4)" class="px-4 py-2 rounded-md transition ${currentTab===4?"bg-zinc-800 text-white":"text-zinc-400 hover:text-white"}"><i class="fa-solid fa-box-archive mr-1 text-zinc-500"></i>Retired${retiredStock.length>0?` <span class="ml-1 bg-zinc-700 text-zinc-300 text-xs px-1.5 py-0.5 rounded-full">${retiredStock.length}</span>`:""}</button>`:""}
+    ${isSup?`<button onclick="setTab(5)" class="px-4 py-2 rounded-md transition ${currentTab===5?"bg-zinc-800 text-white":"text-zinc-400 hover:text-white"}"><i class="fa-solid fa-clock-rotate-left mr-1 text-zinc-500"></i>History</button>`:""}
   </div>
   ${showExport?`<button onclick="exportInventory()" class="bg-zinc-900 border border-zinc-700 hover:border-zinc-500 hover:bg-zinc-800 text-zinc-300 hover:text-white text-xs font-black px-3 py-1.5 rounded-lg transition flex items-center gap-1.5"><i class="fa-solid fa-print text-zinc-500"></i> Export / Print</button>`:""}
   </div>`;
@@ -610,16 +610,16 @@ function renderBottleGrid(){
   if(_bottleView==="list"){
     const isPullOnly=isOffice&&!canAddBottles();
     let html=`<div class="dash-panel rounded-xl overflow-hidden border border-zinc-800">
-      <table class="w-full text-left border-collapse text-xs font-bold">
-        <thead><tr class="border-b border-zinc-800 text-zinc-500 uppercase tracking-wider text-[11px]">
-          <th class="px-3 py-2.5">Gas Type</th>
-          <th class="px-3 py-2.5">Size</th>
-          <th class="px-3 py-2.5">PSI</th>
-          <th class="px-3 py-2.5 hidden sm:table-cell">Part #</th>
-          <th class="px-3 py-2.5 hidden md:table-cell">Sage #</th>
-          <th class="px-3 py-2.5 hidden lg:table-cell">Expires</th>
-          <th class="px-3 py-2.5">Status</th>
-          <th class="px-3 py-2.5 text-right">Actions</th>
+      <table class="w-full text-left border-collapse text-sm font-bold">
+        <thead><tr class="border-b border-zinc-800 text-zinc-500 uppercase tracking-wider text-xs">
+          <th class="px-4 py-3">Gas Type</th>
+          <th class="px-4 py-3">Size</th>
+          <th class="px-4 py-3">PSI</th>
+          <th class="px-4 py-3 hidden sm:table-cell">Part #</th>
+          <th class="px-4 py-3 hidden md:table-cell">Sage #</th>
+          <th class="px-4 py-3 hidden lg:table-cell">Expires</th>
+          <th class="px-4 py-3">Status</th>
+          <th class="px-4 py-3 text-right text-zinc-700"><i class="fa-solid fa-chevron-right text-xs"></i></th>
         </tr></thead>
         <tbody>`;
     list.forEach(b=>{
@@ -630,29 +630,20 @@ function renderBottleGrid(){
       const expColor=expStatus==="expired"?"text-red-400":expStatus==="exp30"?"text-orange-400":expStatus==="exp60"?"text-amber-400":"text-zinc-500";
       const psiColor=isCrit?"text-red-400":isLow?"text-amber-400":"text-zinc-100";
       const rowBg=expStatus==="expired"?"bg-red-950/10":isCrit?"bg-red-950/5":"";
-      html+=`<tr class="border-b border-zinc-900/60 hover:bg-zinc-800/30 transition ${rowBg}">
-        <td class="px-3 py-2.5"><span class="font-black uppercase" style="color:${color}">${b.type}</span></td>
-        <td class="px-3 py-2.5 text-zinc-400">${b.capacity==="Large"?`<span class="text-green-400 font-black">Large</span>`:"Reg"}</td>
-        <td class="px-3 py-2.5">
+      html+=`<tr class="border-b border-zinc-900/60 hover:bg-zinc-800/30 transition cursor-pointer ${rowBg}" onclick="openBottleDetail(${i})">
+        <td class="px-4 py-3"><span class="font-black uppercase text-sm" style="color:${color}">${b.type}</span></td>
+        <td class="px-4 py-3 text-zinc-400">${b.capacity==="Large"?`<span class="text-green-400 font-black">Large</span>`:"Reg"}</td>
+        <td class="px-4 py-3">
           <div class="flex items-center gap-2">
-            <span class="font-mono font-black ${psiColor}">${b.currentPSI}</span>
-            <div class="hidden sm:block w-16 h-1.5 rounded-full bg-zinc-800 overflow-hidden"><div class="h-full rounded-full transition-all" style="width:${fillPct}%;background-color:${isCrit?'#ef4444':isLow?'#f59e0b':color}"></div></div>
+            <span class="font-mono font-black text-base ${psiColor}">${b.currentPSI}</span>
+            <div class="hidden sm:block w-20 h-2 rounded-full bg-zinc-800 overflow-hidden"><div class="h-full rounded-full transition-all" style="width:${fillPct}%;background-color:${isCrit?'#ef4444':isLow?'#f59e0b':color}"></div></div>
           </div>
         </td>
-        <td class="px-3 py-2.5 font-mono text-zinc-400 hidden sm:table-cell">${b.partNum||entry.partNum||"—"}</td>
-        <td class="px-3 py-2.5 font-mono text-zinc-400 hidden md:table-cell">${b.sageNum||entry.sageNum||"—"}</td>
-        <td class="px-3 py-2.5 ${expColor} hidden lg:table-cell">${b.expDate||"—"}</td>
-        <td class="px-3 py-2.5">${isCrit?`<span class="text-red-400 font-black text-[10px]">⚠ CRIT</span>`:isLow?`<span class="text-amber-400 font-black text-[10px]">⚠ LOW</span>`:expStatus==="expired"?`<span class="text-red-400 font-black text-[10px]">EXPIRED</span>`:`<span class="text-zinc-600 text-[10px]">OK</span>`}</td>
-        <td class="px-3 py-2.5 text-right">
-          <div class="flex items-center justify-end gap-1">
-            ${isPullOnly?`<button onclick="pullToMyTruck(${i})" class="text-[10px] font-black px-2 py-1 rounded bg-zinc-900 border border-zinc-700 hover:border-emerald-700 text-emerald-400 transition">Pull</button>`:`
-            <button onclick="openMoveModal(${i})" class="text-[10px] font-black px-2 py-1 rounded bg-zinc-900 border border-zinc-700 hover:border-zinc-600 text-zinc-300 transition" title="Route"><i class="fa-solid fa-right-left"></i></button>
-            <button onclick="openPSIModal(${i})" class="text-[10px] font-black px-2 py-1 rounded bg-zinc-900 border border-zinc-700 hover:border-emerald-700 text-emerald-400 transition" title="Edit PSI">PSI</button>
-            <button onclick="openRetireModal(${i})" class="text-[10px] font-black px-2 py-1 rounded bg-zinc-900 border border-zinc-700 hover:border-zinc-600 text-zinc-400 transition" title="Retire"><i class="fa-solid fa-box-archive"></i></button>
-            ${isSupervisor()?`<button onclick="removeBottle(${i})" class="text-[10px] font-black px-2 py-1 rounded bg-zinc-900 border border-zinc-700 hover:border-red-900 text-red-500 transition" title="Delete"><i class="fa-solid fa-trash-can"></i></button>`:""}
-            `}
-          </div>
-        </td>
+        <td class="px-4 py-3 font-mono text-zinc-400 hidden sm:table-cell">${b.partNum||entry.partNum||"—"}</td>
+        <td class="px-4 py-3 font-mono text-zinc-400 hidden md:table-cell">${b.sageNum||entry.sageNum||"—"}</td>
+        <td class="px-4 py-3 ${expColor} hidden lg:table-cell">${b.expDate||"—"}</td>
+        <td class="px-4 py-3">${isCrit?`<span class="text-red-400 font-black text-xs">⚠ CRIT</span>`:isLow?`<span class="text-amber-400 font-black text-xs">⚠ LOW</span>`:expStatus==="expired"?`<span class="text-red-400 font-black text-xs">EXPIRED</span>`:`<span class="text-zinc-500 text-xs">OK</span>`}</td>
+        <td class="px-4 py-3 text-right text-zinc-600 text-xs font-black"><i class="fa-solid fa-chevron-right"></i></td>
       </tr>`;
     });
     html+=`</tbody></table></div>`;
@@ -662,7 +653,7 @@ function renderBottleGrid(){
   // ── ICON VIEW ──────────────────────────────────────────
   if(_bottleView==="icon"){
     const isPullOnly=isOffice&&!canAddBottles();
-    let html=`<div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-2">`;
+    let html=`<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7 gap-3">`;
     list.forEach(b=>{
       const i=b._origIdx,entry=gasCatalog[b.type]||{},color=entry.color||"#71717a";
       const fillPct=Math.round((b.currentPSI/b.maxPSI)*100);
@@ -671,22 +662,22 @@ function renderBottleGrid(){
       const isLarge=b.capacity==="Large";
       const expStatus=getExpStatus(b.expDate);
       const borderCls=expStatus==="expired"?"border-red-800/60":isCrit?"border-red-800/40":isLarge?"border-green-800/50":"border-zinc-700/60";
-      html+=`<div class="relative flex flex-col items-center gap-1.5 p-2.5 rounded-xl border ${borderCls} bg-zinc-900/40 hover:bg-zinc-800/60 transition cursor-pointer group" onclick="${isPullOnly?`pullToMyTruck(${i})`:`openPSIModal(${i})`}">
-        ${isLarge?`<span class="absolute top-1 right-1 text-[8px] font-black text-green-400 bg-green-950/60 px-1 rounded leading-tight">L</span>`:""}
-        <svg width="32" height="52" viewBox="0 0 44 72">
+      html+=`<div class="relative flex flex-col items-center gap-2 p-3 rounded-xl border ${borderCls} dash-panel hover:opacity-80 transition cursor-pointer" onclick="openBottleDetail(${i})">
+        ${isLarge?`<span class="absolute top-1.5 right-1.5 text-xs font-black text-green-400 bg-green-950/60 px-1.5 py-0.5 rounded leading-tight">L</span>`:""}
+        <svg width="44" height="68" viewBox="0 0 44 72">
           <defs><linearGradient id="ig${i}" x1="0%" y1="100%" x2="0%" y2="0%"><stop offset="0%" stop-color="${barColor}" stop-opacity="0.9"/><stop offset="100%" stop-color="${barColor}" stop-opacity="0.2"/></linearGradient></defs>
           ${isLarge
             ?`<path d="M22 4 Q6 6 6 18 L6 64 Q6 70 14 70 L30 70 Q38 70 38 64 L38 18 Q38 6 22 4Z" fill="#0d1a0d" stroke="${color==='#71717a'?'#16a34a':color}" stroke-width="2"/>
-               <rect x="10" y="${4+(66*(1-fillPct/100))}" width="24" height="${66*(fillPct/100)}" fill="url(#ig${i})" rx="2" clip-path="inset(0 0 0 0 round 2px)"/>
+               <rect x="10" y="${4+(66*(1-fillPct/100))}" width="24" height="${66*(fillPct/100)}" fill="url(#ig${i})" rx="2"/>
                <rect x="16" y="0" width="12" height="6" rx="2" fill="#0a0a0a"/>
                <rect x="10" y="1" width="24" height="4" rx="2" fill="#111"/>`
             :`<path d="M22 6 Q8 8 8 20 L8 62 Q8 68 16 68 L28 68 Q36 68 36 62 L36 20 Q36 8 22 6Z" fill="#1c1c1e" stroke="#3f3f46" stroke-width="1.5"/>
                <rect x="12" y="${6+(56*(1-fillPct/100))}" width="20" height="${56*(fillPct/100)}" fill="url(#ig${i})" rx="2"/>
                <path d="M17 3 L27 3 L25 7 L19 7Z" fill="#3f3f46"/>`}
         </svg>
-        <span class="text-[9px] font-black uppercase text-center leading-tight break-all" style="color:${color};max-width:56px">${b.type}</span>
-        <span class="text-[9px] font-mono font-black ${isCrit?"text-red-400":isLow?"text-amber-400":"text-zinc-400"}">${b.currentPSI}<span class="text-[8px]">psi</span></span>
-        ${isCrit?`<span class="text-[8px] font-black text-red-400 animate-pulse">⚠CRIT</span>`:expStatus==="expired"?`<span class="text-[8px] font-black text-red-400">EXP</span>`:""}
+        <span class="text-xs font-black uppercase text-center leading-tight" style="color:${color}">${b.type}</span>
+        <span class="text-sm font-mono font-black ${isCrit?"text-red-400":isLow?"text-amber-400":"text-zinc-300"}">${b.currentPSI}<span class="text-xs ml-0.5">psi</span></span>
+        ${isCrit?`<span class="text-xs font-black text-red-400 animate-pulse">⚠ CRIT</span>`:expStatus==="expired"?`<span class="text-xs font-black text-red-400">EXP</span>`:""}
       </div>`;
     });
     html+=`</div>`;gridArea.innerHTML=html;return;
@@ -710,7 +701,7 @@ function renderBottleGrid(){
         <div class="flex items-center justify-between mt-1"><span class="text-xs uppercase font-black tracking-wider text-zinc-500">${b.capacity} Cylinder</span>${concentration?`<span class="text-xs font-black text-zinc-600">${concentration}</span>`:""}</div>
       </div>
       <div class="relative py-4 flex items-center justify-center bg-zinc-950/40 rounded-lg border border-zinc-900/60 shadow-inner my-3 flex-grow">
-        ${b.capacity==="Large"?`<div class="absolute top-2 right-2"><span class="text-[9px] font-black uppercase tracking-widest text-emerald-400 bg-emerald-950/60 border border-emerald-800/60 px-1.5 py-0.5 rounded">LARGE</span></div>`:""}
+        ${b.capacity==="Large"?`<div class="absolute top-2 right-2"><span class="text-[11px] font-black uppercase tracking-widest text-emerald-400 bg-emerald-950/60 border border-emerald-800/60 px-1.5 py-0.5 rounded">LARGE</span></div>`:""}
         <div class="relative ${b.capacity==="Large"?"w-36 h-56":"w-28 h-44"} flex items-center justify-center">
           ${b.capacity==="Large"?`
           <svg width="118" height="210" viewBox="0 0 130 260">
@@ -749,8 +740,8 @@ function renderBottleGrid(){
             <path d="M 55,28 Q 15,30 15,62 L 15,202 Q 15,214 30,214 L 80,214 Q 95,214 95,202 L 95,62 Q 95,30 55,28 Z" fill="none" stroke="#2a2a2e" stroke-width="2"/>
           </svg>`}
           <button onclick="openPSIModal(${i})" class="no-zoom-btn absolute bottom-1 left-1/2 -translate-x-1/2 bg-zinc-950 border border-zinc-700 hover:border-emerald-600 text-center font-mono text-sm px-3 py-1 rounded-lg shadow-md min-w-[90px] transition group">
-            <span class="block font-black text-white leading-tight group-hover:text-emerald-400 transition">${b.currentPSI}<span class="text-[10px] text-zinc-400 ml-0.5">PSI</span></span>
-            <span class="text-[9px] text-zinc-600 group-hover:text-emerald-700 transition">tap to edit</span>
+            <span class="block font-black text-white leading-tight group-hover:text-emerald-400 transition">${b.currentPSI}<span class="text-xs text-zinc-400 ml-0.5">PSI</span></span>
+            <span class="text-[11px] text-zinc-600 group-hover:text-emerald-700 transition">tap to edit</span>
           </button>
         </div>
       </div>
@@ -778,7 +769,7 @@ function renderBottleGrid(){
           ?`<button onclick="pullToMyTruck(${i})" class="bg-zinc-900 border border-zinc-700 hover:border-emerald-700 hover:bg-emerald-950/20 text-emerald-400 rounded-lg font-black col-span-2 h-10 flex items-center justify-center gap-1.5 transition"><i class="fa-solid fa-arrow-right-long"></i> Pull to My Vehicle</button>`
           :`${currentTab===0?`<button onclick="moveToCart(${i})" class="bg-zinc-900 border border-zinc-800 hover:border-emerald-800 hover:bg-emerald-950/20 text-emerald-400 rounded-lg font-black col-span-2 h-10 flex items-center justify-center gap-1.5 transition"><i class="fa-solid fa-arrow-right-long"></i> Move to Cart</button>`:""}
         ${currentTab===1?`<button onclick="returnToInventory(${i})" class="bg-zinc-900 border border-zinc-800 hover:border-amber-800 hover:bg-amber-950/20 text-amber-400 rounded-lg font-black col-span-2 h-10 flex items-center justify-center gap-1.5 transition"><i class="fa-solid fa-arrow-left-long"></i> Return to Truck</button>`:""}
-        <button onclick="openMoveModal(${i})" class="bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-300 rounded-lg font-bold flex items-center justify-center gap-1 h-10 transition"><i class="fa-solid fa-right-left text-[10px]"></i> Route</button>
+        <button onclick="openMoveModal(${i})" class="bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-300 rounded-lg font-bold flex items-center justify-center gap-1 h-10 transition"><i class="fa-solid fa-right-left text-xs"></i> Route</button>
         <button onclick="openRetireModal(${i})" class="bg-zinc-900 border border-zinc-800 hover:border-zinc-600 text-zinc-400 hover:text-white rounded-lg flex items-center justify-center gap-1.5 h-10 transition"><i class="fa-solid fa-box-archive text-xs"></i> Retire</button>
         ${isSupervisor()?`<button onclick="removeBottle(${i})" class="col-span-2 bg-zinc-900 border border-zinc-800 hover:border-red-900 hover:bg-red-950/20 text-red-500 rounded-lg flex items-center justify-center gap-1.5 h-9 transition text-xs"><i class="fa-solid fa-trash-can"></i> Delete Permanently</button>`:""}`}
       </div>
@@ -787,7 +778,102 @@ function renderBottleGrid(){
   html+=`</div>`;gridArea.innerHTML=html;
 }
 
-// ── EXPORT / PRINT ────────────────────────────────────────
+// ── BOTTLE DETAIL MODAL ──────────────────────────────────
+function openBottleDetail(i){
+  const b=getCurrentList()[i];
+  if(!b)return;
+  const entry=gasCatalog[b.type]||{},baseColor=entry.color||"#bae6fd",concentration=entry.concentration||"";
+  const expStatus=getExpStatus(b.expDate),fillPercent=Math.min((b.currentPSI/b.maxPSI)*100,100);
+  let gaugeColor=baseColor,warningBadge="";
+  if(b.currentPSI<150){gaugeColor="#ef4444";warningBadge=`<span class="text-xs font-black text-red-400 animate-pulse">⚠ CRITICAL</span>`;}
+  else if(b.currentPSI<300){gaugeColor="#f59e0b";warningBadge=`<span class="text-xs font-black text-amber-400">⚠ LOW</span>`;}
+  const cardBorder=expStatus==="expired"?"border-red-900/70":expStatus==="exp30"?"border-orange-900/60":expStatus==="exp60"?"border-amber-900/40":"";
+  const partNum=b.partNum||entry.partNum||"N/A",sageNum=b.sageNum||entry.sageNum||"N/A";
+  const isOffice=currentTab===2;
+  const isPullOnly=isOffice&&!canAddBottles();
+
+  const svgHtml=b.capacity==="Large"?`
+    <svg width="118" height="210" viewBox="0 0 130 260">
+      <defs>
+        <linearGradient id="bMD" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#052e16"/><stop offset="25%" stop-color="#14532d"/><stop offset="50%" stop-color="#166534"/><stop offset="75%" stop-color="#14532d"/><stop offset="100%" stop-color="#052e16"/></linearGradient>
+        <linearGradient id="gFD" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="${gaugeColor}"/><stop offset="30%" stop-color="#ffffff" stop-opacity="0.45"/><stop offset="70%" stop-color="${gaugeColor}"/><stop offset="100%" stop-color="#000000" stop-opacity="0.5"/></linearGradient>
+      </defs>
+      <path d="M 50,6 L 80,6 L 75,22 L 55,22 Z" fill="#0a0a0a" stroke="#1a1a1a" stroke-width="1.5"/>
+      <rect x="48" y="22" width="34" height="10" rx="2" fill="#111111"/>
+      <rect x="38" y="8" width="54" height="6" rx="3" fill="#0d0d0d" stroke="#222" stroke-width="1"/>
+      <path d="M 65,32 Q 12,35 12,72 L 12,240 Q 12,254 30,254 L 100,254 Q 118,254 118,240 L 118,72 Q 118,35 65,32 Z" fill="#141a10"/>
+      <path d="M 65,32 Q 12,35 12,72 L 12,240 Q 12,254 30,254 L 100,254 Q 118,254 118,240 L 118,72 Q 118,35 65,32 Z" fill="url(#bMD)" opacity="0.7"/>
+      <mask id="tMD"><path d="M 65,36 Q 16,39 16,72 L 16,236 Q 16,249 32,249 L 98,249 Q 114,249 114,236 L 114,72 Q 114,39 65,36 Z" fill="white"/></mask>
+      <g mask="url(#tMD)"><rect x="12" y="${249-(fillPercent*2.13)}" width="106" height="${fillPercent*2.13}" fill="url(#gFD)"/><ellipse cx="65" cy="${249-(fillPercent*2.13)}" rx="49" ry="5" fill="${gaugeColor}" opacity="0.6"/></g>
+      <path d="M 28,62 L 28,236" stroke="white" stroke-width="3.5" stroke-linecap="round" opacity="0.15"/>
+      <path d="M 65,32 Q 12,35 12,72 L 12,240 Q 12,254 30,254 L 100,254 Q 118,254 118,240 L 118,72 Q 118,35 65,32 Z" fill="none" stroke="#16a34a" stroke-width="2.5"/>
+    </svg>`:`
+    <svg width="100" height="175" viewBox="0 0 110 220">
+      <defs>
+        <linearGradient id="bMD" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#2d2d30"/><stop offset="25%" stop-color="#4e4e54"/><stop offset="50%" stop-color="#6b6b74"/><stop offset="75%" stop-color="#3f3f46"/><stop offset="100%" stop-color="#1c1c1e"/></linearGradient>
+        <linearGradient id="cMD" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#52525b"/><stop offset="50%" stop-color="#d4d4d8"/><stop offset="100%" stop-color="#27272a"/></linearGradient>
+        <linearGradient id="gFD" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="${gaugeColor}"/><stop offset="30%" stop-color="#ffffff" stop-opacity="0.45"/><stop offset="70%" stop-color="${gaugeColor}"/><stop offset="100%" stop-color="#000000" stop-opacity="0.5"/></linearGradient>
+      </defs>
+      <path d="M 44,6 L 66,6 L 62,20 L 48,20 Z" fill="url(#cMD)" stroke="#18181b" stroke-width="1.5"/>
+      <rect x="42" y="20" width="26" height="8" rx="2" fill="#09090b"/>
+      <path d="M 55,28 Q 15,30 15,62 L 15,202 Q 15,214 30,214 L 80,214 Q 95,214 95,202 L 95,62 Q 95,30 55,28 Z" fill="#141416"/>
+      <path d="M 55,28 Q 15,30 15,62 L 15,202 Q 15,214 30,214 L 80,214 Q 95,214 95,202 L 95,62 Q 95,30 55,28 Z" fill="url(#bMD)" opacity="0.35"/>
+      <mask id="tMD"><path d="M 55,31 Q 19,33 19,62 L 19,198 Q 19,209 32,209 L 78,209 Q 91,209 91,198 L 91,62 Q 91,33 55,31 Z" fill="white"/></mask>
+      <g mask="url(#tMD)"><rect x="15" y="${209-(fillPercent*1.78)}" width="80" height="${fillPercent*1.78}" fill="url(#gFD)"/><ellipse cx="55" cy="${209-(fillPercent*1.78)}" rx="36" ry="4" fill="${gaugeColor}" opacity="0.6"/></g>
+      <path d="M 26,52 L 26,198" stroke="white" stroke-width="3" stroke-linecap="round" opacity="0.2"/>
+      <path d="M 55,28 Q 15,30 15,62 L 15,202 Q 15,214 30,214 L 80,214 Q 95,214 95,202 L 95,62 Q 95,30 55,28 Z" fill="none" stroke="#2a2a2e" stroke-width="2"/>
+    </svg>`;
+
+  const cardHtml=`
+    <div class="font-bold min-w-0 border-b border-zinc-800/60 pb-2">
+      <span style="color:${baseColor}" class="text-xl block font-black leading-tight tracking-tight uppercase break-words">${b.type}</span>
+      <div class="flex items-center justify-between mt-1"><span class="text-xs uppercase font-black tracking-wider text-zinc-500">${b.capacity} Cylinder</span>${concentration?`<span class="text-xs font-black text-zinc-600">${concentration}</span>`:""}</div>
+    </div>
+    <div class="relative py-4 flex items-center justify-center bg-zinc-950/40 rounded-lg border border-zinc-900/60 shadow-inner my-3">
+      ${b.capacity==="Large"?`<div class="absolute top-2 right-2"><span class="text-xs font-black uppercase tracking-widest text-emerald-400 bg-emerald-950/60 border border-emerald-800/60 px-1.5 py-0.5 rounded">LARGE</span></div>`:""}
+      <div class="relative flex items-center justify-center">
+        ${svgHtml}
+        <button onclick="closeBottleDetail();openPSIModal(${i})" class="no-zoom-btn absolute bottom-1 left-1/2 -translate-x-1/2 bg-zinc-950 border border-zinc-700 hover:border-emerald-600 text-center font-mono text-sm px-3 py-1 rounded-lg shadow-md min-w-[90px] transition group">
+          <span class="block font-black text-white leading-tight group-hover:text-emerald-400 transition">${b.currentPSI}<span class="text-xs text-zinc-400 ml-0.5">PSI</span></span>
+          <span class="text-xs text-zinc-600 group-hover:text-emerald-700 transition">tap to edit</span>
+        </button>
+      </div>
+    </div>
+    <div class="grid grid-cols-4 gap-1.5 mb-2">
+      <button onclick="updatePSI(${i},-10);closeBottleDetail();openBottleDetail(${i})" class="no-zoom-btn bg-zinc-900 border border-zinc-800 hover:border-zinc-600 rounded-md text-zinc-300 font-black text-xs h-9 flex items-center justify-center transition select-none">-10</button>
+      <button onclick="updatePSI(${i},10);closeBottleDetail();openBottleDetail(${i})"  class="no-zoom-btn bg-zinc-900 border border-zinc-800 hover:border-zinc-600 rounded-md text-zinc-300 font-black text-xs h-9 flex items-center justify-center transition select-none">+10</button>
+      <button onclick="updatePSI(${i},50);closeBottleDetail();openBottleDetail(${i})"  class="no-zoom-btn bg-zinc-900 border border-zinc-800 hover:border-zinc-600 rounded-md text-zinc-300 font-black text-xs h-9 flex items-center justify-center transition select-none">+50</button>
+      <button onclick="updatePSI(${i},-50);closeBottleDetail();openBottleDetail(${i})" class="no-zoom-btn bg-zinc-900 border border-zinc-800 hover:border-zinc-600 rounded-md text-zinc-300 font-black text-xs h-9 flex items-center justify-center transition select-none">-50</button>
+    </div>
+    <div class="font-sans text-xs font-bold space-y-1.5 mb-3">
+      <div class="grid grid-cols-2 gap-x-3 border-b border-zinc-900 pb-1.5">
+        <span class="text-zinc-400"><i class="fa-solid fa-barcode mr-1 text-zinc-600"></i>P/N: <span class="text-white font-mono">${partNum}</span></span>
+        <span class="text-zinc-400"><i class="fa-solid fa-hashtag mr-1 text-zinc-600"></i>Sage: <span class="text-white font-mono">${sageNum}</span></span>
+      </div>
+      <div class="flex items-center justify-between border-b border-zinc-900 pb-1.5">
+        <span class="text-zinc-400"><i class="fa-solid fa-flask mr-1 text-zinc-600"></i><span class="text-white">${concentration||"—"}</span></span>
+        ${expBadge(b.expDate)}
+      </div>
+      <div class="flex items-center justify-between pt-0.5">
+        <span class="${b.currentPSI<300?"text-amber-400":"text-zinc-500"} text-xs">${b.currentPSI}/${b.maxPSI} PSI</span>${warningBadge}
+      </div>
+    </div>
+    <div class="grid grid-cols-2 gap-2 text-xs font-black">
+      ${isPullOnly
+        ?`<button onclick="closeBottleDetail();pullToMyTruck(${i})" class="bg-zinc-900 border border-zinc-700 hover:border-emerald-700 hover:bg-emerald-950/20 text-emerald-400 rounded-lg font-black col-span-2 h-10 flex items-center justify-center gap-1.5 transition"><i class="fa-solid fa-arrow-right-long"></i> Pull to My Vehicle</button>`
+        :`${currentTab===0?`<button onclick="closeBottleDetail();moveToCart(${i})" class="bg-zinc-900 border border-zinc-800 hover:border-emerald-800 hover:bg-emerald-950/20 text-emerald-400 rounded-lg font-black col-span-2 h-10 flex items-center justify-center gap-1.5 transition"><i class="fa-solid fa-arrow-right-long"></i> Move to Cart</button>`:""}
+        ${currentTab===1?`<button onclick="closeBottleDetail();returnToInventory(${i})" class="bg-zinc-900 border border-zinc-800 hover:border-amber-800 hover:bg-amber-950/20 text-amber-400 rounded-lg font-black col-span-2 h-10 flex items-center justify-center gap-1.5 transition"><i class="fa-solid fa-arrow-left-long"></i> Return to Truck</button>`:""}
+        <button onclick="closeBottleDetail();openMoveModal(${i})" class="bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-300 rounded-lg font-bold flex items-center justify-center gap-1 h-10 transition"><i class="fa-solid fa-right-left text-xs"></i> Route</button>
+        <button onclick="closeBottleDetail();openRetireModal(${i})" class="bg-zinc-900 border border-zinc-800 hover:border-zinc-600 text-zinc-400 hover:text-white rounded-lg flex items-center justify-center gap-1.5 h-10 transition"><i class="fa-solid fa-box-archive text-xs"></i> Retire</button>
+        ${isSupervisor()?`<button onclick="closeBottleDetail();removeBottle(${i})" class="col-span-2 bg-zinc-900 border border-zinc-800 hover:border-red-900 hover:bg-red-950/20 text-red-500 rounded-lg flex items-center justify-center gap-1.5 h-9 transition text-xs"><i class="fa-solid fa-trash-can"></i> Delete Permanently</button>`:""}`}
+    </div>`;
+
+  document.getElementById("bottle-detail-inner").innerHTML=cardHtml;
+  document.getElementById("bottle-detail-modal").classList.remove("hidden");
+}
+function closeBottleDetail(){
+  document.getElementById("bottle-detail-modal").classList.add("hidden");
+}
 function exportInventory(){
   const rawList=getCurrentList()||[];
   const isOffice=currentTab===2;
@@ -904,7 +990,7 @@ function renderOverview(){
     const entry=gasCatalog[gasName]||{},dotColor=entry.color||"#3f3f46",thresh=reorderThresholds[gasName]||0,isBelow=thresh>0&&s<=thresh;
     const total=s+l;
     const isLargeCapable=LARGE_BOTTLE_TYPES.has(gasName);
-    return`<div class="ledger-item dash-panel flex items-center justify-between p-3 border ${isBelow?"border-blue-800/60":"border-zinc-800/80"} rounded-lg font-black ${total===0?"opacity-40":""}" data-gas="${gasName.toLowerCase()}"><div class="flex items-center gap-2 min-w-0"><span class="w-3 h-3 rounded-full shrink-0" style="background-color:${dotColor}"></span><span class="text-zinc-100 truncate uppercase tracking-tight text-sm">${gasName}</span>${isBelow?`<span class="text-[10px] text-blue-400 font-black whitespace-nowrap">⬇ REORDER</span>`:""}</div><div class="flex items-center gap-2 shrink-0"><span class="inline-flex items-baseline px-2.5 py-1 rounded font-mono font-black text-base ${isBelow?"bg-blue-950 border border-blue-700 text-blue-200":"bg-zinc-800 border border-zinc-600 text-zinc-100"}">${s}</span>${isLargeCapable?`<span class="inline-flex items-baseline gap-0.5 px-2.5 py-1 rounded font-mono font-black text-base bg-green-900 border border-green-600 text-green-200">${l}<span class="text-[11px] font-bold ml-0.5 text-green-400">L</span></span>`:""}</div></div>`;
+    return`<div class="ledger-item dash-panel flex items-center justify-between p-3 border ${isBelow?"border-blue-800/60":"border-zinc-800/80"} rounded-lg font-black ${total===0?"opacity-40":""}" data-gas="${gasName.toLowerCase()}"><div class="flex items-center gap-2 min-w-0"><span class="w-3 h-3 rounded-full shrink-0" style="background-color:${dotColor}"></span><span class="text-zinc-100 truncate uppercase tracking-tight text-base">${gasName}</span>${isBelow?`<span class="text-xs text-blue-400 font-black whitespace-nowrap">⬇ REORDER</span>`:""}</div><div class="flex items-center gap-2 shrink-0"><span class="inline-flex items-baseline px-2.5 py-1 rounded font-mono font-black text-lg ${isBelow?"bg-blue-950 border border-blue-700 text-blue-200":"bg-zinc-800 border border-zinc-600 text-zinc-100"}">${s}</span>${isLargeCapable?`<span class="inline-flex items-baseline gap-0.5 px-2.5 py-1 rounded font-mono font-black text-base bg-green-900 border border-green-600 text-green-200">${l}<span class="text-xs font-bold ml-0.5 text-green-400">L</span></span>`:""}</div></div>`;
   }).join("");
   let subReportTableHtml="";
   if(activeReportFilter==="expired")subReportTableHtml=generateAlertTable("Expired Fleet Cylinders",flatExpiredList,"expired");
@@ -916,7 +1002,7 @@ function renderOverview(){
     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 font-bold text-sm select-none">
       <div onclick="toggleReportFilter('all')" class="cursor-pointer dash-panel p-4 rounded-xl flex items-center justify-between shadow-md transition border-2 ${activeReportFilter==="all"?"border-zinc-400 bg-zinc-900":"border-zinc-800/60 hover:border-zinc-700"}"><div><span class="text-3xl font-black text-white block">${grandTotal}</span><span class="text-xs font-black text-zinc-400 block mt-1 uppercase">Total Fleet</span></div><i class="fa-solid fa-boxes-stacked text-2xl text-zinc-800/60"></i></div>
       <div onclick="toggleReportFilter('expired')" class="cursor-pointer p-4 rounded-xl flex items-center justify-between shadow-md transition border-2 ${activeReportFilter==="expired"?"border-red-500 bg-red-950/20":expiredCount>0?"border-red-950/80 bg-red-950/10 hover:border-red-900":"border-zinc-800/60 hover:border-zinc-700"}"><div><span class="text-3xl font-black ${expiredCount>0?"text-red-500":"text-zinc-500"} block">${expiredCount}</span><span class="text-xs font-black text-zinc-400 block mt-1 uppercase">Expired</span></div><i class="fa-solid fa-calendar-xmark text-2xl ${expiredCount>0?"text-red-900/40":"text-zinc-800/60"}"></i></div>
-      <div onclick="toggleReportFilter('expiring')" class="cursor-pointer p-4 rounded-xl flex items-center justify-between shadow-md transition border-2 ${activeReportFilter==="expiring"?"border-orange-500 bg-orange-950/20":exp30Count>0?"border-orange-900/60 bg-orange-950/10":"border-zinc-800/60 hover:border-zinc-700"}"><div><span class="text-3xl font-black ${exp30Count>0?"text-orange-400":(exp60Count+exp90Count)>0?"text-amber-400":"text-zinc-500"} block">${exp30Count+exp60Count+exp90Count}</span><span class="text-xs font-black text-zinc-400 block mt-1 uppercase">Expiring</span>${exp30Count>0?`<span class="text-[10px] text-orange-400 font-black">${exp30Count} &lt;30d</span>`:""}</div><i class="fa-solid fa-clock text-2xl ${exp30Count>0?"text-orange-900/40":"text-zinc-800/60"}"></i></div>
+      <div onclick="toggleReportFilter('expiring')" class="cursor-pointer p-4 rounded-xl flex items-center justify-between shadow-md transition border-2 ${activeReportFilter==="expiring"?"border-orange-500 bg-orange-950/20":exp30Count>0?"border-orange-900/60 bg-orange-950/10":"border-zinc-800/60 hover:border-zinc-700"}"><div><span class="text-3xl font-black ${exp30Count>0?"text-orange-400":(exp60Count+exp90Count)>0?"text-amber-400":"text-zinc-500"} block">${exp30Count+exp60Count+exp90Count}</span><span class="text-xs font-black text-zinc-400 block mt-1 uppercase">Expiring</span>${exp30Count>0?`<span class="text-xs text-orange-400 font-black">${exp30Count} &lt;30d</span>`:""}</div><i class="fa-solid fa-clock text-2xl ${exp30Count>0?"text-orange-900/40":"text-zinc-800/60"}"></i></div>
       <div onclick="toggleReportFilter('low')" class="cursor-pointer p-4 rounded-xl flex items-center justify-between shadow-md transition border-2 ${activeReportFilter==="low"?"border-amber-500 bg-amber-950/20":lowPSICount>0?"border-amber-950/80 bg-amber-950/10":"border-zinc-800/60 hover:border-zinc-700"}"><div><span class="text-3xl font-black ${lowPSICount>0?"text-amber-500":"text-zinc-500"} block">${lowPSICount}</span><span class="text-xs font-black text-zinc-400 block mt-1 uppercase">Low PSI</span></div><i class="fa-solid fa-triangle-exclamation text-2xl ${lowPSICount>0?"text-amber-900/40":"text-zinc-800/60"}"></i></div>
       <div onclick="toggleReportFilter('reorder')" class="cursor-pointer p-4 rounded-xl flex items-center justify-between shadow-md transition border-2 ${activeReportFilter==="reorder"?"border-blue-500 bg-blue-950/20":reorderItems.length>0?"border-blue-900/60 bg-blue-950/10":"border-zinc-800/60 hover:border-zinc-700"}"><div><span class="text-3xl font-black ${reorderItems.length>0?"text-blue-400":"text-zinc-500"} block">${reorderItems.length}</span><span class="text-xs font-black text-zinc-400 block mt-1 uppercase">Reorder</span></div><i class="fa-solid fa-cart-shopping text-2xl ${reorderItems.length>0?"text-blue-900/40":"text-zinc-800/60"}"></i></div>
       <div onclick="${isSupervisor()?"setTab(4)":"void(0)"}" class="cursor-pointer p-4 rounded-xl flex items-center justify-between shadow-md transition border-2 border-zinc-800/60 hover:border-zinc-700"><div><span class="text-3xl font-black text-zinc-500 block">${retiredStock.length}</span><span class="text-xs font-black text-zinc-400 block mt-1 uppercase">Retired</span></div><i class="fa-solid fa-box-archive text-2xl text-zinc-800/60"></i></div>
@@ -1155,17 +1241,17 @@ function renderVehicleSummary(){
     const isBelow=min>0&&scount<min,isOk=min>0&&scount>=min,isEmpty=scount===0&&lcount===0&&min===0;
     return`<div class="flex items-center gap-2 px-2.5 py-2 rounded-lg border ${isBelow?"border-red-900/50 bg-red-950/10":isOk?"border-emerald-900/30 bg-emerald-950/10":"border-zinc-800/50"} ${isEmpty?"opacity-30":""}">
       <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background-color:${color}"></span>
-      <span class="text-xs font-black uppercase tracking-tight text-zinc-100 flex-1 truncate">${t}</span>
+      <span class="text-sm font-black uppercase tracking-tight text-zinc-100 flex-1 truncate">${t}</span>
       <div class="flex items-center gap-1.5 shrink-0">
-        <span class="inline-flex items-baseline px-2 py-0.5 rounded font-mono font-black text-sm ${isBelow?"bg-red-950 border border-red-700 text-red-300":isOk?"bg-emerald-950 border border-emerald-700 text-emerald-300":"bg-zinc-800 border border-zinc-600 text-zinc-100"}">${scount}</span>
+        <span class="inline-flex items-baseline px-2.5 py-1 rounded font-mono font-black text-base ${isBelow?"bg-red-950 border border-red-700 text-red-300":isOk?"bg-emerald-950 border border-emerald-700 text-emerald-300":"bg-zinc-800 border border-zinc-600 text-zinc-100"}">${scount}</span>
         ${LARGE_BOTTLE_TYPES.has(t)?(lcount>0
-          ?`<span class="inline-flex items-baseline gap-0.5 px-2 py-0.5 rounded font-mono font-black text-sm bg-green-900 border border-green-600 text-green-200">${lcount}<span class="text-[10px] font-bold ml-0.5 text-green-400">L</span></span>`
-          :`<span class="inline-flex items-baseline gap-0.5 px-2 py-0.5 rounded font-mono font-black text-sm bg-zinc-900 border border-zinc-700 text-zinc-600">0<span class="text-[10px] font-bold ml-0.5 text-zinc-700">L</span></span>`)
+          ?`<span class="inline-flex items-baseline gap-0.5 px-2 py-0.5 rounded font-mono font-black text-sm bg-green-900 border border-green-600 text-green-200">${lcount}<span class="text-xs font-bold ml-0.5 text-green-400">L</span></span>`
+          :`<span class="inline-flex items-baseline gap-0.5 px-2 py-0.5 rounded font-mono font-black text-sm bg-zinc-900 border border-zinc-700 text-zinc-600">0<span class="text-xs font-bold ml-0.5 text-zinc-700">L</span></span>`)
         :""}
       </div>
       ${isSup
-        ?`<input type="number" min="0" max="99" value="${min}" data-gas="${t}" class="vehicle-min-input bg-zinc-950 border ${isBelow?"border-red-800":"border-zinc-800"} rounded px-1.5 text-zinc-100 font-black text-[11px] w-10 outline-none focus:border-emerald-600 text-center" style="min-height:22px;max-height:22px;">`
-        :(min>0?`<span class="text-[10px] font-mono text-zinc-500 shrink-0">/${min}</span>`:`<span class="text-[10px] text-zinc-500">—</span>`)
+        ?`<input type="number" min="0" max="99" value="${min}" data-gas="${t}" class="vehicle-min-input bg-zinc-950 border ${isBelow?"border-red-800":"border-zinc-800"} rounded px-1.5 text-zinc-100 font-black text-xs w-10 outline-none focus:border-emerald-600 text-center" style="min-height:22px;max-height:22px;">`
+        :(min>0?`<span class="text-xs font-mono text-zinc-500 shrink-0">/${min}</span>`:`<span class="text-xs text-zinc-500">—</span>`)
       }
     </div>`;
   }).join("");
@@ -1178,13 +1264,13 @@ function renderVehicleSummary(){
         <div class="flex items-center gap-3 flex-wrap">
           <h3 class="text-sm font-black uppercase tracking-wider text-zinc-100 flex items-center gap-2"><i class="fa-solid fa-list-check text-emerald-400"></i> ${loc} — All Gases</h3>
           <div class="flex items-center gap-2 flex-wrap text-xs font-bold text-zinc-500">
-            <span class="bg-zinc-900 border border-zinc-800 px-2 py-0.5 rounded">Truck: <span class="text-zinc-300">${truckSmall}</span>${truckLarge>0?` · <span class="text-green-400 font-black">${truckLarge}<span class="text-[10px] ml-0.5">L</span></span>`:""}</span>
-            <span class="bg-zinc-900 border border-zinc-800 px-2 py-0.5 rounded">Cart: <span class="text-zinc-300">${cartSmall}</span>${cartLarge>0?` · <span class="text-green-400 font-black">${cartLarge}<span class="text-[10px] ml-0.5">L</span></span>`:""}</span>
+            <span class="bg-zinc-900 border border-zinc-800 px-2 py-0.5 rounded">Truck: <span class="text-zinc-300">${truckSmall}</span>${truckLarge>0?` · <span class="text-green-400 font-black">${truckLarge}<span class="text-xs ml-0.5">L</span></span>`:""}</span>
+            <span class="bg-zinc-900 border border-zinc-800 px-2 py-0.5 rounded">Cart: <span class="text-zinc-300">${cartSmall}</span>${cartLarge>0?` · <span class="text-green-400 font-black">${cartLarge}<span class="text-xs ml-0.5">L</span></span>`:""}</span>
           </div>
         </div>
         ${isSup?`<button onclick="saveVehicleThresholds('${loc}')" class="bg-emerald-600 hover:bg-emerald-500 text-zinc-950 font-black text-xs px-3 py-1.5 rounded-lg transition flex items-center gap-1.5"><i class="fa-solid fa-floppy-disk"></i> Save Minimums</button>`:""}
       </div>
-      ${isSup?`<p class="text-[11px] text-zinc-500 font-bold mb-2">Counts shown per gas · <span class="text-green-500">L = Large (2000 PSI)</span> · minimums apply to regular bottles only · set min qty and save</p>`:`<p class="text-[11px] text-zinc-600 font-bold mb-2"><span class="text-green-600">L = Large (2000 PSI)</span> · shown only for CH4, H2, Multi, and Zero</p>`}
+      ${isSup?`<p class="text-xs text-zinc-500 font-bold mb-2">Counts shown per gas · <span class="text-green-500">L = Large (2000 PSI)</span> · minimums apply to regular bottles only · set min qty and save</p>`:`<p class="text-xs text-zinc-600 font-bold mb-2"><span class="text-green-600">L = Large (2000 PSI)</span> · shown only for CH4, H2, Multi, and Zero</p>`}
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5">${gridRows}</div>
     </div>
   </div>`;
@@ -1256,12 +1342,12 @@ function renderOfficeStockSummary(){
     const isEmpty=sc===0&&lc===0;
     return`<div class="flex items-center gap-2 px-2.5 py-2 rounded-lg border border-zinc-800/50 ${isEmpty?"opacity-25":""}">
       <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background-color:${color}"></span>
-      <span class="text-xs font-black uppercase tracking-tight text-zinc-100 flex-1 truncate">${t}</span>
+      <span class="text-sm font-black uppercase tracking-tight text-zinc-100 flex-1 truncate">${t}</span>
       <div class="flex items-center gap-1.5 shrink-0">
-        <span class="inline-flex items-baseline px-2 py-0.5 rounded font-mono font-black text-sm bg-zinc-800 border border-zinc-600 text-zinc-100">${sc}</span>
+        <span class="inline-flex items-baseline px-2.5 py-1 rounded font-mono font-black text-base bg-zinc-800 border border-zinc-600 text-zinc-100">${sc}</span>
         ${LARGE_BOTTLE_TYPES.has(t)?(lc>0
-          ?`<span class="inline-flex items-baseline gap-0.5 px-2 py-0.5 rounded font-mono font-black text-sm bg-green-900 border border-green-600 text-green-200">${lc}<span class="text-[10px] font-bold ml-0.5 text-green-400">L</span></span>`
-          :`<span class="inline-flex items-baseline gap-0.5 px-2 py-0.5 rounded font-mono font-black text-sm bg-zinc-900 border border-zinc-700 text-zinc-600">0<span class="text-[10px] font-bold ml-0.5 text-zinc-700">L</span></span>`)
+          ?`<span class="inline-flex items-baseline gap-0.5 px-2 py-0.5 rounded font-mono font-black text-sm bg-green-900 border border-green-600 text-green-200">${lc}<span class="text-xs font-bold ml-0.5 text-green-400">L</span></span>`
+          :`<span class="inline-flex items-baseline gap-0.5 px-2 py-0.5 rounded font-mono font-black text-sm bg-zinc-900 border border-zinc-700 text-zinc-600">0<span class="text-xs font-bold ml-0.5 text-zinc-700">L</span></span>`)
         :""}
       </div>
     </div>`;
@@ -1275,11 +1361,11 @@ function renderOfficeStockSummary(){
           <h3 class="text-sm font-black uppercase tracking-wider text-zinc-100 flex items-center gap-2"><i class="fa-solid fa-warehouse text-amber-400"></i> Office Stock — All Gases</h3>
           <div class="flex items-center gap-2 text-xs font-bold text-zinc-500">
             <span class="bg-zinc-900 border border-zinc-800 px-2 py-0.5 rounded">Regular: <span class="text-zinc-300">${totalSmall}</span></span>
-            ${totalLarge>0?`<span class="bg-zinc-900 border border-zinc-800 px-2 py-0.5 rounded">Large: <span class="text-green-400 font-black">${totalLarge}<span class="text-[10px] ml-0.5">L</span></span></span>`:""}
+            ${totalLarge>0?`<span class="bg-zinc-900 border border-zinc-800 px-2 py-0.5 rounded">Large: <span class="text-green-400 font-black">${totalLarge}<span class="text-xs ml-0.5">L</span></span></span>`:""}
           </div>
         </div>
       </div>
-      <p class="text-[11px] text-zinc-600 font-bold mb-2"><span class="text-green-600">L = Large (2000 PSI)</span> · shown only for CH4, H2, Multi, and Zero</p>
+      <p class="text-xs text-zinc-600 font-bold mb-2"><span class="text-green-600">L = Large (2000 PSI)</span> · shown only for CH4, H2, Multi, and Zero</p>
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5">${gridRows}</div>
     </div>
   </div>`;
@@ -1292,7 +1378,7 @@ function setTab(tab){
   updateSystemCanvas();
 }
 function switchLocation(v){
-  if(!isSupervisor()&&v!==currentUser.vehicle)return;
+  if(!isSupervisor()&&!isOfficeRole()&&v!==currentUser.vehicle)return;
   _bottleSearch="";
   currentLocation=v;if(currentTab===2||currentTab===7||currentTab>=3)currentTab=0;updateSystemCanvas();
 }
@@ -1311,5 +1397,13 @@ function updateSystemCanvas(){
   else renderBottles();
 }
 </script>
+<!-- Bottle Detail Modal -->
+<div id="bottle-detail-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" style="background:rgba(0,0,0,0.75);backdrop-filter:blur(4px)">
+  <div class="relative w-full max-w-sm max-h-[92vh] overflow-y-auto custom-scrollbar">
+    <button onclick="closeBottleDetail()" class="absolute top-3 right-3 z-10 bg-zinc-900 border border-zinc-700 hover:border-zinc-500 text-zinc-400 hover:text-white rounded-lg w-8 h-8 flex items-center justify-center transition text-sm font-black"><i class="fa-solid fa-xmark"></i></button>
+    <div id="bottle-detail-inner" class="bottle-card rounded-xl p-5 flex flex-col shadow-2xl border"></div>
+  </div>
+</div>
+
 </body>
 </html>
