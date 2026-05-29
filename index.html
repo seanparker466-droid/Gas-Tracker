@@ -296,11 +296,15 @@ function techCanEditVehicle(v){return isSupervisor()||isOfficeRole()||currentUse
 function visibleVehicles(){return (isSupervisor()||isOfficeRole())?vehicles:vehicles.filter(v=>v===currentUser.vehicle);}
 
 function openAccountsModal(){
-  const techUsers=Object.entries(BUILTIN_ACCOUNTS).filter(([,a])=>a.role==="tech");
-  document.getElementById("reset-user-select").innerHTML=techUsers.map(([u,a])=>`<option value="${u}">${a.displayName}</option>`).join("");
+  const resetableUsers=Object.entries(BUILTIN_ACCOUNTS).filter(([,a])=>a.role==="tech"||a.role==="office");
+  document.getElementById("reset-user-select").innerHTML=resetableUsers.map(([u,a])=>`<option value="${u}">${a.displayName}</option>`).join("");
   document.getElementById("accounts-list").innerHTML=Object.entries(BUILTIN_ACCOUNTS).map(([u,a])=>{
     const hasPass=appUsers[u]&&appUsers[u].hash?"Set":"Not set";
-    const badge=a.role==="supervisor"?`<span class="text-emerald-400 font-black text-xs">Supervisor</span>`:`<span class="text-zinc-400 text-xs font-black">${a.vehicle}</span>`;
+    const badge=a.role==="supervisor"
+      ?`<span class="text-emerald-400 font-black text-xs">Supervisor</span>`
+      :a.role==="office"
+      ?`<span class="text-amber-400 font-black text-xs">Office Display</span>`
+      :`<span class="text-zinc-400 text-xs font-black">${a.vehicle}</span>`;
     return`<div class="flex items-center justify-between py-3 border-b border-zinc-900"><div><p class="text-sm font-black text-white">${a.displayName} <span class="text-zinc-600 font-normal">@${u}</span></p>${badge}</div><span class="text-xs font-mono ${hasPass==="Set"?"text-emerald-400":"text-red-400"}">${hasPass}</span></div>`;
   }).join("");
   document.getElementById("accounts-modal").classList.remove("hidden");
