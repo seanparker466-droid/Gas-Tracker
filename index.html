@@ -4,19 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Gas Bottle Tracker</title>
-  <!-- PWA -->
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#09090b" id="pwa-theme-color">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Gas Tracker">
-  <meta name="application-name" content="Gas Bottle Tracker">
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
   <style>
     body{background-color:#09090b;font-family:system-ui,-apple-system,sans-serif;transition:background .2s,color .2s;}
     .dash-panel{background-color:#18181b;border:1px solid #27272a;box-shadow:0 4px 6px -1px rgba(0,0,0,.5);}
@@ -145,7 +136,6 @@
       <div class="bg-zinc-950 px-3 py-2 rounded-lg border border-zinc-800 flex items-center gap-1.5 whitespace-nowrap"><i class="fa-solid fa-box-archive text-zinc-500 text-xs"></i><span class="text-zinc-300 font-bold">Retired: <span id="ticker-retired" class="text-zinc-400 font-black">0</span></span></div>
       <div class="flex items-center gap-2 ml-1 bg-zinc-900 border border-zinc-700 px-3 py-1.5 rounded-lg whitespace-nowrap" style="min-height:36px;"><i id="user-role-icon" class="fa-solid fa-shield-halved text-emerald-400 text-xs"></i><span id="user-badge" class="text-zinc-200 font-black text-xs"></span><button onclick="logout()" class="text-zinc-600 hover:text-red-400 transition ml-1"><i class="fa-solid fa-right-from-bracket text-xs"></i></button></div>
       <button id="manage-accounts-btn" onclick="openAccountsModal()" class="hidden bg-zinc-800 border border-zinc-700 hover:border-emerald-700 px-3 py-1.5 rounded-lg text-zinc-300 hover:text-emerald-400 text-xs font-black transition flex items-center gap-1.5" style="min-height:36px;"><i class="fa-solid fa-users text-xs"></i> Accounts</button>
-      <button id="pwa-install-btn" onclick="pwaInstall()" class="hidden bg-emerald-700 hover:bg-emerald-600 border border-emerald-600 px-3 py-1.5 rounded-lg text-white text-xs font-black transition flex items-center gap-1.5" style="min-height:36px;"><i class="fa-solid fa-download text-xs"></i> Install App</button>
     </div>
   </div>
 </header>
@@ -248,16 +238,17 @@
 const firebaseConfig={apiKey:"AIzaSyBBQMvkZHJyOuMr6uCkUENSPMD6gCwYtuc",authDomain:"gas-tracker-a8162.firebaseapp.com",databaseURL:"https://gas-tracker-a8162-default-rtdb.firebaseio.com",projectId:"gas-tracker-a8162",storageBucket:"gas-tracker-a8162.firebasestorage.app",messagingSenderId:"242209029672",appId:"1:242209029672:web:ab78fd1d871cc78cf4bf1d"};
 firebase.initializeApp(firebaseConfig);
 const db=firebase.database();
-const auth=firebase.auth();
 
 // ── AUTH ──────────────────────────────────────────────────
 const BUILTIN_ACCOUNTS={
-  sean:  {displayName:"Sean Parker",  role:"supervisor",vehicle:null},
-  austin:{displayName:"Austin Parker",role:"tech",      vehicle:"Van 17"},
-  mike:  {displayName:"Mike Bird",    role:"tech",      vehicle:"Van 22"},
-  james: {displayName:"James Peace",  role:"tech",      vehicle:"Van 20"},
+  sean:  {displayName:"Sean Parker",   role:"supervisor",vehicle:null},
+  office:{displayName:"Office Display",role:"office",    vehicle:null},
+  austin:{displayName:"Austin Parker", role:"tech",      vehicle:"Van 17"},
+  mike:  {displayName:"Mike Bird",     role:"tech",      vehicle:"Van 22"},
+  james: {displayName:"James Peace",   role:"tech",      vehicle:"Van 20"},
 };
 let currentUser=null,appUsers={},vehicleThresholds={};
+let _bottleView="card"; // "card" | "list" | "icon"
 
 async function sha256(str){const buf=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(str));return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("");}
 
@@ -286,22 +277,23 @@ async function attemptLogin(){
 function loginAs(username){
   currentUser={username,...BUILTIN_ACCOUNTS[username]};
   localStorage.setItem("gbt-session",username);
-  auth.signInAnonymously().catch(()=>{});
   applyUserUI();showApp();initAppData();
 }
-function logout(){currentUser=null;localStorage.removeItem("gbt-session");auth.signOut().catch(()=>{});location.reload();}
+function logout(){currentUser=null;localStorage.removeItem("gbt-session");location.reload();}
 
 function applyUserUI(){
-  const isSup=currentUser.role==="supervisor";
-  document.getElementById("user-badge").textContent=currentUser.displayName+(isSup?" · Supervisor":` · ${currentUser.vehicle}`);
-  document.getElementById("user-role-icon").className=isSup?"fa-solid fa-shield-halved text-emerald-400 text-xs":"fa-solid fa-user text-zinc-400 text-xs";
+  const isSup=isSupervisor(),isOff=isOfficeRole();
+  document.getElementById("user-badge").textContent=currentUser.displayName+(isSup?" · Supervisor":isOff?" · Office Display":` · ${currentUser.vehicle}`);
+  document.getElementById("user-role-icon").className=isSup?"fa-solid fa-shield-halved text-emerald-400 text-xs":isOff?"fa-solid fa-display text-amber-400 text-xs":"fa-solid fa-user text-zinc-400 text-xs";
   document.getElementById("manage-accounts-btn").classList.toggle("hidden",!isSup);
-  document.getElementById("add-bottle-form").classList.toggle("hidden",!isSup);
+  document.getElementById("add-bottle-form").classList.toggle("hidden",!isSup&&!isOff);
 }
 
 function isSupervisor(){return currentUser&&currentUser.role==="supervisor";}
-function techCanEditVehicle(v){return isSupervisor()||currentUser.vehicle===v;}
-function visibleVehicles(){return isSupervisor()?vehicles:vehicles.filter(v=>v===currentUser.vehicle);}
+function isOfficeRole(){return currentUser&&currentUser.role==="office";}
+function canAddBottles(){return isSupervisor()||isOfficeRole();}
+function techCanEditVehicle(v){return isSupervisor()||isOfficeRole()||currentUser.vehicle===v;}
+function visibleVehicles(){return (isSupervisor()||isOfficeRole())?vehicles:vehicles.filter(v=>v===currentUser.vehicle);}
 
 function openAccountsModal(){
   const techUsers=Object.entries(BUILTIN_ACCOUNTS).filter(([,a])=>a.role==="tech");
@@ -401,13 +393,10 @@ let activeReportFilter="all";
 let inventory={},cart={},officeStock=[],retiredStock=[],activityLog=[],reorderThresholds={};
 
 // ── BOOT ──────────────────────────────────────────────────
-// Sign in anonymously first so auth != null rules are satisfied before any DB read
-auth.signInAnonymously().catch(()=>{}).finally(()=>{
-  db.ref("appUsers").once("value",snap=>{
-    appUsers=snap.val()||{};
-    if(!appUsers.sean||!appUsers.sean.hash){showSetupScreen();}
-    else{const saved=localStorage.getItem("gbt-session");if(saved&&BUILTIN_ACCOUNTS[saved]&&appUsers[saved])loginAs(saved);else showLoginScreen();}
-  });
+db.ref("appUsers").once("value",snap=>{
+  appUsers=snap.val()||{};
+  if(!appUsers.sean||!appUsers.sean.hash){showSetupScreen();}
+  else{const saved=localStorage.getItem("gbt-session");if(saved&&BUILTIN_ACCOUNTS[saved]&&appUsers[saved])loginAs(saved);else showLoginScreen();}
 });
 document.getElementById("login-pass").addEventListener("keydown",e=>{if(e.key==="Enter")attemptLogin();});
 document.getElementById("login-user").addEventListener("keydown",e=>{if(e.key==="Enter")document.getElementById("login-pass").focus();});
@@ -537,10 +526,12 @@ function renderLocationTabs(){
 }
 
 function renderMainTabs(){
-  const isSup=isSupervisor();
-  const isOffice=currentTab===2||currentTab===7;
-  document.getElementById("action-tabs").innerHTML=`<div class="bg-zinc-950 border border-zinc-800 rounded-lg p-1 flex gap-1 text-sm font-black w-fit flex-wrap">
-    ${isOffice
+  const isSup=isSupervisor(),isOff=isOfficeRole();
+  const isOfficeLoc=currentTab===2||currentTab===7;
+  const showExport=currentTab===0||currentTab===1||currentTab===2;
+  document.getElementById("action-tabs").innerHTML=`<div class="flex flex-wrap items-center gap-2">
+  <div class="bg-zinc-950 border border-zinc-800 rounded-lg p-1 flex gap-1 text-sm font-black flex-wrap">
+    ${isOfficeLoc
       ?`<button onclick="switchToOffice()" class="px-4 py-1.5 rounded-md transition ${currentTab===2?"bg-zinc-800 text-white":"text-zinc-400 hover:text-white"}">Office Stock</button>
          <button onclick="setTab(7)" class="px-4 py-1.5 rounded-md transition ${currentTab===7?"bg-zinc-800 text-white":"text-zinc-400 hover:text-white"}"><i class="fa-solid fa-list-check mr-1 text-amber-400"></i>Office Summary</button>`
       :`<button onclick="setTab(0)" class="px-4 py-1.5 rounded-md transition ${currentTab===0?"bg-zinc-800 text-white":"text-zinc-400 hover:text-white"}">Truck Stock</button>
@@ -550,6 +541,8 @@ function renderMainTabs(){
     <button onclick="setTab(3)" class="px-4 py-1.5 rounded-md transition ${currentTab===3?"bg-zinc-800 text-white":"text-zinc-400 hover:text-white"}"><i class="fa-solid fa-chart-pie mr-1 text-amber-400"></i>Overview</button>
     ${isSup?`<button onclick="setTab(4)" class="px-4 py-1.5 rounded-md transition ${currentTab===4?"bg-zinc-800 text-white":"text-zinc-400 hover:text-white"}"><i class="fa-solid fa-box-archive mr-1 text-zinc-500"></i>Retired${retiredStock.length>0?` <span class="ml-1 bg-zinc-700 text-zinc-300 text-xs px-1.5 py-0.5 rounded-full">${retiredStock.length}</span>`:""}</button>`:""}
     ${isSup?`<button onclick="setTab(5)" class="px-4 py-1.5 rounded-md transition ${currentTab===5?"bg-zinc-800 text-white":"text-zinc-400 hover:text-white"}"><i class="fa-solid fa-clock-rotate-left mr-1 text-zinc-500"></i>History</button>`:""}
+  </div>
+  ${showExport?`<button onclick="exportInventory()" class="bg-zinc-900 border border-zinc-700 hover:border-zinc-500 hover:bg-zinc-800 text-zinc-300 hover:text-white text-xs font-black px-3 py-1.5 rounded-lg transition flex items-center gap-1.5"><i class="fa-solid fa-print text-zinc-500"></i> Export / Print</button>`:""}
   </div>`;
   const mgmt=document.getElementById("vehicle-management-zone");
   if(isSup&&currentTab<2)mgmt.innerHTML=`<button onclick="renameVehicle('${currentLocation}')" class="bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 px-3 py-1.5 rounded-lg text-zinc-300 hover:text-white text-xs font-black flex items-center gap-1 transition"><i class="fa-solid fa-gear text-zinc-400"></i> Rename</button><button onclick="deleteVehicle('${currentLocation}')" class="bg-zinc-900 hover:bg-red-950/30 border border-zinc-800 hover:border-red-900 px-3 py-1.5 rounded-lg text-zinc-400 hover:text-red-400 text-xs font-black flex items-center gap-1 transition"><i class="fa-solid fa-trash text-zinc-500"></i> Remove</button>`;
@@ -559,21 +552,28 @@ function renderMainTabs(){
 }
 
 // ── BOTTLE CARDS ──────────────────────────────────────────
-function sortBottles(mode){_bottleSort=mode;renderBottles();}
+function setBottleView(v){_bottleView=v;renderBottleGrid();}
+function sortBottles(mode){_bottleSort=mode;renderBottleGrid();}
 function searchBottles(q){_bottleSearch=q.toLowerCase().trim();renderBottleGrid();}
 function renderBottles(){
   const area=document.getElementById("content-area");
   const isOffice=currentTab===2;
   const totalUnfiltered=(getCurrentList()||[]).length;
-  const searchBar=`<div class="flex items-center gap-2 mb-3" id="bottle-search-bar">
-    <div class="relative flex-1 max-w-xs">
+  const searchBar=`<div class="flex items-center gap-2 mb-2 flex-wrap" id="bottle-search-bar">
+    <div class="relative flex-1 min-w-[160px] max-w-xs">
       <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 text-xs pointer-events-none"></i>
       <input id="bottle-search-input" type="text" value="${_bottleSearch}" oninput="searchBottles(this.value)" placeholder="Search gas type…" class="w-full bg-zinc-950 border border-zinc-700 rounded-lg pl-8 pr-3 py-2 text-sm font-bold text-white placeholder-zinc-600 outline-none focus:border-emerald-600 transition"/>
     </div>
     <button id="bottle-search-clear" onclick="searchBottles('');document.getElementById('bottle-search-input').value=''" class="${_bottleSearch?'':'hidden'} text-xs font-black text-zinc-500 hover:text-zinc-200 border border-zinc-700 rounded-lg px-3 py-2 transition bg-zinc-900 hover:bg-zinc-800"><i class="fa-solid fa-xmark mr-1"></i>Clear</button>
-    <span id="bottle-search-count" class="text-xs font-black text-zinc-600 ml-auto">${totalUnfiltered} bottle${totalUnfiltered!==1?"s":""}</span>
+    <div class="flex items-center gap-1 ml-auto bg-zinc-900 border border-zinc-800 rounded-lg p-1">
+      <button onclick="setBottleView('card')" title="Card view" class="px-2.5 py-1.5 rounded-md text-xs font-black transition ${_bottleView==='card'?'bg-zinc-700 text-white':'text-zinc-500 hover:text-zinc-300'}"><i class="fa-solid fa-id-card"></i></button>
+      <button onclick="setBottleView('icon')" title="Icon view" class="px-2.5 py-1.5 rounded-md text-xs font-black transition ${_bottleView==='icon'?'bg-zinc-700 text-white':'text-zinc-500 hover:text-zinc-300'}"><i class="fa-solid fa-grip"></i></button>
+      <button onclick="setBottleView('list')" title="List view" class="px-2.5 py-1.5 rounded-md text-xs font-black transition ${_bottleView==='list'?'bg-zinc-700 text-white':'text-zinc-500 hover:text-zinc-300'}"><i class="fa-solid fa-list"></i></button>
+    </div>
+    <span id="bottle-search-count" class="text-xs font-black text-zinc-600">${totalUnfiltered} bottle${totalUnfiltered!==1?"s":""}</span>
   </div>`;
-  const sortBar=isOffice&&!isSupervisor()?"":`<div class="flex items-center gap-2 mb-3 flex-wrap" id="bottle-sort-bar"><span class="text-xs font-black text-zinc-500 uppercase tracking-wider mr-1">Sort:</span><button onclick="sortBottles('default')" class="text-xs font-black px-3 py-1.5 rounded-lg border transition ${_bottleSort==='default'?'bg-emerald-600 border-emerald-500 text-zinc-950':'bg-zinc-900 border-zinc-700 text-zinc-300 hover:border-zinc-500'}">Default</button><button onclick="sortBottles('name')" class="text-xs font-black px-3 py-1.5 rounded-lg border transition ${_bottleSort==='name'?'bg-emerald-600 border-emerald-500 text-zinc-950':'bg-zinc-900 border-zinc-700 text-zinc-300 hover:border-zinc-500'}">A–Z Name</button><button onclick="sortBottles('psi')" class="text-xs font-black px-3 py-1.5 rounded-lg border transition ${_bottleSort==='psi'?'bg-emerald-600 border-emerald-500 text-zinc-950':'bg-zinc-900 border-zinc-700 text-zinc-300 hover:border-zinc-500'}">Emptiest First</button></div>`;
+  const showSort=!(isOffice&&!canAddBottles());
+  const sortBar=showSort?`<div class="flex items-center gap-2 mb-3 flex-wrap" id="bottle-sort-bar"><span class="text-xs font-black text-zinc-500 uppercase tracking-wider mr-1">Sort:</span><button onclick="sortBottles('default')" class="text-xs font-black px-3 py-1.5 rounded-lg border transition ${_bottleSort==='default'?'bg-emerald-600 border-emerald-500 text-zinc-950':'bg-zinc-900 border-zinc-700 text-zinc-300 hover:border-zinc-500'}">Default</button><button onclick="sortBottles('name')" class="text-xs font-black px-3 py-1.5 rounded-lg border transition ${_bottleSort==='name'?'bg-emerald-600 border-emerald-500 text-zinc-950':'bg-zinc-900 border-zinc-700 text-zinc-300 hover:border-zinc-500'}">A–Z Name</button><button onclick="sortBottles('psi')" class="text-xs font-black px-3 py-1.5 rounded-lg border transition ${_bottleSort==='psi'?'bg-emerald-600 border-emerald-500 text-zinc-950':'bg-zinc-900 border-zinc-700 text-zinc-300 hover:border-zinc-500'}">Emptiest First</button></div>`:"";
   area.innerHTML=searchBar+sortBar+`<div id="bottle-grid-area"></div>`;
   renderBottleGrid();
 }
@@ -587,26 +587,111 @@ function renderBottleGrid(){
   if(_bottleSearch)list=list.filter(b=>b.type.toLowerCase().includes(_bottleSearch));
   const isOffice=currentTab===2;
   const totalUnfiltered=rawList.length;
-  // Update count and clear button without touching the input
   const countEl=document.getElementById("bottle-search-count");
   if(countEl)countEl.textContent=`${_bottleSearch?list.length+" of "+totalUnfiltered:totalUnfiltered} bottle${totalUnfiltered!==1?"s":""}`;
   const clearBtn=document.getElementById("bottle-search-clear");
   if(clearBtn)clearBtn.classList.toggle("hidden",!_bottleSearch);
+  // Update view toggle active state without re-rendering the bar
+  ["card","icon","list"].forEach(v=>{
+    const btn=document.querySelector(`button[onclick="setBottleView('${v}')"]`);
+    if(btn){btn.className=btn.className.replace(/bg-zinc-700 text-white|text-zinc-500 hover:text-zinc-300/g,"");btn.classList.add(...(_bottleView===v?["bg-zinc-700","text-white"]:["text-zinc-500","hover:text-zinc-300"]));}
+  });
   if(!list||list.length===0){
-    const msg=_bottleSearch
-      ?`No bottles matching "${_bottleSearch}" in this inventory.`
-      :isOffice?"No bottles in office stock.":currentTab===1?"No bottles on cart.":"No bottles on this vehicle yet.";
+    const msg=_bottleSearch?`No bottles matching "${_bottleSearch}" in this inventory.`:isOffice?"No bottles in office stock.":currentTab===1?"No bottles on cart.":"No bottles on this vehicle yet.";
     gridArea.innerHTML=`<div class="dash-panel rounded-xl py-16 text-center border-dashed border-2 border-zinc-800"><div class="bg-zinc-900 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3 text-zinc-500 border border-zinc-800"><i class="fa-solid fa-box-open text-lg"></i></div><p class="text-zinc-400 font-black text-sm px-4">${msg}</p></div>`;
     return;
   }
-  if(isOffice&&!isSupervisor()){
-    let html=`<div class="mb-3 bg-blue-950/20 border border-blue-900/40 rounded-xl p-3 text-xs font-black text-blue-400 flex items-center gap-2"><i class="fa-solid fa-info-circle"></i> Office Stock — pull bottles to your truck (${currentUser.vehicle}) from here.</div><div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">`;
-    list.forEach((b)=>{const entry=gasCatalog[b.type]||{},baseColor=entry.color||"#bae6fd";
-      html+=`<div class="bottle-card rounded-xl p-4 flex flex-col gap-3 shadow-md"><span style="color:${baseColor}" class="text-lg font-black uppercase">${b.type}</span><span class="text-xs text-zinc-500 font-bold">${b.capacity} · ${entry.concentration||"—"}</span><span class="text-xs text-zinc-400 font-mono">P/N: ${b.partNum||"—"} · Sage: ${b.sageNum||"—"}</span>${expBadge(b.expDate)}<button onclick="pullToMyTruck(${b._origIdx})" class="bg-zinc-900 border border-zinc-700 hover:border-emerald-700 hover:bg-emerald-950/20 text-emerald-400 rounded-lg font-black h-10 flex items-center justify-center gap-1.5 transition text-xs"><i class="fa-solid fa-arrow-right-long"></i> Pull to ${currentUser.vehicle}</button></div>`;
+
+  // ── LIST VIEW ──────────────────────────────────────────
+  if(_bottleView==="list"){
+    const isPullOnly=isOffice&&!canAddBottles();
+    let html=`<div class="dash-panel rounded-xl overflow-hidden border border-zinc-800">
+      <table class="w-full text-left border-collapse text-xs font-bold">
+        <thead><tr class="border-b border-zinc-800 text-zinc-500 uppercase tracking-wider text-[11px]">
+          <th class="px-3 py-2.5">Gas Type</th>
+          <th class="px-3 py-2.5">Size</th>
+          <th class="px-3 py-2.5">PSI</th>
+          <th class="px-3 py-2.5 hidden sm:table-cell">Part #</th>
+          <th class="px-3 py-2.5 hidden md:table-cell">Sage #</th>
+          <th class="px-3 py-2.5 hidden lg:table-cell">Expires</th>
+          <th class="px-3 py-2.5">Status</th>
+          <th class="px-3 py-2.5 text-right">Actions</th>
+        </tr></thead>
+        <tbody>`;
+    list.forEach(b=>{
+      const i=b._origIdx,entry=gasCatalog[b.type]||{},color=entry.color||"#71717a";
+      const fillPct=Math.round((b.currentPSI/b.maxPSI)*100);
+      const isLow=b.currentPSI<300,isCrit=b.currentPSI<150;
+      const expStatus=getExpStatus(b.expDate);
+      const expColor=expStatus==="expired"?"text-red-400":expStatus==="exp30"?"text-orange-400":expStatus==="exp60"?"text-amber-400":"text-zinc-500";
+      const psiColor=isCrit?"text-red-400":isLow?"text-amber-400":"text-zinc-100";
+      const rowBg=expStatus==="expired"?"bg-red-950/10":isCrit?"bg-red-950/5":"";
+      html+=`<tr class="border-b border-zinc-900/60 hover:bg-zinc-800/30 transition ${rowBg}">
+        <td class="px-3 py-2.5"><span class="font-black uppercase" style="color:${color}">${b.type}</span></td>
+        <td class="px-3 py-2.5 text-zinc-400">${b.capacity==="Large"?`<span class="text-green-400 font-black">Large</span>`:"Reg"}</td>
+        <td class="px-3 py-2.5">
+          <div class="flex items-center gap-2">
+            <span class="font-mono font-black ${psiColor}">${b.currentPSI}</span>
+            <div class="hidden sm:block w-16 h-1.5 rounded-full bg-zinc-800 overflow-hidden"><div class="h-full rounded-full transition-all" style="width:${fillPct}%;background-color:${isCrit?'#ef4444':isLow?'#f59e0b':color}"></div></div>
+          </div>
+        </td>
+        <td class="px-3 py-2.5 font-mono text-zinc-400 hidden sm:table-cell">${b.partNum||entry.partNum||"—"}</td>
+        <td class="px-3 py-2.5 font-mono text-zinc-400 hidden md:table-cell">${b.sageNum||entry.sageNum||"—"}</td>
+        <td class="px-3 py-2.5 ${expColor} hidden lg:table-cell">${b.expDate||"—"}</td>
+        <td class="px-3 py-2.5">${isCrit?`<span class="text-red-400 font-black text-[10px]">⚠ CRIT</span>`:isLow?`<span class="text-amber-400 font-black text-[10px]">⚠ LOW</span>`:expStatus==="expired"?`<span class="text-red-400 font-black text-[10px]">EXPIRED</span>`:`<span class="text-zinc-600 text-[10px]">OK</span>`}</td>
+        <td class="px-3 py-2.5 text-right">
+          <div class="flex items-center justify-end gap-1">
+            ${isPullOnly?`<button onclick="pullToMyTruck(${i})" class="text-[10px] font-black px-2 py-1 rounded bg-zinc-900 border border-zinc-700 hover:border-emerald-700 text-emerald-400 transition">Pull</button>`:`
+            <button onclick="openMoveModal(${i})" class="text-[10px] font-black px-2 py-1 rounded bg-zinc-900 border border-zinc-700 hover:border-zinc-600 text-zinc-300 transition" title="Route"><i class="fa-solid fa-right-left"></i></button>
+            <button onclick="openPSIModal(${i})" class="text-[10px] font-black px-2 py-1 rounded bg-zinc-900 border border-zinc-700 hover:border-emerald-700 text-emerald-400 transition" title="Edit PSI">PSI</button>
+            <button onclick="openRetireModal(${i})" class="text-[10px] font-black px-2 py-1 rounded bg-zinc-900 border border-zinc-700 hover:border-zinc-600 text-zinc-400 transition" title="Retire"><i class="fa-solid fa-box-archive"></i></button>
+            ${isSupervisor()?`<button onclick="removeBottle(${i})" class="text-[10px] font-black px-2 py-1 rounded bg-zinc-900 border border-zinc-700 hover:border-red-900 text-red-500 transition" title="Delete"><i class="fa-solid fa-trash-can"></i></button>`:""}
+            `}
+          </div>
+        </td>
+      </tr>`;
+    });
+    html+=`</tbody></table></div>`;
+    gridArea.innerHTML=html;return;
+  }
+
+  // ── ICON VIEW ──────────────────────────────────────────
+  if(_bottleView==="icon"){
+    const isPullOnly=isOffice&&!canAddBottles();
+    let html=`<div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-2">`;
+    list.forEach(b=>{
+      const i=b._origIdx,entry=gasCatalog[b.type]||{},color=entry.color||"#71717a";
+      const fillPct=Math.round((b.currentPSI/b.maxPSI)*100);
+      const isCrit=b.currentPSI<150,isLow=b.currentPSI<300;
+      const barColor=isCrit?"#ef4444":isLow?"#f59e0b":color;
+      const isLarge=b.capacity==="Large";
+      const expStatus=getExpStatus(b.expDate);
+      const borderCls=expStatus==="expired"?"border-red-800/60":isCrit?"border-red-800/40":isLarge?"border-green-800/50":"border-zinc-700/60";
+      html+=`<div class="relative flex flex-col items-center gap-1.5 p-2.5 rounded-xl border ${borderCls} bg-zinc-900/40 hover:bg-zinc-800/60 transition cursor-pointer group" onclick="${isPullOnly?`pullToMyTruck(${i})`:`openPSIModal(${i})`}">
+        ${isLarge?`<span class="absolute top-1 right-1 text-[8px] font-black text-green-400 bg-green-950/60 px-1 rounded leading-tight">L</span>`:""}
+        <svg width="32" height="52" viewBox="0 0 44 72">
+          <defs><linearGradient id="ig${i}" x1="0%" y1="100%" x2="0%" y2="0%"><stop offset="0%" stop-color="${barColor}" stop-opacity="0.9"/><stop offset="100%" stop-color="${barColor}" stop-opacity="0.2"/></linearGradient></defs>
+          ${isLarge
+            ?`<path d="M22 4 Q6 6 6 18 L6 64 Q6 70 14 70 L30 70 Q38 70 38 64 L38 18 Q38 6 22 4Z" fill="#0d1a0d" stroke="${color==='#71717a'?'#16a34a':color}" stroke-width="2"/>
+               <rect x="10" y="${4+(66*(1-fillPct/100))}" width="24" height="${66*(fillPct/100)}" fill="url(#ig${i})" rx="2" clip-path="inset(0 0 0 0 round 2px)"/>
+               <rect x="16" y="0" width="12" height="6" rx="2" fill="#0a0a0a"/>
+               <rect x="10" y="1" width="24" height="4" rx="2" fill="#111"/>`
+            :`<path d="M22 6 Q8 8 8 20 L8 62 Q8 68 16 68 L28 68 Q36 68 36 62 L36 20 Q36 8 22 6Z" fill="#1c1c1e" stroke="#3f3f46" stroke-width="1.5"/>
+               <rect x="12" y="${6+(56*(1-fillPct/100))}" width="20" height="${56*(fillPct/100)}" fill="url(#ig${i})" rx="2"/>
+               <path d="M17 3 L27 3 L25 7 L19 7Z" fill="#3f3f46"/>`}
+        </svg>
+        <span class="text-[9px] font-black uppercase text-center leading-tight break-all" style="color:${color};max-width:56px">${b.type}</span>
+        <span class="text-[9px] font-mono font-black ${isCrit?"text-red-400":isLow?"text-amber-400":"text-zinc-400"}">${b.currentPSI}<span class="text-[8px]">psi</span></span>
+        ${isCrit?`<span class="text-[8px] font-black text-red-400 animate-pulse">⚠CRIT</span>`:expStatus==="expired"?`<span class="text-[8px] font-black text-red-400">EXP</span>`:""}
+      </div>`;
     });
     html+=`</div>`;gridArea.innerHTML=html;return;
   }
-  let html=`<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">`;
+
+  // ── CARD VIEW (default) ────────────────────────────────
+  const isPullOnlyCard=isOffice&&!canAddBottles();
+  let html=isPullOnlyCard?`<div class="mb-3 bg-blue-950/20 border border-blue-900/40 rounded-xl p-3 text-xs font-black text-blue-400 flex items-center gap-2"><i class="fa-solid fa-info-circle"></i> Office Stock — pull bottles to your vehicle from here.</div>`:"";
+  html+=`<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">`;
   list.forEach((b)=>{const i=b._origIdx;
     const entry=gasCatalog[b.type]||{},baseColor=entry.color||"#bae6fd",concentration=entry.concentration||"";
     const expStatus=getExpStatus(b.expDate),fillPercent=Math.min((b.currentPSI/b.maxPSI)*100,100);
@@ -685,15 +770,76 @@ function renderBottleGrid(){
         </div>
       </div>
       <div class="grid grid-cols-2 gap-2 mt-3 text-xs font-black">
-        ${currentTab===0?`<button onclick="moveToCart(${i})" class="bg-zinc-900 border border-zinc-800 hover:border-emerald-800 hover:bg-emerald-950/20 text-emerald-400 rounded-lg font-black col-span-2 h-10 flex items-center justify-center gap-1.5 transition"><i class="fa-solid fa-arrow-right-long"></i> Move to Cart</button>`:""}
+        ${isPullOnlyCard
+          ?`<button onclick="pullToMyTruck(${i})" class="bg-zinc-900 border border-zinc-700 hover:border-emerald-700 hover:bg-emerald-950/20 text-emerald-400 rounded-lg font-black col-span-2 h-10 flex items-center justify-center gap-1.5 transition"><i class="fa-solid fa-arrow-right-long"></i> Pull to My Vehicle</button>`
+          :`${currentTab===0?`<button onclick="moveToCart(${i})" class="bg-zinc-900 border border-zinc-800 hover:border-emerald-800 hover:bg-emerald-950/20 text-emerald-400 rounded-lg font-black col-span-2 h-10 flex items-center justify-center gap-1.5 transition"><i class="fa-solid fa-arrow-right-long"></i> Move to Cart</button>`:""}
         ${currentTab===1?`<button onclick="returnToInventory(${i})" class="bg-zinc-900 border border-zinc-800 hover:border-amber-800 hover:bg-amber-950/20 text-amber-400 rounded-lg font-black col-span-2 h-10 flex items-center justify-center gap-1.5 transition"><i class="fa-solid fa-arrow-left-long"></i> Return to Truck</button>`:""}
         <button onclick="openMoveModal(${i})" class="bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-300 rounded-lg font-bold flex items-center justify-center gap-1 h-10 transition"><i class="fa-solid fa-right-left text-[10px]"></i> Route</button>
         <button onclick="openRetireModal(${i})" class="bg-zinc-900 border border-zinc-800 hover:border-zinc-600 text-zinc-400 hover:text-white rounded-lg flex items-center justify-center gap-1.5 h-10 transition"><i class="fa-solid fa-box-archive text-xs"></i> Retire</button>
-        ${isSupervisor()?`<button onclick="removeBottle(${i})" class="col-span-2 bg-zinc-900 border border-zinc-800 hover:border-red-900 hover:bg-red-950/20 text-red-500 rounded-lg flex items-center justify-center gap-1.5 h-9 transition text-xs"><i class="fa-solid fa-trash-can"></i> Delete Permanently</button>`:""}
+        ${isSupervisor()?`<button onclick="removeBottle(${i})" class="col-span-2 bg-zinc-900 border border-zinc-800 hover:border-red-900 hover:bg-red-950/20 text-red-500 rounded-lg flex items-center justify-center gap-1.5 h-9 transition text-xs"><i class="fa-solid fa-trash-can"></i> Delete Permanently</button>`:""}`}
       </div>
     </div>`;
   });
   html+=`</div>`;gridArea.innerHTML=html;
+}
+
+// ── EXPORT / PRINT ────────────────────────────────────────
+function exportInventory(){
+  const rawList=getCurrentList()||[];
+  const isOffice=currentTab===2;
+  const locLabel=isOffice?"Office Stock":currentTab===1?`${currentLocation} — Cart`:`${currentLocation} — Truck`;
+  // Tally by gas type
+  const tally={};
+  rawList.forEach(b=>{
+    if(!tally[b.type])tally[b.type]={type:b.type,reg:0,large:0,minPSI:b.currentPSI,maxPSI:b.currentPSI,totalPSI:0,count:0};
+    const t=tally[b.type];
+    if(b.capacity==="Large")t.large++;else t.reg++;
+    t.count++;t.totalPSI+=b.currentPSI;
+    if(b.currentPSI<t.minPSI)t.minPSI=b.currentPSI;
+    if(b.currentPSI>t.maxPSI)t.maxPSI=b.currentPSI;
+  });
+  const rows=Object.values(tally).sort((a,b)=>a.type.localeCompare(b.type));
+  const now=new Date().toLocaleString();
+  const printHtml=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${locLabel} — Gas Inventory</title>
+  <style>
+    body{font-family:system-ui,sans-serif;padding:24px;color:#111;background:#fff;font-size:13px;}
+    h1{font-size:18px;font-weight:900;margin:0 0 4px;}
+    p.sub{color:#555;margin:0 0 20px;font-size:12px;}
+    table{width:100%;border-collapse:collapse;}
+    th{background:#f4f4f5;font-weight:900;text-transform:uppercase;font-size:11px;letter-spacing:.05em;padding:8px 10px;border-bottom:2px solid #e4e4e7;text-align:left;}
+    td{padding:7px 10px;border-bottom:1px solid #f0f0f0;font-weight:600;}
+    tr:last-child td{border-bottom:none;}
+    .total-row td{font-weight:900;background:#f9f9f9;border-top:2px solid #e4e4e7;}
+    .large{color:#16a34a;font-weight:900;}
+    @media print{body{padding:0;}}
+  </style></head><body>
+  <h1>${locLabel} — Gas Inventory Report</h1>
+  <p class="sub">Generated: ${now} &nbsp;·&nbsp; ${rawList.length} total cylinders</p>
+  <table>
+    <thead><tr><th>Gas Type</th><th>Regular</th><th>Large</th><th>Total</th><th>Avg PSI</th><th>Low PSI</th><th>High PSI</th></tr></thead>
+    <tbody>
+      ${rows.map(r=>`<tr>
+        <td><strong>${r.type}</strong></td>
+        <td>${r.reg}</td>
+        <td>${r.large>0?`<span class="large">${r.large}</span>`:"—"}</td>
+        <td><strong>${r.count}</strong></td>
+        <td>${Math.round(r.totalPSI/r.count)}</td>
+        <td>${r.minPSI}</td>
+        <td>${r.maxPSI}</td>
+      </tr>`).join("")}
+      <tr class="total-row">
+        <td>TOTAL</td>
+        <td>${rows.reduce((s,r)=>s+r.reg,0)}</td>
+        <td>${rows.reduce((s,r)=>s+r.large,0)||"—"}</td>
+        <td>${rawList.length}</td>
+        <td colspan="3"></td>
+      </tr>
+    </tbody>
+  </table>
+  <script>window.onload=()=>{window.print();}<\/script>
+  </body></html>`;
+  const w=window.open("","_blank","width=800,height=600");
+  w.document.write(printHtml);w.document.close();
 }
 // ── RETIRED TAB ───────────────────────────────────────────
 function renderRetired(){
@@ -1160,29 +1306,6 @@ function updateSystemCanvas(){
   else if(currentTab===7)renderOfficeStockSummary();
   else renderBottles();
 }
-
-// ── PWA ───────────────────────────────────────────────────
-if("serviceWorker" in navigator){
-  navigator.serviceWorker.register("sw.js").catch(()=>{});
-}
-let _pwaPrompt=null;
-window.addEventListener("beforeinstallprompt",e=>{
-  e.preventDefault();
-  _pwaPrompt=e;
-  const btn=document.getElementById("pwa-install-btn");
-  if(btn)btn.classList.remove("hidden");
-});
-window.addEventListener("appinstalled",()=>{
-  _pwaPrompt=null;
-  const btn=document.getElementById("pwa-install-btn");
-  if(btn)btn.classList.add("hidden");
-});
-function pwaInstall(){
-  if(!_pwaPrompt)return;
-  _pwaPrompt.prompt();
-  _pwaPrompt.userChoice.then(()=>{_pwaPrompt=null;document.getElementById("pwa-install-btn").classList.add("hidden");});
-}
 </script>
 </body>
-</html>
 </html>
