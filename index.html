@@ -667,22 +667,30 @@ function renderBottleGrid(){
       const isLarge=b.capacity==="Large";
       const expStatus=getExpStatus(b.expDate);
       const borderCls=expStatus==="expired"?"border-red-800/60":isCrit?"border-red-800/40":isLarge?"border-green-800/50":"border-zinc-700/60";
+      const isLight=document.body.classList.contains("light");
+      const bodyFill=isLight?"#f4f4f5":"#1c1c1e";
+      const bodyStroke=isLight?"#a1a1aa":"#3f3f46";
+      const capFill=isLight?"#d4d4d8":"#3f3f46";
+      const largeFill=isLight?"#dcfce7":"#0d1a0d";
+      const largeStroke=color==="#71717a"?"#16a34a":color;
+      const valveFill=isLight?"#3f3f46":"#0a0a0a";
+      const valveBar=isLight?"#52525b":"#111";
       html+=`<div class="relative flex flex-col items-center gap-2 p-3 rounded-xl border ${borderCls} dash-panel hover:opacity-80 transition cursor-pointer" onclick="openBottleDetail(${i})">
-        ${isLarge?`<span class="absolute top-1.5 right-1.5 text-xs font-black text-green-400 bg-green-950/60 px-1.5 py-0.5 rounded leading-tight">L</span>`:""}
+        ${isLarge?`<span class="absolute top-1.5 right-1.5 text-xs font-black text-green-600 bg-green-100 dark:bg-green-950/60 px-1.5 py-0.5 rounded leading-tight border border-green-300 dark:border-green-800">L</span>`:""}
         <svg width="44" height="68" viewBox="0 0 44 72">
           <defs><linearGradient id="ig${i}" x1="0%" y1="100%" x2="0%" y2="0%"><stop offset="0%" stop-color="${barColor}" stop-opacity="0.9"/><stop offset="100%" stop-color="${barColor}" stop-opacity="0.2"/></linearGradient></defs>
           ${isLarge
-            ?`<path d="M22 4 Q6 6 6 18 L6 64 Q6 70 14 70 L30 70 Q38 70 38 64 L38 18 Q38 6 22 4Z" fill="#0d1a0d" stroke="${color==='#71717a'?'#16a34a':color}" stroke-width="2"/>
-               <rect x="10" y="${4+(66*(1-fillPct/100))}" width="24" height="${66*(fillPct/100)}" fill="url(#ig${i})" rx="2"/>
-               <rect x="16" y="0" width="12" height="6" rx="2" fill="#0a0a0a"/>
-               <rect x="10" y="1" width="24" height="4" rx="2" fill="#111"/>`
-            :`<path d="M22 6 Q8 8 8 20 L8 62 Q8 68 16 68 L28 68 Q36 68 36 62 L36 20 Q36 8 22 6Z" fill="#1c1c1e" stroke="#3f3f46" stroke-width="1.5"/>
-               <rect x="12" y="${6+(56*(1-fillPct/100))}" width="20" height="${56*(fillPct/100)}" fill="url(#ig${i})" rx="2"/>
-               <path d="M17 3 L27 3 L25 7 L19 7Z" fill="#3f3f46"/>`}
+            ?`<path d="M22 4 Q6 6 6 18 L6 64 Q6 70 14 70 L30 70 Q38 70 38 64 L38 18 Q38 6 22 4Z" fill="${largeFill}" stroke="${largeStroke}" stroke-width="2"/>
+               <rect x="10" y="${4+(66*(1-fillPct/100))}" width="24" height="${fillPct>0?66*(fillPct/100):0}" fill="url(#ig${i})" rx="2"/>
+               <rect x="16" y="0" width="12" height="6" rx="2" fill="${valveFill}"/>
+               <rect x="10" y="1" width="24" height="4" rx="2" fill="${valveBar}"/>`
+            :`<path d="M22 6 Q8 8 8 20 L8 62 Q8 68 16 68 L28 68 Q36 68 36 62 L36 20 Q36 8 22 6Z" fill="${bodyFill}" stroke="${bodyStroke}" stroke-width="1.5"/>
+               <rect x="12" y="${6+(56*(1-fillPct/100))}" width="20" height="${fillPct>0?56*(fillPct/100):0}" fill="url(#ig${i})" rx="2"/>
+               <path d="M17 3 L27 3 L25 7 L19 7Z" fill="${capFill}"/>`}
         </svg>
-        <span class="text-xs font-black uppercase text-center leading-tight" style="color:${color}">${b.type}</span>
-        <span class="text-sm font-mono font-black ${isCrit?"text-red-400":isLow?"text-amber-400":"text-zinc-300"}">${b.currentPSI}<span class="text-xs ml-0.5">psi</span></span>
-        ${isCrit?`<span class="text-xs font-black text-red-400 animate-pulse">⚠ CRIT</span>`:expStatus==="expired"?`<span class="text-xs font-black text-red-400">EXP</span>`:""}
+        <span class="text-sm font-black uppercase text-center leading-tight" style="color:${color}">${b.type}</span>
+        <span class="text-base font-mono font-black ${isCrit?"text-red-500":isLow?"text-amber-500":isLight?"text-zinc-700":"text-zinc-300"}">${b.currentPSI}<span class="text-xs ml-0.5 font-bold">psi</span></span>
+        ${isCrit?`<span class="text-xs font-black text-red-500 animate-pulse">⚠ CRIT</span>`:expStatus==="expired"?`<span class="text-xs font-black text-red-500">EXP</span>`:""}
       </div>`;
     });
     html+=`</div>`;gridArea.innerHTML=html;return;
