@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
   <style>
     body{background-color:#09090b;font-family:system-ui,-apple-system,sans-serif;transition:background .2s,color .2s;}
     .dash-panel{background-color:#18181b;border:1px solid #27272a;box-shadow:0 4px 6px -1px rgba(0,0,0,.5);}
@@ -238,6 +239,7 @@
 const firebaseConfig={apiKey:"AIzaSyBBQMvkZHJyOuMr6uCkUENSPMD6gCwYtuc",authDomain:"gas-tracker-a8162.firebaseapp.com",databaseURL:"https://gas-tracker-a8162-default-rtdb.firebaseio.com",projectId:"gas-tracker-a8162",storageBucket:"gas-tracker-a8162.firebasestorage.app",messagingSenderId:"242209029672",appId:"1:242209029672:web:ab78fd1d871cc78cf4bf1d"};
 firebase.initializeApp(firebaseConfig);
 const db=firebase.database();
+const auth=firebase.auth();
 
 // ── AUTH ──────────────────────────────────────────────────
 const BUILTIN_ACCOUNTS={
@@ -277,9 +279,10 @@ async function attemptLogin(){
 function loginAs(username){
   currentUser={username,...BUILTIN_ACCOUNTS[username]};
   localStorage.setItem("gbt-session",username);
+  auth.signInAnonymously().catch(()=>{});
   applyUserUI();showApp();initAppData();
 }
-function logout(){currentUser=null;localStorage.removeItem("gbt-session");location.reload();}
+function logout(){currentUser=null;localStorage.removeItem("gbt-session");auth.signOut().catch(()=>{});location.reload();}
 
 function applyUserUI(){
   const isSup=isSupervisor(),isOff=isOfficeRole();
@@ -397,10 +400,12 @@ let activeReportFilter="all";
 let inventory={},cart={},officeStock=[],retiredStock=[],activityLog=[],reorderThresholds={};
 
 // ── BOOT ──────────────────────────────────────────────────
-db.ref("appUsers").once("value",snap=>{
-  appUsers=snap.val()||{};
-  if(!appUsers.sean||!appUsers.sean.hash){showSetupScreen();}
-  else{const saved=localStorage.getItem("gbt-session");if(saved&&BUILTIN_ACCOUNTS[saved]&&appUsers[saved])loginAs(saved);else showLoginScreen();}
+auth.signInAnonymously().catch(err=>console.warn("Anon sign-in failed:",err)).finally(()=>{
+  db.ref("appUsers").once("value",snap=>{
+    appUsers=snap.val()||{};
+    if(!appUsers.sean||!appUsers.sean.hash){showSetupScreen();}
+    else{const saved=localStorage.getItem("gbt-session");if(saved&&BUILTIN_ACCOUNTS[saved]&&appUsers[saved])loginAs(saved);else showLoginScreen();}
+  });
 });
 document.getElementById("login-pass").addEventListener("keydown",e=>{if(e.key==="Enter")attemptLogin();});
 document.getElementById("login-user").addEventListener("keydown",e=>{if(e.key==="Enter")document.getElementById("login-pass").focus();});
