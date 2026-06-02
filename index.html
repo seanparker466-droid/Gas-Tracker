@@ -591,19 +591,20 @@ function renderCheckOutTab() {
   processList(officeStock, "Office Stock", "officeStock");
   vehicles.forEach(v => processList(inventory[v], v, "inventory"));
 
-  let optionsHtml = available.map(b => `<option value="${b.locName}|${b.listType}|${b.origIndex}">${b.type} (${b.capacity}) - ${b.locName} - PSI: ${b.currentPSI}</option>`).join("");
+  let optionsHtml = available.map(b => `<option value="${b.locName}|${b.listType}|${b.origIndex}">${b.type} (${b.capacity}) - ${b.locName} - PSI: ${b.currentPSI}${b.assetNum ? ` - #${b.assetNum}` : ""}</option>`).join("");
   if(!optionsHtml) optionsHtml = `<option value="">No bottles available</option>`;
 
   let checkedOutHtml = checkedOut.length === 0 ?
     `<div class="text-center py-8 text-zinc-500 text-sm font-bold border-2 border-dashed border-zinc-800 rounded-xl"><i class="fa-solid fa-user-check text-2xl mb-2 opacity-50 block"></i>No bottles currently checked out.</div>` :
     `<div class="overflow-x-auto custom-scrollbar"><table class="w-full text-left border-collapse text-sm">
       <thead><tr class="border-b border-zinc-800 text-xs uppercase text-zinc-500 font-black tracking-wider">
-        <th class="p-3">Employee</th><th class="p-3">Gas Type</th><th class="p-3">Location</th><th class="p-3">Date Checked Out</th><th class="p-3">Action</th>
+        <th class="p-3">Employee</th><th class="p-3">Gas Type</th><th class="p-3">Asset #</th><th class="p-3">Location</th><th class="p-3">Date Checked Out</th><th class="p-3">Action</th>
       </tr></thead>
       <tbody>${checkedOut.map(b => `
         <tr class="border-b border-zinc-900/60 hover:bg-zinc-800/30">
           <td class="p-3 font-black text-purple-400"><i class="fa-solid fa-user text-xs mr-1"></i>${b.checkedOutBy}</td>
           <td class="p-3 font-bold text-zinc-200">${b.type}</td>
+          <td class="p-3">${b.assetNum ? `<span class="bg-blue-600 border border-blue-400 text-white text-xs px-2 py-0.5 rounded font-black font-mono">#${b.assetNum}</span>` : `<span class="text-zinc-600 text-xs">—</span>`}</td>
           <td class="p-3 font-mono text-xs text-zinc-400">${b.locName}</td>
           <td class="p-3 font-mono text-xs text-zinc-500">${b.checkedOutDate}</td>
           <td class="p-3"><button onclick="returnCheckedOut('${b.locName}', '${b.listType}', ${b.origIndex})" class="bg-zinc-800 hover:bg-emerald-900 border border-zinc-700 hover:border-emerald-700 text-emerald-400 text-xs font-black px-3 py-1.5 rounded transition shadow-sm whitespace-nowrap">Return Bottle</button></td>
@@ -801,7 +802,6 @@ function renderBottleGrid(){
       const valveFill=isLight?"#3f3f46":"#0a0a0a";
       const valveBar=isLight?"#52525b":"#111";
       html+=`<div class="relative flex flex-col items-center gap-2 p-3 rounded-xl border ${borderCls} dash-panel hover:opacity-80 transition cursor-pointer" onclick="openBottleDetail(${i})">
-        ${b.assetNum ? `<span class="absolute -top-2 -left-2 text-[11px] font-black text-white bg-blue-600 border-2 border-blue-400 w-8 h-8 rounded-full flex items-center justify-center shadow-lg z-20" title="Asset #${b.assetNum}">${b.assetNum}</span>` : ""}
         ${isLarge?`<span class="absolute top-1.5 right-1.5 text-xs font-black text-green-600 bg-green-100 dark:bg-green-950/60 px-1.5 py-0.5 rounded leading-tight border border-green-300 dark:border-green-800">L</span>`:""}
         <svg width="44" height="68" viewBox="0 0 44 72">
           <defs><linearGradient id="ig${i}" x1="0%" y1="100%" x2="0%" y2="0%"><stop offset="0%" stop-color="${barColor}" stop-opacity="0.9"/><stop offset="100%" stop-color="${barColor}" stop-opacity="0.2"/></linearGradient></defs>
@@ -815,6 +815,7 @@ function renderBottleGrid(){
                <path d="M17 3 L27 3 L25 7 L19 7Z" fill="${capFill}"/>`}
         </svg>
         <span class="text-sm font-black uppercase text-center leading-tight" style="color:${color}">${b.type}</span>
+        ${b.assetNum ? `<span class="text-[11px] font-black text-white bg-blue-600 border border-blue-400 px-2 py-0.5 rounded font-mono leading-tight">#${b.assetNum}</span>` : ""}
         ${b.checkedOutBy ? `<span class="text-[10px] font-black text-purple-400 bg-purple-900/30 px-1 rounded truncate w-full text-center"><i class="fa-solid fa-user-check"></i> Out: ${b.checkedOutBy}</span>` : ""}
         <span class="text-base font-mono font-black ${isCrit?"text-red-500":isLow?"text-amber-500":isLight?"text-zinc-700":"text-zinc-300"}">${b.currentPSI}<span class="text-xs ml-0.5 font-bold">psi</span></span>
         ${isCrit?`<span class="text-xs font-black text-red-500 animate-pulse">⚠ CRIT</span>`:expStatus==="expired"?`<span class="text-xs font-black text-red-500">EXP</span>`:""}
@@ -836,11 +837,11 @@ function renderBottleGrid(){
     const cardBorder=expStatus==="expired"?"border-red-900/70":expStatus==="exp30"?"border-orange-900/60":expStatus==="exp60"?"border-amber-900/40":"";
     const partNum=b.partNum||entry.partNum||"N/A",sageNum=b.sageNum||entry.sageNum||"N/A";
     html+=`<div class="bottle-card relative rounded-xl p-5 flex flex-col justify-between ${b.capacity==="Large"?"min-h-[560px]":"min-h-[480px]"} shadow-md ${b.capacity==="Large"?(cardBorder||"border-emerald-900/40"):cardBorder}">
-      ${b.assetNum ? `<div class="absolute -top-3 -right-3 bg-blue-600 border-2 border-blue-400 text-white w-12 h-12 rounded-full flex items-center justify-center font-black text-base z-20 shadow-xl" title="Asset #${b.assetNum}">${b.assetNum}</div>` : ""}
       <div class="font-bold min-w-0 border-b border-zinc-800/60 pb-2">
-        <span style="color:${baseColor}" class="text-xl block font-black leading-tight tracking-tight uppercase break-words flex items-center gap-2">
-          ${b.type}
-        </span>
+        <div class="flex items-center justify-between gap-2">
+          <span style="color:${baseColor}" class="text-xl font-black leading-tight tracking-tight uppercase break-words">${b.type}</span>
+          ${b.assetNum ? `<span class="bg-blue-600 border border-blue-400 text-white text-sm px-3 py-1 rounded-lg font-black font-mono shadow-md shrink-0 leading-tight">#${b.assetNum}</span>` : ""}
+        </div>
         <div class="flex items-center justify-between mt-1"><span class="text-xs uppercase font-black tracking-wider text-zinc-500">${b.capacity} Cylinder</span>${concentration?`<span class="text-xs font-black text-zinc-600">${concentration}</span>`:""}</div>
         ${b.checkedOutBy ? `<div class="bg-purple-900/30 border border-purple-800/50 text-purple-300 text-xs px-2 py-1.5 rounded mt-2 font-bold flex items-center gap-1.5"><i class="fa-solid fa-user-check"></i> Out: ${b.checkedOutBy} (${b.checkedOutDate})</div>` : ""}
       </div>
