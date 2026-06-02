@@ -28,6 +28,7 @@
     body.light .border-zinc-800{border-color:#d4d4d8!important;}
     body.light .border-zinc-700{border-color:#a1a1aa!important;}
     body.light .text-zinc-100{color:#18181b!important;}
+    body.light .text-zinc-200{color:#18181b!important;} /* Fix for lighter text fields like Checked Out table */
     body.light .text-zinc-300{color:#3f3f46!important;}
     body.light .text-zinc-400{color:#52525b!important;}
     body.light .text-zinc-500{color:#71717a!important;}
@@ -153,8 +154,9 @@
     </div>
     <div id="single-add-panel">
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 text-xs md:text-sm font-medium">
-        <div class="flex flex-col gap-1 col-span-1 sm:col-span-2 md:col-span-3 lg:col-span-2"><label class="text-zinc-300 font-bold px-0.5">Gas Type Mix</label><select id="gas-type" onchange="onGasTypeChange()" class="bg-zinc-950 border border-zinc-700 rounded-lg px-3 text-white focus:border-zinc-500 outline-none w-full font-bold text-sm"></select></div>
+        <div class="flex flex-col gap-1 col-span-1 sm:col-span-2 lg:col-span-2"><label class="text-zinc-300 font-bold px-0.5">Gas Type Mix</label><select id="gas-type" onchange="onGasTypeChange()" class="bg-zinc-950 border border-zinc-700 rounded-lg px-3 text-white focus:border-zinc-500 outline-none w-full font-bold text-sm"></select></div>
         <div class="flex flex-col gap-1"><label class="text-zinc-300 font-bold px-0.5">Size</label><select id="capacity" onchange="onCapacityChange()" class="bg-zinc-950 border border-zinc-700 rounded-lg px-3 text-white focus:border-zinc-500 outline-none w-full font-bold text-sm"><option value="Small" selected>Small</option><option value="Large">Large</option></select></div>
+        <div class="flex flex-col gap-1"><label class="text-zinc-300 font-bold px-0.5">Asset # <span class="text-zinc-600 font-normal">(1-500)</span></label><input id="asset-num" type="number" min="1" max="500" placeholder="1-500" class="bg-zinc-950 border border-zinc-700 rounded-lg px-3 text-white placeholder-zinc-600 focus:border-zinc-500 outline-none w-full font-bold text-sm"></div>
         <div class="flex flex-col gap-1"><label class="text-zinc-300 font-bold px-0.5">Part # <span class="text-zinc-600 font-normal">(auto)</span></label><input id="part-num" type="text" class="bg-zinc-950 border border-zinc-700 rounded-lg px-3 text-white placeholder-zinc-600 focus:border-zinc-500 outline-none w-full font-bold text-sm"></div>
         <div class="flex flex-col gap-1"><label class="text-zinc-300 font-bold px-0.5">Sage # <span class="text-zinc-600 font-normal">(auto)</span></label><input id="sage-num" type="text" class="bg-zinc-950 border border-zinc-700 rounded-lg px-3 text-white placeholder-zinc-600 focus:border-zinc-500 outline-none w-full font-bold text-sm"></div>
         <div class="flex flex-col gap-1"><label class="text-zinc-300 font-bold px-0.5">Expiration Date</label><input id="exp-date" type="date" class="bg-zinc-950 border border-zinc-700 rounded-lg px-3 text-white focus:border-zinc-500 outline-none w-full font-bold text-sm"></div>
@@ -167,6 +169,7 @@
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 text-xs md:text-sm font-medium mb-3">
         <div class="flex flex-col gap-1 col-span-1 sm:col-span-2"><label class="text-zinc-300 font-bold px-0.5">Gas Type Mix</label><select id="bulk-gas-type" onchange="onBulkGasTypeChange()" class="bg-zinc-950 border border-zinc-700 rounded-lg px-3 text-white focus:border-zinc-500 outline-none w-full font-bold text-sm"></select></div>
         <div class="flex flex-col gap-1"><label class="text-zinc-300 font-bold px-0.5">Size</label><select id="bulk-capacity" onchange="onBulkCapacityChange()" class="bg-zinc-950 border border-zinc-700 rounded-lg px-3 text-white focus:border-zinc-500 outline-none w-full font-bold text-sm"><option value="Small" selected>Small</option><option value="Large">Large</option></select></div>
+        <div class="flex flex-col gap-1"><label class="text-zinc-300 font-bold px-0.5">Asset # (Start)</label><input id="bulk-asset-num" type="number" min="1" max="500" placeholder="e.g. 1" class="bg-zinc-950 border border-zinc-700 rounded-lg px-3 text-white focus:border-zinc-500 outline-none w-full font-bold text-sm"></div>
         <div class="flex flex-col gap-1"><label class="text-zinc-300 font-bold px-0.5">Quantity</label><input id="bulk-qty" type="number" min="1" max="50" value="2" class="bg-zinc-950 border border-zinc-700 rounded-lg px-3 text-white focus:border-zinc-500 outline-none w-full font-bold text-sm"></div>
         <div class="flex flex-col gap-1"><label class="text-zinc-300 font-bold px-0.5">Expiration Date</label><input id="bulk-exp-date" type="date" class="bg-zinc-950 border border-zinc-700 rounded-lg px-3 text-white focus:border-zinc-500 outline-none w-full font-bold text-sm"></div>
         <div class="flex flex-col gap-1"><label class="text-zinc-300 font-bold px-0.5">Max PSI</label><select id="bulk-max-psi" class="bg-zinc-950 border border-zinc-700 rounded-lg px-3 text-white focus:border-zinc-500 outline-none w-full font-bold text-sm"><option value="500">500 PSI</option><option value="1000" selected>1000 PSI</option><option value="2000">2000 PSI</option></select></div>
@@ -181,6 +184,17 @@
 </div>
 
 <!-- MODALS -->
+<div id="asset-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
+  <div class="dash-panel rounded-xl p-6 w-full max-w-sm shadow-2xl border border-zinc-700">
+    <div class="flex items-center gap-2 text-white mb-2"><i class="fa-solid fa-tag text-emerald-400 text-xl"></i><h3 class="text-lg font-black">Assign Asset Number</h3></div>
+    <p class="text-sm text-zinc-400 mb-4">Enter a permanent asset ID (1-500) to trace this cylinder. Leave blank to remove.</p>
+    <input id="asset-custom-input" type="number" min="1" max="500" placeholder="e.g. 42" class="bg-zinc-950 border border-zinc-700 rounded-lg px-4 py-3 w-full text-white text-lg font-black focus:border-emerald-600 outline-none mb-5">
+    <div class="flex gap-3 text-sm font-black">
+      <button onclick="confirmAssetNum()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-zinc-950 rounded-lg transition py-3">Save Asset #</button>
+      <button onclick="closeAssetModal()" class="flex-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg transition py-3">Cancel</button>
+    </div>
+  </div>
+</div>
 <div id="move-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
   <div class="dash-panel rounded-xl p-6 w-full max-w-md shadow-2xl">
     <div class="flex items-center gap-2 text-white mb-2"><i class="fa-solid fa-arrow-right-arrows-left text-emerald-400 text-xl"></i><h3 class="text-lg font-black">Move Bottle Location</h3></div>
@@ -549,7 +563,7 @@ function renderMainTabs(){
     }
     <button onclick="setTab(3)" class="px-4 py-2 rounded-md transition ${currentTab===3?"bg-zinc-800 text-white":"text-zinc-400 hover:text-white"}"><i class="fa-solid fa-chart-pie mr-1 text-amber-400"></i>Overview</button>
     <button onclick="setTab(8)" class="px-4 py-2 rounded-md transition ${currentTab===8?"bg-zinc-800 text-white":"text-zinc-400 hover:text-white"}"><i class="fa-solid fa-user-check mr-1 text-purple-400"></i>Check Out</button>
-    ${isSup?`<button onclick="setTab(4)" class="px-4 py-2 rounded-md transition ${currentTab===4?"bg-zinc-800 text-white":"text-zinc-400 hover:text-white"}"><i class="fa-solid fa-box-archive mr-1 text-zinc-500"></i>Retired${retiredStock.length>0?` <span class="ml-1 bg-zinc-700 text-zinc-300 text-xs px-1.5 py-0.5 rounded-full">${retiredStock.length}</span>`:""}</button>`:""}
+    ${isSup?`<button onclick="setTab(4)" class="px-4 py-2 rounded-md transition ${currentTab===4?"bg-zinc-800 text-white":"text-zinc-400 hover:text-white"}"><i class="fa-solid fa-box-archive mr-1 text-zinc-500"></i>Retired${retiredStock.length>0?` <span class="ml-1 bg-zinc-800 text-zinc-300 text-xs px-1.5 py-0.5 rounded-full">${retiredStock.length}</span>`:""}</button>`:""}
     ${isSup?`<button onclick="setTab(5)" class="px-4 py-2 rounded-md transition ${currentTab===5?"bg-zinc-800 text-white":"text-zinc-400 hover:text-white"}"><i class="fa-solid fa-clock-rotate-left mr-1 text-zinc-500"></i>History</button>`:""}
   </div>
   ${showExport?`<button onclick="exportInventory()" class="bg-zinc-900 border border-zinc-700 hover:border-zinc-500 hover:bg-zinc-800 text-zinc-300 hover:text-white text-xs font-black px-3 py-1.5 rounded-lg transition flex items-center gap-1.5"><i class="fa-solid fa-print text-zinc-500"></i> Export / Print</button>`:""}
@@ -742,7 +756,10 @@ function renderBottleGrid(){
       const rowBg=expStatus==="expired"?"bg-red-950/10":isCrit?"bg-red-950/5":"";
       html+=`<tr class="border-b border-zinc-900/60 hover:bg-zinc-800/30 transition cursor-pointer ${rowBg}" onclick="openBottleDetail(${i})">
         <td class="px-4 py-3">
-          <span class="font-black uppercase text-sm" style="color:${color}">${b.type}</span>
+          <div class="flex items-center gap-2">
+            <span class="font-black uppercase text-sm" style="color:${color}">${b.type}</span>
+            ${b.assetNum ? `<span class="bg-blue-600 border border-blue-400 text-white text-xs px-2.5 py-0.5 rounded-full font-black font-mono shadow-sm shrink-0">#${b.assetNum}</span>` : ""}
+          </div>
           ${b.checkedOutBy ? `<div class="text-[10px] text-purple-400 mt-0.5 font-black"><i class="fa-solid fa-user-check"></i> Out: ${b.checkedOutBy}</div>` : ''}
         </td>
         <td class="px-4 py-3 text-zinc-400">${b.capacity==="Large"?`<span class="text-green-400 font-black">Large</span>`:"Reg"}</td>
@@ -784,6 +801,7 @@ function renderBottleGrid(){
       const valveFill=isLight?"#3f3f46":"#0a0a0a";
       const valveBar=isLight?"#52525b":"#111";
       html+=`<div class="relative flex flex-col items-center gap-2 p-3 rounded-xl border ${borderCls} dash-panel hover:opacity-80 transition cursor-pointer" onclick="openBottleDetail(${i})">
+        ${b.assetNum ? `<span class="absolute -top-2 -left-2 text-[11px] font-black text-white bg-blue-600 border-2 border-blue-400 w-8 h-8 rounded-full flex items-center justify-center shadow-lg z-20" title="Asset #${b.assetNum}">${b.assetNum}</span>` : ""}
         ${isLarge?`<span class="absolute top-1.5 right-1.5 text-xs font-black text-green-600 bg-green-100 dark:bg-green-950/60 px-1.5 py-0.5 rounded leading-tight border border-green-300 dark:border-green-800">L</span>`:""}
         <svg width="44" height="68" viewBox="0 0 44 72">
           <defs><linearGradient id="ig${i}" x1="0%" y1="100%" x2="0%" y2="0%"><stop offset="0%" stop-color="${barColor}" stop-opacity="0.9"/><stop offset="100%" stop-color="${barColor}" stop-opacity="0.2"/></linearGradient></defs>
@@ -817,9 +835,12 @@ function renderBottleGrid(){
     else if(b.currentPSI<300){gaugeColor="#f59e0b";warningBadge=`<span class="text-xs font-black text-amber-400">⚠ LOW</span>`;}
     const cardBorder=expStatus==="expired"?"border-red-900/70":expStatus==="exp30"?"border-orange-900/60":expStatus==="exp60"?"border-amber-900/40":"";
     const partNum=b.partNum||entry.partNum||"N/A",sageNum=b.sageNum||entry.sageNum||"N/A";
-    html+=`<div class="bottle-card rounded-xl p-5 flex flex-col justify-between ${b.capacity==="Large"?"min-h-[560px]":"min-h-[480px]"} shadow-md ${b.capacity==="Large"?(cardBorder||"border-emerald-900/40"):cardBorder}">
+    html+=`<div class="bottle-card relative rounded-xl p-5 flex flex-col justify-between ${b.capacity==="Large"?"min-h-[560px]":"min-h-[480px]"} shadow-md ${b.capacity==="Large"?(cardBorder||"border-emerald-900/40"):cardBorder}">
+      ${b.assetNum ? `<div class="absolute -top-3 -right-3 bg-blue-600 border-2 border-blue-400 text-white w-12 h-12 rounded-full flex items-center justify-center font-black text-base z-20 shadow-xl" title="Asset #${b.assetNum}">${b.assetNum}</div>` : ""}
       <div class="font-bold min-w-0 border-b border-zinc-800/60 pb-2">
-        <span style="color:${baseColor}" class="text-xl block font-black leading-tight tracking-tight uppercase break-words">${b.type}</span>
+        <span style="color:${baseColor}" class="text-xl block font-black leading-tight tracking-tight uppercase break-words flex items-center gap-2">
+          ${b.type}
+        </span>
         <div class="flex items-center justify-between mt-1"><span class="text-xs uppercase font-black tracking-wider text-zinc-500">${b.capacity} Cylinder</span>${concentration?`<span class="text-xs font-black text-zinc-600">${concentration}</span>`:""}</div>
         ${b.checkedOutBy ? `<div class="bg-purple-900/30 border border-purple-800/50 text-purple-300 text-xs px-2 py-1.5 rounded mt-2 font-bold flex items-center gap-1.5"><i class="fa-solid fa-user-check"></i> Out: ${b.checkedOutBy} (${b.checkedOutDate})</div>` : ""}
       </div>
@@ -894,6 +915,7 @@ function renderBottleGrid(){
         ${currentTab===1?`<button onclick="returnToInventory(${i})" class="bg-zinc-900 border border-zinc-800 hover:border-amber-800 hover:bg-amber-950/20 text-amber-400 rounded-lg font-black col-span-2 h-10 flex items-center justify-center gap-1.5 transition"><i class="fa-solid fa-arrow-left-long"></i> Return to Truck</button>`:""}
         <button onclick="openMoveModal(${i})" class="bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-300 rounded-lg font-bold flex items-center justify-center gap-1 h-10 transition"><i class="fa-solid fa-right-left text-xs"></i> Route</button>
         <button onclick="openRetireModal(${i})" class="bg-zinc-900 border border-zinc-800 hover:border-zinc-600 text-zinc-400 hover:text-white rounded-lg flex items-center justify-center gap-1.5 h-10 transition"><i class="fa-solid fa-box-archive text-xs"></i> Retire</button>
+        ${canAddBottles()?`<button onclick="openAssetModal(${i})" class="col-span-2 bg-zinc-900 border border-zinc-800 hover:border-zinc-600 text-zinc-300 rounded-lg flex items-center justify-center gap-1.5 h-9 transition text-xs"><i class="fa-solid fa-tag text-xs"></i> Assign Asset #</button>`:""}
         ${isSupervisor()?`<button onclick="removeBottle(${i})" class="col-span-2 bg-zinc-900 border border-zinc-800 hover:border-red-900 hover:bg-red-950/20 text-red-500 rounded-lg flex items-center justify-center gap-1.5 h-9 transition text-xs"><i class="fa-solid fa-trash-can"></i> Delete Permanently</button>`:""}`}
       </div>
     </div>`;
@@ -949,7 +971,10 @@ function openBottleDetail(i){
 
   const cardHtml=`
     <div class="font-bold min-w-0 border-b border-zinc-800/60 pb-2">
-      <span style="color:${baseColor}" class="text-xl block font-black leading-tight tracking-tight uppercase break-words">${b.type}</span>
+      <span style="color:${baseColor}" class="text-xl font-black leading-tight tracking-tight uppercase break-words flex items-center gap-2">
+        ${b.type}
+        ${b.assetNum ? `<span class="bg-blue-600 border-2 border-blue-400 text-white text-sm px-3 py-1 rounded-full font-black font-mono shadow-md shrink-0">#${b.assetNum}</span>` : ""}
+      </span>
       <div class="flex items-center justify-between mt-1"><span class="text-xs uppercase font-black tracking-wider text-zinc-500">${b.capacity} Cylinder</span>${concentration?`<span class="text-xs font-black text-zinc-600">${concentration}</span>`:""}</div>
       ${b.checkedOutBy ? `<div class="bg-purple-900/30 border border-purple-800/50 text-purple-300 text-xs px-2 py-1.5 rounded mt-2 font-bold flex items-center gap-1.5"><i class="fa-solid fa-user-check"></i> Out: ${b.checkedOutBy} (${b.checkedOutDate})</div>` : ""}
     </div>
@@ -989,6 +1014,7 @@ function openBottleDetail(i){
         ${currentTab===1?`<button onclick="closeBottleDetail();returnToInventory(${i})" class="bg-zinc-900 border border-zinc-800 hover:border-amber-800 hover:bg-amber-950/20 text-amber-400 rounded-lg font-black col-span-2 h-10 flex items-center justify-center gap-1.5 transition"><i class="fa-solid fa-arrow-left-long"></i> Return to Truck</button>`:""}
         <button onclick="closeBottleDetail();openMoveModal(${i})" class="bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-300 rounded-lg font-bold flex items-center justify-center gap-1 h-10 transition"><i class="fa-solid fa-right-left text-xs"></i> Route</button>
         <button onclick="closeBottleDetail();openRetireModal(${i})" class="bg-zinc-900 border border-zinc-800 hover:border-zinc-600 text-zinc-400 hover:text-white rounded-lg flex items-center justify-center gap-1.5 h-10 transition"><i class="fa-solid fa-box-archive text-xs"></i> Retire</button>
+        ${canAddBottles()?`<button onclick="closeBottleDetail();openAssetModal(${i})" class="col-span-2 bg-zinc-900 border border-zinc-800 hover:border-zinc-600 text-zinc-300 rounded-lg flex items-center justify-center gap-1.5 h-9 transition text-xs"><i class="fa-solid fa-tag text-xs"></i> Assign Asset #</button>`:""}
         ${isSupervisor()?`<button onclick="closeBottleDetail();removeBottle(${i})" class="col-span-2 bg-zinc-900 border border-zinc-800 hover:border-red-900 hover:bg-red-950/20 text-red-500 rounded-lg flex items-center justify-center gap-1.5 h-9 transition text-xs"><i class="fa-solid fa-trash-can"></i> Delete Permanently</button>`:""}`}
     </div>`;
 
@@ -1166,11 +1192,14 @@ function addBottle(){
   const maxPSI=parseInt(document.getElementById("max-psi").value),entry=gasCatalog[type]||{};
   const partNum=document.getElementById("part-num").value.trim()||entry.partNum||"";
   const sageNum=document.getElementById("sage-num").value.trim()||entry.sageNum||"";
-  const bottle={type,partNum,sageNum,capacity,expDate,currentPSI,maxPSI};
+  const assetNum=document.getElementById("asset-num").value.trim();
+  const bottle={type,partNum,sageNum,capacity,expDate,currentPSI,maxPSI,assetNum};
   const dest=currentTab===2?"Office Stock":currentLocationLabel();
   if(currentTab===2)officeStock.push(bottle);
   else{if(!inventory[currentLocation])inventory[currentLocation]=[];inventory[currentLocation].push(bottle);}
-  logEvent("Added",bottle,"",dest);setDefaultDate();onGasTypeChange();saveToDatabase();
+  logEvent("Added",bottle,"",dest);setDefaultDate();onGasTypeChange();
+  document.getElementById("asset-num").value = "";
+  saveToDatabase();
 }
 
 function addBulkBottles(){
@@ -1181,14 +1210,19 @@ function addBulkBottles(){
   const maxPSI=parseInt(document.getElementById("bulk-max-psi").value),entry=gasCatalog[type]||{};
   const partNum=document.getElementById("bulk-part-num").value.trim()||entry.partNum||"";
   const sageNum=entry.sageNum||"";
+  const startAsset=document.getElementById("bulk-asset-num").value.trim();
+  const startNum=startAsset ? parseInt(startAsset) : null;
   const dest=currentTab===2?"Office Stock":currentLocationLabel();
   for(let n=0;n<qty;n++){
-    const bottle={type,partNum,sageNum,capacity,expDate,currentPSI,maxPSI};
+    const assetNum = startNum !== null ? String(startNum + n) : "";
+    const bottle={type,partNum,sageNum,capacity,expDate,currentPSI,maxPSI,assetNum};
     if(currentTab===2)officeStock.push(bottle);
     else{if(!inventory[currentLocation])inventory[currentLocation]=[];inventory[currentLocation].push(bottle);}
   }
   logEvent("Added",{type,partNum,sageNum,capacity},"",`${dest} (x${qty})`);
-  setDefaultDate();onBulkGasTypeChange();saveToDatabase();
+  setDefaultDate();onBulkGasTypeChange();
+  document.getElementById("bulk-asset-num").value = "";
+  saveToDatabase();
   const btn=document.querySelector('#bulk-add-panel button[onclick="addBulkBottles()"]');
   if(btn){const orig=btn.innerHTML;btn.innerHTML=`<i class="fa-solid fa-check"></i> Added ${qty}x`;btn.classList.add("bg-emerald-700");setTimeout(()=>{btn.innerHTML=orig;btn.classList.remove("bg-emerald-700");},1500);}
 }
@@ -1246,6 +1280,12 @@ function openPSIModal(i){psiTargetIndex=i;const l=getCurrentList();document.getE
 function quickSetPSI(v){document.getElementById("psi-custom-input").value=v;}
 function confirmPSI(){const v=parseInt(document.getElementById("psi-custom-input").value);if(isNaN(v)){alert("Please enter a valid PSI.");return;}const l=getCurrentList();if(l[psiTargetIndex]){l[psiTargetIndex].currentPSI=Math.max(0,Math.min(l[psiTargetIndex].maxPSI,v));saveToDatabase();}closePSIModal();}
 function closePSIModal(){document.getElementById("psi-modal").classList.add("hidden");psiTargetIndex=null;}
+
+// Asset Modal
+let assetTargetIndex=null;
+function openAssetModal(i){if(!canAddBottles())return;assetTargetIndex=i;const l=getCurrentList();document.getElementById("asset-custom-input").value=l[i]&&l[i].assetNum?l[i].assetNum:"";document.getElementById("asset-modal").classList.remove("hidden");setTimeout(()=>document.getElementById("asset-custom-input").focus(),50);}
+function confirmAssetNum(){const v=document.getElementById("asset-custom-input").value.trim();const l=getCurrentList();if(l[assetTargetIndex]){if(v===""){delete l[assetTargetIndex].assetNum;}else{const n=parseInt(v);if(isNaN(n)||n<1||n>500){alert("Please enter a valid number between 1 and 500.");return;}l[assetTargetIndex].assetNum=String(n);}saveToDatabase();updateSystemCanvas();}closeAssetModal();}
+function closeAssetModal(){document.getElementById("asset-modal").classList.add("hidden");assetTargetIndex=null;}
 
 // Retire Modal
 function openRetireModal(i){retireTargetIndex=i;const b=getCurrentList()[i];if(b)document.getElementById("retire-bottle-label").textContent=`${b.type} · ${b.capacity} · ${b.currentPSI} PSI · EXP: ${formatDate(b.expDate)}`;document.getElementById("retire-modal").classList.remove("hidden");}
@@ -1525,10 +1565,4 @@ function updateSystemCanvas(){
 <!-- Bottle Detail Modal -->
 <div id="bottle-detail-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" style="background:rgba(0,0,0,0.75);backdrop-filter:blur(4px)">
   <div class="relative w-full max-w-sm max-h-[92vh] overflow-y-auto custom-scrollbar">
-    <button onclick="closeBottleDetail()" class="absolute top-3 right-3 z-10 bg-zinc-900 border border-zinc-700 hover:border-zinc-500 text-zinc-400 hover:text-white rounded-lg w-8 h-8 flex items-center justify-center transition text-sm font-black"><i class="fa-solid fa-xmark"></i></button>
-    <div id="bottle-detail-inner" class="bottle-card rounded-xl p-5 flex flex-col shadow-2xl border"></div>
-  </div>
-</div>
-
-</body>
-</html>
+    <button onclick="closeBottleDetail()" class="absolute top-3 right-3 z-10 bg-zinc-900 border border-zinc-700
