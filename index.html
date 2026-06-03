@@ -1,4 +1,1577 @@
 <!DOCTYPE html>
+<html lang="en" id="html-root">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Gas Bottle Tracker</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+  <style>
+    body{background-color:#09090b;font-family:system-ui,-apple-system,sans-serif;transition:background .2s,color .2s;}
+    .dash-panel{background-color:#18181b;border:1px solid #27272a;box-shadow:0 4px 6px -1px rgba(0,0,0,.5);}
+    .bottle-card{border:1px solid #27272a;background:linear-gradient(180deg,#18181b 0%,#111113 100%);transition:transform .15s ease,border-color .15s ease;}
+    .bottle-card:hover{transform:translateY(-1px);border-color:#444449;}
+    .custom-scrollbar::-webkit-scrollbar{height:6px;width:6px;}
+    .custom-scrollbar::-webkit-scrollbar-track{background:#18181b;}
+    .custom-scrollbar::-webkit-scrollbar-thumb{background:#52525b;border-radius:3px;}
+    body.light{background-color:#f4f4f5;color:#18181b;}
+    body.light header{background-color:#fff!important;border-color:#e4e4e7!important;}
+    body.light .dash-panel{background-color:#fff;border-color:#e4e4e7;box-shadow:0 1px 4px rgba(0,0,0,.08);}
+    body.light .bottle-card{background:linear-gradient(180deg,#fff 0%,#fafafa 100%);border-color:#e4e4e7;}
+    body.light .bottle-card:hover{border-color:#a1a1aa;}
+    body.light .bg-zinc-950{background-color:#f4f4f5!important;}
+    body.light .bg-zinc-900{background-color:#e4e4e7!important;}
+    body.light .bg-zinc-800{background-color:#d4d4d8!important;}
+    body.light .border-zinc-800{border-color:#d4d4d8!important;}
+    body.light .border-zinc-700{border-color:#a1a1aa!important;}
+    body.light .text-zinc-100{color:#18181b!important;}
+    body.light .text-zinc-200{color:#18181b!important;} /* Fix for lighter text fields like Checked Out table */
+    body.light .text-zinc-300{color:#3f3f46!important;}
+    body.light .text-zinc-400{color:#52525b!important;}
+    body.light .text-zinc-500{color:#71717a!important;}
+    body.light .text-white{color:#18181b!important;}
+    body.light select,body.light input{background-color:#fff!important;color:#18181b!important;border-color:#a1a1aa!important;}
+    body.light .custom-scrollbar::-webkit-scrollbar-track{background:#e4e4e7;}
+    body.light .custom-scrollbar::-webkit-scrollbar-thumb{background:#a1a1aa;}
+    body.light .bottle-card .bg-zinc-950\/40{background-color:rgba(0,0,0,0.04)!important;border-color:rgba(0,0,0,0.06)!important;}
+    body.light .bottle-card svg path[fill="#141416"],body.light .bottle-card svg path[fill="#09090b"]{fill:#c8c8cc!important;}
+    body.light .bottle-card svg rect[fill="#09090b"]{fill:#a0a0a8!important;}
+    body.light .bottle-card svg path[stroke="#2a2a2e"]{stroke:#b0b0b8!important;}
+    body.light .bottle-card svg stop[stop-color="#2d2d30"]{stop-color:#d4d4d8!important;}
+    body.light .bottle-card svg stop[stop-color="#4e4e54"]{stop-color:#e4e4e7!important;}
+    body.light .bottle-card svg stop[stop-color="#6b6b74"]{stop-color:#f0f0f2!important;}
+    body.light .bottle-card svg stop[stop-color="#3f3f46"]{stop-color:#d8d8dc!important;}
+    body.light .bottle-card svg stop[stop-color="#1c1c1e"]{stop-color:#c4c4ca!important;}
+    body.light .bottle-card svg stop[stop-color="#52525b"]{stop-color:#b8b8c0!important;}
+    body.light .bottle-card svg stop[stop-color="#27272a"]{stop-color:#c0c0c8!important;}
+    body.light .bottle-card svg stop[stop-color="#d4d4d8"]{stop-color:#ffffff!important;}
+    button,select,input{min-height:44px;}
+    .no-zoom-btn{touch-action:manipulation;}
+    .psi-input::-webkit-inner-spin-button,.psi-input::-webkit-outer-spin-button{opacity:1;}
+    .bar-fill{transition:width .6s ease;}
+  </style>
+</head>
+<body class="text-zinc-100 min-h-screen flex flex-col text-sm md:text-base">
+
+<!-- LOGIN SCREEN -->
+<div id="login-screen" class="fixed inset-0 bg-zinc-950 flex items-center justify-center z-50 p-4">
+  <div class="w-full max-w-sm">
+    <div class="text-center mb-8">
+      <div class="bg-emerald-500/10 w-16 h-16 rounded-2xl border border-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto mb-4"><i class="fa-solid fa-truck-ramp-box text-2xl"></i></div>
+      <h1 class="text-2xl font-black text-white tracking-tight">Gas Bottle Tracker</h1>
+      <p class="text-zinc-500 text-xs font-bold mt-1">Parker HVAC · Sign in to continue</p>
+    </div>
+    <div id="login-error" class="hidden mb-4 bg-red-950/50 border border-red-900 text-red-400 text-xs font-black px-4 py-3 rounded-lg text-center"></div>
+    <div class="dash-panel rounded-xl p-6 flex flex-col gap-4">
+      <div class="flex flex-col gap-1">
+        <label class="text-zinc-400 text-xs font-black uppercase tracking-wider">Username</label>
+        <input id="login-user" type="text" placeholder="your username" autocomplete="username" class="bg-zinc-950 border border-zinc-700 rounded-lg px-4 text-white placeholder-zinc-600 focus:border-emerald-600 outline-none font-bold text-sm">
+      </div>
+      <div class="flex flex-col gap-1">
+        <label class="text-zinc-400 text-xs font-black uppercase tracking-wider">Password</label>
+        <input id="login-pass" type="password" placeholder="••••••••" autocomplete="current-password" class="bg-zinc-950 border border-zinc-700 rounded-lg px-4 text-white placeholder-zinc-600 focus:border-emerald-600 outline-none font-bold text-sm">
+      </div>
+      <button onclick="attemptLogin()" class="bg-emerald-600 hover:bg-emerald-500 text-zinc-950 font-black rounded-lg transition h-11 flex items-center justify-center gap-2"><i class="fa-solid fa-right-to-bracket"></i> Sign In</button>
+    </div>
+  </div>
+</div>
+
+<!-- SETUP SCREEN -->
+<div id="setup-screen" class="hidden fixed inset-0 bg-zinc-950 flex items-center justify-center z-50 p-4">
+  <div class="w-full max-w-sm">
+    <div class="text-center mb-8">
+      <div class="bg-emerald-500/10 w-16 h-16 rounded-2xl border border-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto mb-4"><i class="fa-solid fa-shield-halved text-2xl"></i></div>
+      <h1 class="text-xl font-black text-white">First-Time Setup</h1>
+      <p class="text-zinc-500 text-xs font-bold mt-1">Create your supervisor password, Sean</p>
+    </div>
+    <div class="dash-panel rounded-xl p-6 flex flex-col gap-4">
+      <div class="flex flex-col gap-1">
+        <label class="text-zinc-400 text-xs font-black uppercase tracking-wider">New Password</label>
+        <input id="setup-pass" type="password" placeholder="choose a strong password" class="bg-zinc-950 border border-zinc-700 rounded-lg px-4 text-white placeholder-zinc-600 focus:border-emerald-600 outline-none font-bold text-sm">
+      </div>
+      <div class="flex flex-col gap-1">
+        <label class="text-zinc-400 text-xs font-black uppercase tracking-wider">Confirm Password</label>
+        <input id="setup-pass2" type="password" placeholder="confirm password" class="bg-zinc-950 border border-zinc-700 rounded-lg px-4 text-white placeholder-zinc-600 focus:border-emerald-600 outline-none font-bold text-sm">
+      </div>
+      <div id="setup-error" class="hidden text-red-400 text-xs font-black text-center"></div>
+      <button onclick="completeSetup()" class="bg-emerald-600 hover:bg-emerald-500 text-zinc-950 font-black rounded-lg transition h-11 flex items-center justify-center gap-2"><i class="fa-solid fa-check"></i> Create Account & Continue</button>
+    </div>
+  </div>
+</div>
+
+<!-- ACCOUNTS MODAL -->
+<div id="accounts-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
+  <div class="dash-panel rounded-xl p-6 w-full max-w-lg shadow-2xl max-h-[90vh] flex flex-col">
+    <div class="flex items-center justify-between mb-4 pb-3 border-b border-zinc-800">
+      <div class="flex items-center gap-2"><i class="fa-solid fa-users text-emerald-400 text-xl"></i><h3 class="text-lg font-black text-white">Manage Accounts</h3></div>
+      <button onclick="closeAccountsModal()" class="text-zinc-500 hover:text-white transition"><i class="fa-solid fa-xmark text-xl"></i></button>
+    </div>
+    <div class="overflow-y-auto custom-scrollbar flex-grow" id="accounts-list"></div>
+    <div class="mt-4 pt-3 border-t border-zinc-800">
+      <p class="text-xs font-black text-zinc-500 uppercase tracking-wider mb-3">Reset a Tech Password</p>
+      <div class="flex gap-2">
+        <select id="reset-user-select" class="bg-zinc-950 border border-zinc-700 rounded-lg px-3 text-white font-bold text-sm flex-1"></select>
+        <input id="reset-new-pass" type="password" placeholder="new password" class="bg-zinc-950 border border-zinc-700 rounded-lg px-3 text-white font-bold text-sm flex-1">
+        <button onclick="resetTechPassword()" class="bg-zinc-700 hover:bg-zinc-600 text-white font-black px-4 rounded-lg transition text-sm whitespace-nowrap">Reset</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app" class="hidden flex-col min-h-screen">
+<header class="bg-zinc-900 border-b border-zinc-800 sticky top-0 z-40 px-4 py-3 md:px-6 shadow-md">
+  <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-3">
+    <div class="flex items-center gap-3 w-full sm:w-auto">
+      <div class="bg-emerald-500/10 p-2.5 rounded-xl border border-emerald-500/20 text-emerald-400"><i class="fa-solid fa-truck-ramp-box text-xl"></i></div>
+      <div><h1 class="text-2xl font-black tracking-tight text-white">Gas Bottle Tracker</h1><p class="text-xs text-zinc-400 font-bold">Live Field Fleet Inventory</p></div>
+      <button onclick="toggleTheme()" id="theme-btn" class="ml-2 bg-zinc-800 border border-zinc-700 hover:border-zinc-500 px-3 py-1.5 rounded-lg text-zinc-300 hover:text-white text-xs font-black transition flex items-center gap-1.5" style="min-height:36px;"><i id="theme-icon" class="fa-solid fa-moon text-xs"></i><span id="theme-label">Light</span></button>
+    </div>
+    <div class="flex gap-2 w-full sm:w-auto overflow-x-auto custom-scrollbar pb-1 sm:pb-0 font-mono text-xs items-center">
+      <div class="bg-zinc-950 px-3 py-2 rounded-lg border border-zinc-800 flex items-center gap-1.5 whitespace-nowrap"><span class="h-2 w-2 rounded-full bg-emerald-500"></span><span class="text-zinc-300 font-bold">Total: <span id="ticker-total" class="text-white font-black">0</span></span></div>
+      <div class="bg-zinc-950 px-3 py-2 rounded-lg border border-zinc-800 flex items-center gap-1.5 whitespace-nowrap"><i class="fa-solid fa-triangle-exclamation text-amber-400 text-xs"></i><span class="text-zinc-300 font-bold">Low: <span id="ticker-low" class="text-amber-400 font-black">0</span></span></div>
+      <div class="bg-zinc-950 px-3 py-2 rounded-lg border border-zinc-800 flex items-center gap-1.5 whitespace-nowrap"><i class="fa-solid fa-clock text-orange-400 text-xs"></i><span class="text-zinc-300 font-bold">Exp: <span id="ticker-expiring" class="text-orange-400 font-black">0</span></span></div>
+      <div class="bg-zinc-950 px-3 py-2 rounded-lg border border-zinc-800 flex items-center gap-1.5 whitespace-nowrap"><i class="fa-solid fa-cart-shopping text-blue-400 text-xs"></i><span class="text-zinc-300 font-bold">Reorder: <span id="ticker-reorder" class="text-blue-400 font-black">0</span></span></div>
+      <div class="bg-zinc-950 px-3 py-2 rounded-lg border border-zinc-800 flex items-center gap-1.5 whitespace-nowrap"><i class="fa-solid fa-box-archive text-zinc-500 text-xs"></i><span class="text-zinc-300 font-bold">Retired: <span id="ticker-retired" class="text-zinc-400 font-black">0</span></span></div>
+      <div class="flex items-center gap-2 ml-1 bg-zinc-900 border border-zinc-700 px-3 py-1.5 rounded-lg whitespace-nowrap" style="min-height:36px;"><i id="user-role-icon" class="fa-solid fa-shield-halved text-emerald-400 text-xs"></i><span id="user-badge" class="text-zinc-200 font-black text-xs"></span><button onclick="logout()" class="text-zinc-600 hover:text-red-400 transition ml-1"><i class="fa-solid fa-right-from-bracket text-xs"></i></button></div>
+      <button id="manage-accounts-btn" onclick="openAccountsModal()" class="hidden bg-zinc-800 border border-zinc-700 hover:border-emerald-700 px-3 py-1.5 rounded-lg text-zinc-300 hover:text-emerald-400 text-xs font-black transition flex items-center gap-1.5" style="min-height:36px;"><i class="fa-solid fa-users text-xs"></i> Accounts</button>
+    </div>
+  </div>
+</header>
+<main class="max-w-7xl w-full mx-auto p-3 md:p-4 flex-grow flex flex-col gap-4">
+  <div class="dash-panel rounded-xl p-4 flex flex-col gap-4">
+    <div class="flex flex-wrap items-center gap-2 border-b border-zinc-800 pb-3" id="location-tabs"></div>
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1"><div id="action-tabs"></div><div id="vehicle-management-zone" class="flex gap-2"></div></div>
+  </div>
+  <div class="flex-grow" id="content-area"></div>
+  <section class="dash-panel rounded-xl p-4 mt-auto" id="add-bottle-form">
+    <div class="flex items-center justify-between mb-4 pb-2 border-b border-zinc-800">
+      <div class="flex items-center gap-2"><i class="fa-solid fa-square-plus text-emerald-400 text-lg"></i><h2 class="text-sm font-black text-white uppercase tracking-wider">Add Bottle to Fleet</h2></div>
+      <button onclick="setAddMode('bulk')" id="bulk-toggle-btn" class="text-xs font-black text-zinc-400 hover:text-white border border-zinc-700 hover:border-zinc-500 px-3 py-1 rounded-lg transition flex items-center gap-1.5" style="min-height:32px;"><i class="fa-solid fa-layer-group text-xs"></i> Bulk Add</button>
+    </div>
+    <div id="single-add-panel">
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 text-xs md:text-sm font-medium">
+        <div class="flex flex-col gap-1 col-span-1 sm:col-span-2 lg:col-span-2"><label class="text-zinc-300 font-bold px-0.5">Gas Type Mix</label><select id="gas-type" onchange="onGasTypeChange()" class="bg-zinc-950 border border-zinc-700 rounded-lg px-3 text-white focus:border-zinc-500 outline-none w-full font-bold text-sm"></select></div>
+        <div class="flex flex-col gap-1"><label class="text-zinc-300 font-bold px-0.5">Size</label><select id="capacity" onchange="onCapacityChange()" class="bg-zinc-950 border border-zinc-700 rounded-lg px-3 text-white focus:border-zinc-500 outline-none w-full font-bold text-sm"><option value="Small" selected>Small</option><option value="Large">Large</option></select></div>
+        <div class="flex flex-col gap-1"><label class="text-zinc-300 font-bold px-0.5">Asset # <span class="text-zinc-600 font-normal">(1-500)</span></label><input id="asset-num" type="number" min="1" max="500" placeholder="1-500" class="bg-zinc-950 border border-zinc-700 rounded-lg px-3 text-white placeholder-zinc-600 focus:border-zinc-500 outline-none w-full font-bold text-sm"></div>
+        <div class="flex flex-col gap-1"><label class="text-zinc-300 font-bold px-0.5">Part # <span class="text-zinc-600 font-normal">(auto)</span></label><input id="part-num" type="text" class="bg-zinc-950 border border-zinc-700 rounded-lg px-3 text-white placeholder-zinc-600 focus:border-zinc-500 outline-none w-full font-bold text-sm"></div>
+        <div class="flex flex-col gap-1"><label class="text-zinc-300 font-bold px-0.5">Sage # <span class="text-zinc-600 font-normal">(auto)</span></label><input id="sage-num" type="text" class="bg-zinc-950 border border-zinc-700 rounded-lg px-3 text-white placeholder-zinc-600 focus:border-zinc-500 outline-none w-full font-bold text-sm"></div>
+        <div class="flex flex-col gap-1"><label class="text-zinc-300 font-bold px-0.5">Expiration Date</label><input id="exp-date" type="date" class="bg-zinc-950 border border-zinc-700 rounded-lg px-3 text-white focus:border-zinc-500 outline-none w-full font-bold text-sm"></div>
+        <div class="flex flex-col gap-1"><label class="text-zinc-300 font-bold px-0.5">Max PSI</label><select id="max-psi" class="bg-zinc-950 border border-zinc-700 rounded-lg px-3 text-white focus:border-zinc-500 outline-none w-full font-bold text-sm"><option value="500">500 PSI</option><option value="1000" selected>1000 PSI</option><option value="2000">2000 PSI</option></select></div>
+        <div class="flex flex-col gap-1"><label class="text-zinc-300 font-bold px-0.5">Current PSI</label><input id="current-psi" type="number" value="1000" class="bg-zinc-950 border border-zinc-700 rounded-lg px-3 text-white focus:border-zinc-500 outline-none w-full font-bold text-sm"></div>
+        <div class="flex items-end"><button onclick="addBottle()" class="bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-zinc-950 font-black rounded-lg transition w-full flex items-center justify-center gap-1 text-sm h-[44px]"><i class="fa-solid fa-plus"></i> Add Bottle</button></div>
+      </div>
+    </div>
+    <div id="bulk-add-panel" class="hidden">
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 text-xs md:text-sm font-medium mb-3">
+        <div class="flex flex-col gap-1 col-span-1 sm:col-span-2"><label class="text-zinc-300 font-bold px-0.5">Gas Type Mix</label><select id="bulk-gas-type" onchange="onBulkGasTypeChange()" class="bg-zinc-950 border border-zinc-700 rounded-lg px-3 text-white focus:border-zinc-500 outline-none w-full font-bold text-sm"></select></div>
+        <div class="flex flex-col gap-1"><label class="text-zinc-300 font-bold px-0.5">Size</label><select id="bulk-capacity" onchange="onBulkCapacityChange()" class="bg-zinc-950 border border-zinc-700 rounded-lg px-3 text-white focus:border-zinc-500 outline-none w-full font-bold text-sm"><option value="Small" selected>Small</option><option value="Large">Large</option></select></div>
+        <div class="flex flex-col gap-1"><label class="text-zinc-300 font-bold px-0.5">Asset # (Start)</label><input id="bulk-asset-num" type="number" min="1" max="500" placeholder="e.g. 1" class="bg-zinc-950 border border-zinc-700 rounded-lg px-3 text-white focus:border-zinc-500 outline-none w-full font-bold text-sm"></div>
+        <div class="flex flex-col gap-1"><label class="text-zinc-300 font-bold px-0.5">Quantity</label><input id="bulk-qty" type="number" min="1" max="50" value="2" class="bg-zinc-950 border border-zinc-700 rounded-lg px-3 text-white focus:border-zinc-500 outline-none w-full font-bold text-sm"></div>
+        <div class="flex flex-col gap-1"><label class="text-zinc-300 font-bold px-0.5">Expiration Date</label><input id="bulk-exp-date" type="date" class="bg-zinc-950 border border-zinc-700 rounded-lg px-3 text-white focus:border-zinc-500 outline-none w-full font-bold text-sm"></div>
+        <div class="flex flex-col gap-1"><label class="text-zinc-300 font-bold px-0.5">Max PSI</label><select id="bulk-max-psi" class="bg-zinc-950 border border-zinc-700 rounded-lg px-3 text-white focus:border-zinc-500 outline-none w-full font-bold text-sm"><option value="500">500 PSI</option><option value="1000" selected>1000 PSI</option><option value="2000">2000 PSI</option></select></div>
+        <div class="flex flex-col gap-1"><label class="text-zinc-300 font-bold px-0.5">Starting PSI</label><input id="bulk-current-psi" type="number" value="1000" class="bg-zinc-950 border border-zinc-700 rounded-lg px-3 text-white focus:border-zinc-500 outline-none w-full font-bold text-sm"></div>
+        <div class="flex flex-col gap-1"><label class="text-zinc-300 font-bold px-0.5">Part # <span class="text-zinc-600 font-normal">(auto)</span></label><input id="bulk-part-num" type="text" class="bg-zinc-950 border border-zinc-700 rounded-lg px-3 text-white placeholder-zinc-600 focus:border-zinc-500 outline-none w-full font-bold text-sm"></div>
+        <div class="flex items-end"><button onclick="addBulkBottles()" class="bg-purple-600 hover:bg-purple-500 text-white font-black rounded-lg transition w-full flex items-center justify-center gap-1 text-sm h-[44px]"><i class="fa-solid fa-layer-group"></i> Add All</button></div>
+      </div>
+      <button onclick="setAddMode('single')" class="text-xs font-black text-zinc-500 hover:text-zinc-300 transition flex items-center gap-1"><i class="fa-solid fa-arrow-left text-xs"></i> Back to single add</button>
+    </div>
+  </section>
+</main>
+</div>
+
+<!-- MODALS -->
+<div id="asset-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
+  <div class="dash-panel rounded-xl p-6 w-full max-w-sm shadow-2xl border border-zinc-700">
+    <div class="flex items-center gap-2 text-white mb-2"><i class="fa-solid fa-tag text-emerald-400 text-xl"></i><h3 class="text-lg font-black">Assign Asset Number</h3></div>
+    <p class="text-sm text-zinc-400 mb-4">Enter a permanent asset ID (1-500) to trace this cylinder. Leave blank to remove.</p>
+    <input id="asset-custom-input" type="number" min="1" max="500" placeholder="e.g. 42" class="bg-zinc-950 border border-zinc-700 rounded-lg px-4 py-3 w-full text-white text-lg font-black focus:border-emerald-600 outline-none mb-5">
+    <div class="flex gap-3 text-sm font-black">
+      <button onclick="confirmAssetNum()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-zinc-950 rounded-lg transition py-3">Save Asset #</button>
+      <button onclick="closeAssetModal()" class="flex-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg transition py-3">Cancel</button>
+    </div>
+  </div>
+</div>
+<div id="move-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
+  <div class="dash-panel rounded-xl p-6 w-full max-w-md shadow-2xl">
+    <div class="flex items-center gap-2 text-white mb-2"><i class="fa-solid fa-arrow-right-arrows-left text-emerald-400 text-xl"></i><h3 class="text-lg font-black">Move Bottle Location</h3></div>
+    <p class="text-sm text-zinc-400 mb-4">Select target destination:</p>
+    <select id="move-destination" class="bg-zinc-950 border border-zinc-700 p-3 rounded-lg w-full mb-5 text-white outline-none font-bold text-sm"></select>
+    <div class="flex gap-3 text-sm font-black">
+      <button onclick="confirmMove()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-zinc-950 rounded-lg transition py-3">Confirm Move</button>
+      <button onclick="closeModal()" class="flex-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg transition py-3">Cancel</button>
+    </div>
+  </div>
+</div>
+<div id="psi-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
+  <div class="dash-panel rounded-xl p-6 w-full max-w-sm shadow-2xl">
+    <div class="flex items-center gap-2 text-white mb-4"><i class="fa-solid fa-gauge text-emerald-400 text-xl"></i><h3 class="text-lg font-black">Set PSI Level</h3></div>
+    <div class="mb-4"><label class="text-zinc-400 text-xs font-black uppercase tracking-wider block mb-2">Quick Set</label>
+      <div class="grid grid-cols-4 gap-2">
+        <button onclick="quickSetPSI(750)" class="no-zoom-btn bg-zinc-800 hover:bg-emerald-900 border border-zinc-700 hover:border-emerald-700 text-white font-black rounded-lg py-2 text-sm transition">750</button>
+        <button onclick="quickSetPSI(500)" class="no-zoom-btn bg-zinc-800 hover:bg-amber-900 border border-zinc-700 hover:border-amber-700 text-white font-black rounded-lg py-2 text-sm transition">500</button>
+        <button onclick="quickSetPSI(250)" class="no-zoom-btn bg-zinc-800 hover:bg-orange-900 border border-zinc-700 hover:border-orange-700 text-white font-black rounded-lg py-2 text-sm transition">250</button>
+        <button onclick="quickSetPSI(0)" class="no-zoom-btn bg-zinc-800 hover:bg-red-900 border border-zinc-700 hover:border-red-700 text-red-400 font-black rounded-lg py-2 text-sm transition">0</button>
+      </div>
+    </div>
+    <div class="mb-5"><label class="text-zinc-400 text-xs font-black uppercase tracking-wider block mb-2">Custom Value</label><input id="psi-custom-input" type="number" min="0" placeholder="Enter PSI..." class="psi-input bg-zinc-950 border border-zinc-700 rounded-lg px-4 w-full text-white text-lg font-black focus:border-emerald-600 outline-none"></div>
+    <div class="flex gap-3 text-sm font-black">
+      <button onclick="confirmPSI()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-zinc-950 rounded-lg transition py-3">Set PSI</button>
+      <button onclick="closePSIModal()" class="flex-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg transition py-3">Cancel</button>
+    </div>
+  </div>
+</div>
+<div id="retire-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
+  <div class="dash-panel rounded-xl p-6 w-full max-w-sm shadow-2xl border border-zinc-700">
+    <div class="flex items-center gap-2 text-white mb-2"><i class="fa-solid fa-box-archive text-zinc-400 text-xl"></i><h3 class="text-lg font-black">Mark Bottle as Empty?</h3></div>
+    <p class="text-sm text-zinc-400 mb-2">Bottle moves to <span class="text-white font-black">Retired</span> list — not deleted.</p>
+    <p id="retire-bottle-label" class="text-xs font-black text-zinc-500 mb-5 border border-zinc-800 bg-zinc-950 px-3 py-2 rounded-lg"></p>
+    <div class="flex gap-3 text-sm font-black">
+      <button onclick="confirmRetire()" class="flex-1 bg-zinc-700 hover:bg-zinc-600 text-white rounded-lg transition py-3"><i class="fa-solid fa-box-archive mr-1"></i>Retire It</button>
+      <button onclick="closeRetireModal()" class="flex-1 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 rounded-lg transition py-3">Cancel</button>
+    </div>
+  </div>
+</div>
+<div id="reorder-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
+  <div class="dash-panel rounded-xl p-6 w-full max-w-2xl shadow-2xl max-h-[90vh] flex flex-col">
+    <div class="flex items-center justify-between mb-4 pb-3 border-b border-zinc-800">
+      <div class="flex items-center gap-2"><i class="fa-solid fa-sliders text-blue-400 text-xl"></i><h3 class="text-lg font-black text-white">Reorder Thresholds</h3></div>
+      <button onclick="closeReorderModal()" class="text-zinc-500 hover:text-white transition"><i class="fa-solid fa-xmark text-xl"></i></button>
+    </div>
+    <p class="text-xs text-zinc-500 font-bold mb-4">Set minimum quantity per gas. When fleet drops to or below threshold it appears on the Reorder List. Set 0 to disable.</p>
+    <div class="overflow-y-auto custom-scrollbar flex-grow pr-1" id="reorder-threshold-list"></div>
+    <div class="flex gap-3 mt-4 pt-3 border-t border-zinc-800 text-sm font-black">
+      <button onclick="saveReorderThresholds()" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition py-3"><i class="fa-solid fa-floppy-disk mr-1"></i>Save Thresholds</button>
+      <button onclick="closeReorderModal()" class="flex-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg transition py-3">Cancel</button>
+    </div>
+  </div>
+</div>
+<script>
+const firebaseConfig={apiKey:"AIzaSyBBQMvkZHJyOuMr6uCkUENSPMD6gCwYtuc",authDomain:"gas-tracker-a8162.firebaseapp.com",databaseURL:"https://gas-tracker-a8162-default-rtdb.firebaseio.com",projectId:"gas-tracker-a8162",storageBucket:"gas-tracker-a8162.firebasestorage.app",messagingSenderId:"242209029672",appId:"1:242209029672:web:ab78fd1d871cc78cf4bf1d"};
+firebase.initializeApp(firebaseConfig);
+const db=firebase.database();
+const auth=firebase.auth();
+
+// ── AUTH ──────────────────────────────────────────────────
+const BUILTIN_ACCOUNTS={
+  sean:  {displayName:"Sean Parker",   role:"supervisor",vehicle:null},
+  office:{displayName:"Office Display",role:"office",    vehicle:null},
+  austin:{displayName:"Austin Parker", role:"tech",      vehicle:"Van 17"},
+  mike:  {displayName:"Mike Bird",     role:"tech",      vehicle:"Van 22"},
+  james: {displayName:"James Peace",   role:"tech",      vehicle:"Van 20"},
+};
+let currentUser=null,appUsers={},vehicleThresholds={};
+let _bottleView="card"; // "card" | "list" | "icon"
+
+async function sha256(str){const buf=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(str));return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("");}
+
+function showLoginScreen(){document.getElementById("login-screen").classList.remove("hidden");document.getElementById("setup-screen").classList.add("hidden");document.getElementById("app").classList.add("hidden");document.getElementById("app").classList.remove("flex");}
+function showSetupScreen(){document.getElementById("setup-screen").classList.remove("hidden");document.getElementById("login-screen").classList.add("hidden");document.getElementById("app").classList.add("hidden");document.getElementById("app").classList.remove("flex");}
+function showApp(){document.getElementById("app").classList.remove("hidden");document.getElementById("app").classList.add("flex");document.getElementById("login-screen").classList.add("hidden");document.getElementById("setup-screen").classList.add("hidden");}
+
+async function completeSetup(){
+  const p=document.getElementById("setup-pass").value,p2=document.getElementById("setup-pass2").value,errEl=document.getElementById("setup-error");
+  if(p.length<6){errEl.textContent="Password must be at least 6 characters.";errEl.classList.remove("hidden");return;}
+  if(p!==p2){errEl.textContent="Passwords do not match.";errEl.classList.remove("hidden");return;}
+  const hash=await sha256(p);
+  await db.ref("appUsers/sean").set({hash});appUsers.sean={hash};loginAs("sean");
+}
+
+async function attemptLogin(){
+  const u=document.getElementById("login-user").value.trim().toLowerCase(),p=document.getElementById("login-pass").value,errEl=document.getElementById("login-error");
+  errEl.classList.add("hidden");
+  if(!BUILTIN_ACCOUNTS[u]){errEl.textContent="Unknown username.";errEl.classList.remove("hidden");return;}
+  if(!appUsers[u]||!appUsers[u].hash){errEl.textContent="Account not set up yet. Contact Sean.";errEl.classList.remove("hidden");return;}
+  const hash=await sha256(p);
+  if(hash!==appUsers[u].hash){errEl.textContent="Incorrect password.";errEl.classList.remove("hidden");return;}
+  loginAs(u);
+}
+
+function loginAs(username){
+  currentUser={username,...BUILTIN_ACCOUNTS[username]};
+  localStorage.setItem("gbt-session",username);
+  auth.signInAnonymously().catch(()=>{});
+  applyUserUI();showApp();initAppData();
+}
+function logout(){currentUser=null;localStorage.removeItem("gbt-session");auth.signOut().catch(()=>{});location.reload();}
+
+function applyUserUI(){
+  const isSup=isSupervisor(),isOff=isOfficeRole();
+  document.getElementById("user-badge").textContent=currentUser.displayName+(isSup?" · Supervisor":isOff?" · Office Display":` · ${currentUser.vehicle}`);
+  document.getElementById("user-role-icon").className=isSup?"fa-solid fa-shield-halved text-emerald-400 text-xs":isOff?"fa-solid fa-display text-amber-400 text-xs":"fa-solid fa-user text-zinc-400 text-xs";
+  document.getElementById("manage-accounts-btn").classList.toggle("hidden",!isSup);
+  document.getElementById("add-bottle-form").classList.toggle("hidden",!isSup&&!isOff);
+}
+
+function isSupervisor(){return currentUser&&currentUser.role==="supervisor";}
+function isOfficeRole(){return currentUser&&currentUser.role==="office";}
+function canAddBottles(){return isSupervisor()||isOfficeRole();}
+function techCanEditVehicle(v){return isSupervisor()||isOfficeRole()||currentUser.vehicle===v;}
+function visibleVehicles(){return (isSupervisor()||isOfficeRole())?vehicles:vehicles.filter(v=>v===currentUser.vehicle);}
+
+function openAccountsModal(){
+  const resetableUsers=Object.entries(BUILTIN_ACCOUNTS).filter(([,a])=>a.role==="tech"||a.role==="office");
+  document.getElementById("reset-user-select").innerHTML=resetableUsers.map(([u,a])=>`<option value="${u}">${a.displayName}</option>`).join("");
+  document.getElementById("accounts-list").innerHTML=Object.entries(BUILTIN_ACCOUNTS).map(([u,a])=>{
+    const hasPass=appUsers[u]&&appUsers[u].hash?"Set":"Not set";
+    const badge=a.role==="supervisor"
+      ?`<span class="text-emerald-400 font-black text-xs">Supervisor</span>`
+      :a.role==="office"
+      ?`<span class="text-amber-400 font-black text-xs">Office Display</span>`
+      :`<span class="text-zinc-400 text-xs font-black">${a.vehicle}</span>`;
+    return`<div class="flex items-center justify-between py-3 border-b border-zinc-900"><div><p class="text-sm font-black text-white">${a.displayName} <span class="text-zinc-600 font-normal">@${u}</span></p>${badge}</div><span class="text-xs font-mono ${hasPass==="Set"?"text-emerald-400":"text-red-400"}">${hasPass}</span></div>`;
+  }).join("");
+  document.getElementById("accounts-modal").classList.remove("hidden");
+}
+function closeAccountsModal(){document.getElementById("accounts-modal").classList.add("hidden");}
+async function resetTechPassword(){
+  const u=document.getElementById("reset-user-select").value,p=document.getElementById("reset-new-pass").value;
+  if(p.length<6){alert("Password must be at least 6 characters.");return;}
+  const hash=await sha256(p);
+  await db.ref(`appUsers/${u}`).set({hash});appUsers[u]={hash};
+  document.getElementById("reset-new-pass").value="";
+  alert(`Password for ${BUILTIN_ACCOUNTS[u].displayName} has been reset.`);openAccountsModal();
+}
+
+// ── THEME ─────────────────────────────────────────────────
+let isDarkMode=true;
+function initTheme(){const s=localStorage.getItem("gbt-theme");isDarkMode=s!=="light";applyTheme();}
+function toggleTheme(){isDarkMode=!isDarkMode;localStorage.setItem("gbt-theme",isDarkMode?"dark":"light");applyTheme();}
+function applyTheme(){document.body.classList.toggle("light",!isDarkMode);document.getElementById("theme-icon").className=isDarkMode?"fa-solid fa-moon text-xs":"fa-solid fa-sun text-xs text-amber-400";document.getElementById("theme-label").textContent=isDarkMode?"Light":"Dark";}
+initTheme();
+
+// ── GAS CATALOG ───────────────────────────────────────────
+const gasCatalog={
+  "CL2 5PPM":             {color:"#facc15",partNum:"X02NI99CP584354",sageNum:"6429", concentration:"5ppm"},
+  "CL2 10PPM":            {color:"#eab308",partNum:"X02NI99CP584571",sageNum:"3470", concentration:"10ppm"},
+  "CH4 50%LEL":           {color:"#ef4444",partNum:"X02AI97CP101535",sageNum:"6407", concentration:"2.5%VOL (50%LEL)"},
+  "CO 20PPM":             {color:"#78350f",partNum:"X02NI99CP101224",sageNum:"6428", concentration:"20PPM"},
+  "CO 50PPM":             {color:"#92400e",partNum:"",               sageNum:"",     concentration:"50PPM"},
+  "CO 100PPM":            {color:"#a16207",partNum:"X03AI98CA220000",sageNum:"3419", concentration:"100PPM"},
+  "CO 200PPM":            {color:"#b45309",partNum:"Z02AI99CP104605",sageNum:"3449", concentration:"200PPM"},
+  "CO 300PPM":            {color:"#d97706",partNum:"X02AI99CP101522",sageNum:"3457", concentration:"300PPM"},
+  "CO2 400PPM":           {color:"#34d399",partNum:"X02AI99CP106162",sageNum:"32015",concentration:"0.04%VOL / 400PPM"},
+  "CO2 1000PPM":          {color:"#10b981",partNum:"X02AI99CP10E151",sageNum:"6413", concentration:"0.1%VOL / 1000PPM"},
+  "CO2 2000PPM":          {color:"#059669",partNum:"X02AI99CP10F301",sageNum:"32007",concentration:"0.2%VOL / 2000PPM"},
+  "CO2 25000PPM":         {color:"#047857",partNum:"X02AI97CP105051",sageNum:"6414", concentration:"2.5%VOL / 25000PPM"},
+  "Ethylene 1.15%VOL":    {color:"#fbbf24",partNum:"X02A198CP106880",sageNum:"6409", concentration:"1.15%VOL"},
+  "Ethylene Oxide 25PPM": {color:"#f59e0b",partNum:"X02NI99CP580088",sageNum:"6434", concentration:"25PPM"},
+  "HANDHELD GAS":         {color:"#14b8a6",partNum:"X05NI79CP5844Y5",sageNum:"32006",concentration:"N/A"},
+  "H2 50%LEL":            {color:"#dc2626",partNum:"X02AI98CP1000J0",sageNum:"6421", concentration:"2%VOL (50%LEL)"},
+  "H2 100PPM":            {color:"#f87171",partNum:"",               sageNum:"",     concentration:"100PPM"},
+  "H2 750PPM":            {color:"#fca5a5",partNum:"X02AI99CP1078V6",sageNum:"3463", concentration:"750PPM"},
+  "H2S 25PPM":            {color:"#db2777",partNum:"X02NI99CP581327",sageNum:"3466", concentration:"25PPM"},
+  "HCL 25PPM":            {color:"#c084fc",partNum:"X02NI99CP58H821",sageNum:"6403", concentration:"25PPM"},
+  "Isobutylene 100PPM":   {color:"#fb923c",partNum:"X02AI99CP581430",sageNum:"6438", concentration:"100PPM"},
+  "MULTI w/50PPM CO":     {color:"#f97316",partNum:"",               sageNum:"",     concentration:"w/50ppm CO"},
+  "MULTI w/100PPM CO":    {color:"#ea580c",partNum:"X03AI98CP100001",sageNum:"6433", concentration:"w/100ppm CO"},
+  "N2 99.99%VOL":         {color:"#a1a1aa",partNum:"NI UHPP10",      sageNum:"6423", concentration:"99.99%VOL"},
+  "NH3 50PPM":            {color:"#8b5cf6",partNum:"X02NI99CP582211",sageNum:"3469", concentration:"50PPM"},
+  "NH3 100PPM":           {color:"#a78bfa",partNum:"X02NI99CP584649",sageNum:"6425", concentration:"100PPM"},
+  "NH3 150PPM":           {color:"#c4b5fd",partNum:"X02NI99CP581603",sageNum:"6426", concentration:"150PPM"},
+  "NO 50PPM":             {color:"#ec4899",partNum:"X02NI99CP582062",sageNum:"6400", concentration:"50PPM"},
+  "NO2 5PPM":             {color:"#cab01e",partNum:"X02AI99CP582139",sageNum:"6401", concentration:"5PPM"},
+  "NO2 10PPM":            {color:"#a78b00",partNum:"X02AI99CP582520",sageNum:"6402", concentration:"10PPM"},
+  "PROPANE 0.1%VOL":      {color:"#f97316",partNum:"X02AI99CP105930",sageNum:"6406", concentration:"0.1%VOL"},
+  "PROPANE 0.6%VOL":      {color:"#fb923c",partNum:"",               sageNum:"",     concentration:"0.6%VOL"},
+  "SO2 5PPM":             {color:"#ca8a04",partNum:"X02NI99CP581604",sageNum:"3467", concentration:"5PPM"},
+  "ZERO":                 {color:"#71717a",partNum:"AI ZP10",         sageNum:"3450", concentration:"N/A"},
+  "R-11 990PPM":          {color:"#a7f3d0",partNum:"X02AI99CP1042Y0",sageNum:"6418", concentration:"990PPM"},
+  "R-12 990PPM":          {color:"#818cf8",partNum:"X02AI99CP1042Y2",sageNum:"6427", concentration:"990PPM"},
+  "R-22 300PPM":          {color:"#06b6d4",partNum:"AI ZA22N590",    sageNum:"3451", concentration:"300PPM"},
+  "R-22 990PPM":          {color:"#22d3ee",partNum:"X02AI99CP1048F6",sageNum:"6412", concentration:"990PPM"},
+  "R-123 50PPM":          {color:"#14b8a6",partNum:"XA02A199CP100066",sageNum:"6411",concentration:"50PPM"},
+  "R-123 100PPM":         {color:"#0d9488",partNum:"X02AI99CP100070",sageNum:"6440", concentration:"100PPM"},
+  "R-134A 100PPM":        {color:"#60a5fa",partNum:"XA02ANI99CP10D340",sageNum:"32018",concentration:"100PPM"},
+  "R-134A 990PPM":        {color:"#3b82f6",partNum:"XA02AI99CP10V008",sageNum:"6410",concentration:"990PPM"},
+  "R-404A 990PPM":        {color:"#f472b6",partNum:"X02AI99CP1000H3",sageNum:"6432", concentration:"990PPM"},
+  "R-410A 990PPM":        {color:"#ff758f",partNum:"X02AI99CP1000A3",sageNum:"6415", concentration:"990PPM"},
+  "R-500 30PPM":          {color:"#67e8f9",partNum:"",               sageNum:"",     concentration:"30PPM"},
+  "R-507A 990PPM":        {color:"#e11d48",partNum:"X02AI99CP1000C3",sageNum:"6416", concentration:"990PPM"},
+  "R-514A 100PPM":        {color:"#a5f3fc",partNum:"X02NI99CP1000F5",sageNum:"",     concentration:"100PPM"},
+  "R-514A 990PPM":        {color:"#0891b2",partNum:"X02AI99CP1000X1",sageNum:"6437", concentration:"990PPM"},
+  "R-1234YF 1000PPM":     {color:"#2dd4bf",partNum:"X02AI99CP1001H4",sageNum:"32011",concentration:"1000PPM"},
+};
+const gasTypes=Object.keys(gasCatalog);
+
+// Gases that come in Large (2000 PSI) format — only these show L counters
+const LARGE_BOTTLE_TYPES=new Set(["CH4 50%LEL","H2 50%LEL","MULTI w/100PPM CO","ZERO"]);
+const largeCatalog={
+  "CH4 50%LEL":        {partNum:"X02AI97CA2270L1", sageNum:"3418"},
+  "H2 50%LEL":         {partNum:"X02AI98CA220002", sageNum:"3420"},
+  "MULTI w/100PPM CO": {partNum:"X03AI98CA220000", sageNum:"3419"},
+  "ZERO":              {partNum:"AI ZA22N590",      sageNum:"3451"},
+};
+
+// ── STATE ─────────────────────────────────────────────────
+let vehicles=["Truck 21","Van 17","Van 20","Van 22"];let _bottleSort="default",_bottleSearch="";let _threshLoaded=false;
+let currentLocation="Truck 21",currentTab=0;
+let selectedIndex=null,psiTargetIndex=null,retireTargetIndex=null;
+let activeReportFilter="all";
+let inventory={},cart={},officeStock=[],retiredStock=[],activityLog=[],reorderThresholds={};
+
+// ── BOOT ──────────────────────────────────────────────────
+auth.signInAnonymously().catch(err=>console.warn("Anon sign-in failed:",err)).finally(()=>{
+  db.ref("appUsers").once("value",snap=>{
+    appUsers=snap.val()||{};
+    if(!appUsers.sean||!appUsers.sean.hash){showSetupScreen();}
+    else{const saved=localStorage.getItem("gbt-session");if(saved&&BUILTIN_ACCOUNTS[saved]&&appUsers[saved])loginAs(saved);else showLoginScreen();}
+  });
+});
+document.getElementById("login-pass").addEventListener("keydown",e=>{if(e.key==="Enter")attemptLogin();});
+document.getElementById("login-user").addEventListener("keydown",e=>{if(e.key==="Enter")document.getElementById("login-pass").focus();});
+
+let dataListenerActive=false;
+function initAppData(){
+  if(dataListenerActive)return;dataListenerActive=true;
+  if(!isSupervisor()&&currentUser.vehicle)currentLocation=currentUser.vehicle;
+  populateGasSelect();setDefaultDate();updateSystemCanvas();
+  db.ref("gasTrackerData").on("value",snap=>{
+    const data=snap.val();
+    if(data){
+      vehicles=data.vehicles||["Truck 21","Van 17","Van 20","Van 22"];
+      officeStock=data.officeStock||[];retiredStock=data.retiredStock||[];
+      activityLog=data.activityLog||[];
+      const san=list=>{if(!list)return[];return list.map(b=>{
+        let t=b.type?b.type.trim():"";
+        if(t==="99.99%vol N2"||t==="N2 99.99%"||t==="N2 100%")t="N2 99.99%VOL";
+        if(t==="1000ppm CO2")t="CO2 1000PPM";if(t==="2000ppm CO2")t="CO2 2000PPM";if(t==="400ppm CO2")t="CO2 400PPM";
+        if(t==="50%vol CH4")t="CH4 50%LEL";if(t==="50%vol H2")t="H2 50%LEL";
+        if(t==="4000ppm H2"||t==="H2 4000PPM")t="H2 100PPM";if(t==="750ppm H2")t="H2 750PPM";
+        if(t==="0.1%vol Propane")t="PROPANE 0.1%VOL";
+        if(t==="Multi (1% Propane + 100ppm CO)"||t==="PROPANE 1% + CO 100PPM"||t==="Multi Propane 1% CO 100PPM")t="MULTI w/100PPM CO";
+        if(t==="200ppm CO")t="CO 200PPM";if(t==="50ppm NH3")t="NH3 50PPM";if(t==="10ppm CL2")t="CL2 10PPM";
+        if(t==="5ppm SO2")t="SO2 5PPM";if(t==="50ppm NO")t="NO 50PPM";if(t==="25ppm H2S")t="H2S 25PPM";
+        if(t==="25ppm HCL")t="HCL 25PPM";if(t==="10ppm NO2")t="NO2 10PPM";if(t==="5ppm NO2")t="NO2 5PPM";
+        if(t==="990 R22"||t==="990 R-22")t="R-22 990PPM";if(t==="R-134a 100PPM")t="R-134A 100PPM";
+        if(t==="990ppm R-134a")t="R-134A 990PPM";if(t==="Handheld Gas")t="HANDHELD GAS";
+        if(t==="Ethylene Oxide 25ppm")t="Ethylene Oxide 25PPM";
+        b.type=t||"UNKNOWN GAS";
+        if(gasCatalog[b.type]){if(!b.partNum||b.partNum==="P-N/A")b.partNum=gasCatalog[b.type].partNum;if(!b.sageNum)b.sageNum=gasCatalog[b.type].sageNum;}
+        return b;
+      });};
+      inventory=data.inventory||{};cart=data.cart||{};
+      // Only load thresholds on first load — never let listener echo overwrite them
+      if(!_threshLoaded){vehicleThresholds=fbDecodeObj(data.vehicleThresholds||{});reorderThresholds=fbDecodeObj(data.reorderThresholds||{});_threshLoaded=true;console.log("LOAD from Firebase - vehicleThresholds:",JSON.stringify(vehicleThresholds),"reorderThresholds:",JSON.stringify(reorderThresholds));}else{console.log("LISTENER fired (echo) - thresholds NOT overwritten");}
+      vehicles.forEach(v=>{inventory[v]=san(inventory[v]);cart[v]=san(cart[v]);});
+      officeStock=san(officeStock);retiredStock=san(retiredStock);
+      updateSystemCanvas();
+    }else saveToDatabase();
+  });
+}
+
+// Firebase key sanitization — keys cannot contain . # $ / [ ]
+function fbEncodeKey(k){return k.replace(/\./g,"_DOT_").replace(/\//g,"_SLASH_");}
+function fbDecodeKey(k){return k.replace(/_DOT_/g,".").replace(/_SLASH_/g,"/");}
+function fbEncodeObj(obj){if(!obj)return{};const out={};Object.keys(obj).forEach(k=>{const v=obj[k];out[fbEncodeKey(k)]=typeof v==="object"&&v!==null?fbEncodeObj(v):v;});return out;}
+function fbDecodeObj(obj){if(!obj)return{};const out={};Object.keys(obj).forEach(k=>{const v=obj[k];out[fbDecodeKey(k)]=typeof v==="object"&&v!==null?fbDecodeObj(v):v;});return out;}
+
+function saveToDatabase(){db.ref("gasTrackerData").set({vehicles,officeStock,inventory,cart,retiredStock,activityLog,reorderThresholds:fbEncodeObj(reorderThresholds),vehicleThresholds:fbEncodeObj(vehicleThresholds)});}
+
+// ── HELPERS ───────────────────────────────────────────────
+function logEvent(action,bottle,from,to){activityLog.unshift({ts:Date.now(),action,gasType:bottle.type,capacity:bottle.capacity,partNum:bottle.partNum||"",sageNum:bottle.sageNum||"",from:from||"",to:to||"",user:currentUser?currentUser.displayName:""});if(activityLog.length>500)activityLog=activityLog.slice(0,500);}
+function getMostUsedGases(){const d={},r={};activityLog.forEach(e=>{if(e.action==="Deployed")d[e.gasType]=(d[e.gasType]||0)+1;if(e.action==="Returned")r[e.gasType]=(r[e.gasType]||0)+1;});return Object.entries(d).map(([type,deploys])=>({type,deploys,returns:r[type]||0})).sort((a,b)=>b.deploys-a.deploys).slice(0,15);}
+function fleetCountByGas(){const c={};gasTypes.forEach(t=>c[t]=0);const all=[...officeStock];vehicles.forEach(v=>all.push(...(inventory[v]||[]),...(cart[v]||[])));all.forEach(b=>{if(b.capacity==="Large")return;if(c[b.type]!==undefined)c[b.type]++;else c[b.type]=(c[b.type]||0)+1;});return c;}
+function getReorderList(){const c=fleetCountByGas();return gasTypes.filter(t=>(reorderThresholds[t]||0)>0&&c[t]<(reorderThresholds[t]||0)).map(t=>({type:t,count:c[t]||0,threshold:reorderThresholds[t]||0,need:(reorderThresholds[t]||0)-(c[t]||0)}));}
+function getAtThresholdList(){const c=fleetCountByGas();return gasTypes.filter(t=>(reorderThresholds[t]||0)>0&&c[t]===(reorderThresholds[t]||0)).map(t=>({type:t,count:c[t]||0,threshold:reorderThresholds[t]||0}));}
+function setDefaultDate(){const t=new Date();t.setFullYear(t.getFullYear()+1);const v=t.toISOString().split("T")[0];["exp-date","bulk-exp-date"].forEach(id=>{const el=document.getElementById(id);if(el)el.value=v;});}
+function checkExpired(d){return d?new Date(d)<new Date():false;}
+function getExpStatus(d){if(!d)return"none";const now=new Date(),exp=new Date(d);if(exp<now)return"expired";const days=Math.ceil((exp-now)/86400000);if(days<=30)return"exp30";if(days<=60)return"exp60";if(days<=90)return"exp90";return"ok";}
+function daysUntilExp(d){if(!d)return null;return Math.ceil((new Date(d)-new Date())/86400000);}
+function expBadge(d){const s=getExpStatus(d),date=formatDate(d);if(s==="expired")return`<span class="text-xs font-black px-2 py-0.5 rounded bg-red-950/60 text-red-400 border border-red-900/60 animate-pulse">⚠ EXPIRED · ${date}</span>`;if(s==="exp30"){const dy=daysUntilExp(d);return`<span class="text-xs font-black px-2 py-0.5 rounded bg-orange-950/60 text-orange-400 border border-orange-900/60">🔴 ${dy}d · ${date}</span>`;}if(s==="exp60"){const dy=daysUntilExp(d);return`<span class="text-xs font-black px-2 py-0.5 rounded bg-amber-950/40 text-amber-400 border border-amber-900/40">🟡 ${dy}d · ${date}</span>`;}if(s==="exp90"){const dy=daysUntilExp(d);return`<span class="text-xs font-black px-2 py-0.5 rounded bg-zinc-900 text-zinc-400 border border-zinc-700">🟢 ${dy}d · ${date}</span>`;}return`<span class="text-xs font-mono text-zinc-500">EXP: ${date}</span>`;}
+function formatDate(d){if(!d)return"N/A";const p=d.split("-");return p.length===3?`${p[1]}/${p[2]}/${p[0].slice(-2)}`:d;}
+function formatDateTime(ts){if(!ts)return"—";const d=new Date(ts);return`${d.getMonth()+1}/${d.getDate()}/${String(d.getFullYear()).slice(-2)} ${d.getHours()}:${String(d.getMinutes()).padStart(2,"0")}`;}
+function getCurrentList(){if(currentTab===2)return officeStock;if(currentTab===1)return cart[currentLocation]||[];return inventory[currentLocation]||[];}
+function currentLocationLabel(){if(currentTab===2)return"Office Stock";if(currentTab===1)return`${currentLocation} (On Cart)`;return`${currentLocation} (Truck)`;}
+
+// ── COUNTERS ──────────────────────────────────────────────
+function updateLiveCounters(){
+  let all=[...officeStock];vehicles.forEach(v=>all=all.concat(inventory[v]||[],cart[v]||[]));
+  document.getElementById("ticker-total").textContent=all.length;
+  document.getElementById("ticker-low").textContent=all.filter(b=>b.currentPSI<300).length;
+  document.getElementById("ticker-retired").textContent=retiredStock.length;
+  const exp=all.filter(b=>["exp30","exp60","exp90"].includes(getExpStatus(b.expDate))).length;
+  const expEl=document.getElementById("ticker-expiring");expEl.textContent=exp;
+  expEl.className=all.some(b=>getExpStatus(b.expDate)==="exp30")?"text-orange-400 font-black":exp>0?"text-amber-400 font-black":"text-zinc-500 font-black";
+  const ro=getReorderList().length;const roEl=document.getElementById("ticker-reorder");roEl.textContent=ro;roEl.className=ro>0?"text-blue-400 font-black":"text-zinc-500 font-black";
+}
+
+// ── FORM ──────────────────────────────────────────────────
+function populateGasSelect(){const opts=gasTypes.map(t=>`<option value="${t}">${t}</option>`).join("");["gas-type","bulk-gas-type"].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=opts;});onGasTypeChange();onBulkGasTypeChange();}
+function _updateSizeSelect(capSelId,type){const capSel=document.getElementById(capSelId);if(!capSel)return;const isLargeType=LARGE_BOTTLE_TYPES.has(type);capSel.innerHTML=`<option value="Small">Small</option>${isLargeType?'<option value="Large">Large</option>':""}`;capSel.value="Small";}
+function onGasTypeChange(){
+  const type=document.getElementById("gas-type").value,e=gasCatalog[type]||{};
+  _updateSizeSelect("capacity",type);
+  document.getElementById("part-num").value=e.partNum||"";
+  document.getElementById("sage-num").value=e.sageNum||"";
+  document.getElementById("max-psi").value="1000";
+  document.getElementById("current-psi").value="1000";
+}
+function onCapacityChange(){
+  const type=document.getElementById("gas-type").value,isLarge=document.getElementById("capacity").value==="Large";
+  const maxPsiEl=document.getElementById("max-psi"),curPsiEl=document.getElementById("current-psi");
+  if(isLarge&&LARGE_BOTTLE_TYPES.has(type)){
+    const lc=largeCatalog[type]||{};
+    document.getElementById("part-num").value=lc.partNum||"";
+    document.getElementById("sage-num").value=lc.sageNum||"";
+    maxPsiEl.value="2000";curPsiEl.value="2000";
+  }else{
+    const e=gasCatalog[type]||{};
+    document.getElementById("part-num").value=e.partNum||"";
+    document.getElementById("sage-num").value=e.sageNum||"";
+    maxPsiEl.value="1000";curPsiEl.value="1000";
+  }
+}
+function onBulkGasTypeChange(){
+  const type=document.getElementById("bulk-gas-type").value,e=gasCatalog[type]||{};
+  _updateSizeSelect("bulk-capacity",type);
+  document.getElementById("bulk-part-num").value=e.partNum||"";
+  document.getElementById("bulk-max-psi").value="1000";
+  document.getElementById("bulk-current-psi").value="1000";
+}
+function onBulkCapacityChange(){
+  const type=document.getElementById("bulk-gas-type").value,isLarge=document.getElementById("bulk-capacity").value==="Large";
+  const maxPsiEl=document.getElementById("bulk-max-psi"),curPsiEl=document.getElementById("bulk-current-psi");
+  if(isLarge&&LARGE_BOTTLE_TYPES.has(type)){maxPsiEl.value="2000";curPsiEl.value="2000";}
+  else{maxPsiEl.value="1000";curPsiEl.value="1000";}
+}
+function setAddMode(mode){document.getElementById("single-add-panel").classList.toggle("hidden",mode==="bulk");document.getElementById("bulk-add-panel").classList.toggle("hidden",mode==="single");document.getElementById("bulk-toggle-btn").classList.toggle("hidden",mode==="bulk");}
+// ── TABS & NAV ────────────────────────────────────────────
+function renderLocationTabs(){
+  const vis=visibleVehicles();
+  let html=vis.map(v=>`<button onclick="switchLocation('${v}')" class="px-4 py-2 rounded-lg text-base font-black border transition-all whitespace-nowrap flex items-center gap-2 ${v===currentLocation&&currentTab<2?"bg-white text-zinc-950 border-white":"bg-zinc-900 text-zinc-300 border-zinc-800 hover:border-zinc-700 hover:text-white"}"><i class="fa-solid fa-truck"></i> ${v}</button>`).join("");
+  html+=`<button onclick="switchToOffice()" class="px-4 py-2 rounded-lg text-base font-black border transition-all whitespace-nowrap flex items-center gap-2 ${currentTab===2?"bg-white text-zinc-950 border-white":"bg-zinc-900 text-zinc-300 border-zinc-800 hover:border-zinc-700 hover:text-white"}"><i class="fa-solid fa-warehouse"></i> Office / Shop Stock</button>`;
+  if(isSupervisor())html+=`<button onclick="addNewVehicle()" class="ml-auto px-4 py-2 rounded-lg text-xs font-black bg-blue-950 border border-blue-800 text-blue-400 hover:bg-blue-900 hover:text-blue-300 transition flex items-center gap-1.5 whitespace-nowrap"><i class="fas fa-plus"></i> Add Vehicle</button>`;
+  document.getElementById("location-tabs").innerHTML=html;
+}
+
+function renderMainTabs(){
+  const isSup=isSupervisor(),isOff=isOfficeRole();
+  const isOfficeLoc=currentTab===2||currentTab===7;
+  const showExport=currentTab===0||currentTab===1||currentTab===2;
+  document.getElementById("action-tabs").innerHTML=`<div class="flex flex-wrap items-center gap-2">
+  <div class="bg-zinc-950 border border-zinc-800 rounded-lg p-1 flex gap-1 text-sm font-black flex-wrap">
+    ${isOfficeLoc
+      ?`<button onclick="switchToOffice()" class="px-4 py-2 rounded-md transition ${currentTab===2?"bg-zinc-800 text-white":"text-zinc-400 hover:text-white"}">Office Stock</button>
+         <button onclick="setTab(7)" class="px-4 py-2 rounded-md transition ${currentTab===7?"bg-zinc-800 text-white":"text-zinc-400 hover:text-white"}"><i class="fa-solid fa-list-check mr-1 text-amber-400"></i>Office Summary</button>`
+      :`<button onclick="setTab(0)" class="px-4 py-2 rounded-md transition ${currentTab===0?"bg-zinc-800 text-white":"text-zinc-400 hover:text-white"}">Truck Stock</button>
+        <button onclick="setTab(1)" class="px-4 py-2 rounded-md transition ${currentTab===1?"bg-zinc-800 text-white":"text-zinc-400 hover:text-white"}">In Use (Cart)</button>
+        <button onclick="setTab(6)" class="px-4 py-2 rounded-md transition ${currentTab===6?"bg-zinc-800 text-white":"text-zinc-400 hover:text-white"}"><i class="fa-solid fa-list-check mr-1 text-emerald-400"></i>Summary</button>`
+    }
+    <button onclick="setTab(3)" class="px-4 py-2 rounded-md transition ${currentTab===3?"bg-zinc-800 text-white":"text-zinc-400 hover:text-white"}"><i class="fa-solid fa-chart-pie mr-1 text-amber-400"></i>Overview</button>
+    <button onclick="setTab(8)" class="px-4 py-2 rounded-md transition ${currentTab===8?"bg-zinc-800 text-white":"text-zinc-400 hover:text-white"}"><i class="fa-solid fa-user-check mr-1 text-purple-400"></i>Check Out</button>
+    ${isSup?`<button onclick="setTab(4)" class="px-4 py-2 rounded-md transition ${currentTab===4?"bg-zinc-800 text-white":"text-zinc-400 hover:text-white"}"><i class="fa-solid fa-box-archive mr-1 text-zinc-500"></i>Retired${retiredStock.length>0?` <span class="ml-1 bg-zinc-800 text-zinc-300 text-xs px-1.5 py-0.5 rounded-full">${retiredStock.length}</span>`:""}</button>`:""}
+    ${isSup?`<button onclick="setTab(5)" class="px-4 py-2 rounded-md transition ${currentTab===5?"bg-zinc-800 text-white":"text-zinc-400 hover:text-white"}"><i class="fa-solid fa-clock-rotate-left mr-1 text-zinc-500"></i>History</button>`:""}
+  </div>
+  ${showExport?`<button onclick="exportInventory()" class="bg-zinc-900 border border-zinc-700 hover:border-zinc-500 hover:bg-zinc-800 text-zinc-300 hover:text-white text-xs font-black px-3 py-1.5 rounded-lg transition flex items-center gap-1.5"><i class="fa-solid fa-print text-zinc-500"></i> Export / Print</button>`:""}
+  </div>`;
+  const mgmt=document.getElementById("vehicle-management-zone");
+  if(isSup&&currentTab<2)mgmt.innerHTML=`<button onclick="renameVehicle('${currentLocation}')" class="bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 px-3 py-1.5 rounded-lg text-zinc-300 hover:text-white text-xs font-black flex items-center gap-1 transition"><i class="fa-solid fa-gear text-zinc-400"></i> Rename</button><button onclick="deleteVehicle('${currentLocation}')" class="bg-zinc-900 hover:bg-red-950/30 border border-zinc-800 hover:border-red-900 px-3 py-1.5 rounded-lg text-zinc-400 hover:text-red-400 text-xs font-black flex items-center gap-1 transition"><i class="fa-solid fa-trash text-zinc-500"></i> Remove</button>`;
+  else mgmt.innerHTML="";
+  const form=document.getElementById("add-bottle-form");
+  if(form)form.style.display=(currentTab>=3||!isSup)?"none":"";
+}
+
+// ── CHECKOUT SYSTEM ───────────────────────────────────────
+function renderCheckOutTab() {
+  const area = document.getElementById("content-area");
+  const checkedOut = [];
+  const available = [];
+
+  const processList = (list, locName, listType) => {
+    (list || []).forEach((b, i) => {
+      if (b.checkedOutBy) checkedOut.push({ ...b, locName, listType, origIndex: i });
+      else available.push({ ...b, locName, listType, origIndex: i });
+    });
+  };
+
+  processList(officeStock, "Office Stock", "officeStock");
+  vehicles.forEach(v => processList(inventory[v], v, "inventory"));
+
+  let optionsHtml = available.map(b => `<option value="${b.locName}|${b.listType}|${b.origIndex}">${b.type} (${b.capacity}) - ${b.locName} - PSI: ${b.currentPSI}${b.assetNum ? ` - #${b.assetNum}` : ""}</option>`).join("");
+  if(!optionsHtml) optionsHtml = `<option value="">No bottles available</option>`;
+
+  let checkedOutHtml = checkedOut.length === 0 ?
+    `<div class="text-center py-8 text-zinc-500 text-sm font-bold border-2 border-dashed border-zinc-800 rounded-xl"><i class="fa-solid fa-user-check text-2xl mb-2 opacity-50 block"></i>No bottles currently checked out.</div>` :
+    `<div class="overflow-x-auto custom-scrollbar"><table class="w-full text-left border-collapse text-sm">
+      <thead><tr class="border-b border-zinc-800 text-xs uppercase text-zinc-500 font-black tracking-wider">
+        <th class="p-3">Employee</th><th class="p-3">Gas Type</th><th class="p-3">Asset #</th><th class="p-3">Location</th><th class="p-3">Date Checked Out</th><th class="p-3">Action</th>
+      </tr></thead>
+      <tbody>${checkedOut.map(b => `
+        <tr class="border-b border-zinc-900/60 hover:bg-zinc-800/30">
+          <td class="p-3 font-black text-purple-400"><i class="fa-solid fa-user text-xs mr-1"></i>${b.checkedOutBy}</td>
+          <td class="p-3 font-bold text-zinc-200">${b.type}</td>
+          <td class="p-3">${b.assetNum ? `<span class="bg-blue-600 border border-blue-400 text-white text-xs px-2 py-0.5 rounded font-black font-mono">#${b.assetNum}</span>` : `<span class="text-zinc-600 text-xs">—</span>`}</td>
+          <td class="p-3 font-mono text-xs text-zinc-400">${b.locName}</td>
+          <td class="p-3 font-mono text-xs text-zinc-500">${b.checkedOutDate}</td>
+          <td class="p-3"><button onclick="returnCheckedOut('${b.locName}', '${b.listType}', ${b.origIndex})" class="bg-zinc-800 hover:bg-emerald-900 border border-zinc-700 hover:border-emerald-700 text-emerald-400 text-xs font-black px-3 py-1.5 rounded transition shadow-sm whitespace-nowrap">Return Bottle</button></td>
+        </tr>
+      `).join("")}</tbody>
+    </table></div>`;
+
+  area.innerHTML = `
+    <div class="flex flex-col gap-4">
+      <div class="dash-panel border border-zinc-800 rounded-xl p-5">
+        <h3 class="text-sm font-black uppercase tracking-wider text-purple-400 flex items-center gap-2 mb-4"><i class="fa-solid fa-clipboard-user"></i> Check Out Bottle</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+          <div class="flex flex-col gap-1">
+            <label class="text-zinc-400 text-xs font-black uppercase tracking-wider">Employee Name</label>
+            <input id="checkout-name" type="text" placeholder="e.g. John Doe" class="bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-white placeholder-zinc-600 focus:border-purple-600 outline-none font-bold text-sm">
+          </div>
+          <div class="flex flex-col gap-1 sm:col-span-1 md:col-span-2">
+            <label class="text-zinc-400 text-xs font-black uppercase tracking-wider">Select Bottle to Check Out</label>
+            <div class="flex gap-2">
+              <select id="checkout-select" class="bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-white focus:border-purple-600 outline-none w-full font-bold text-sm flex-1 custom-scrollbar">
+                ${optionsHtml}
+              </select>
+              <button onclick="processCheckout()" class="bg-purple-600 hover:bg-purple-500 text-white font-black rounded-lg transition px-4 whitespace-nowrap flex items-center justify-center gap-2"><i class="fa-solid fa-check"></i> Check Out</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="dash-panel border border-zinc-800 rounded-xl p-5 shadow-xl">
+        <h3 class="text-sm font-black uppercase tracking-wider text-zinc-100 flex items-center gap-2 mb-4"><i class="fa-solid fa-list-check text-zinc-500"></i> Currently Checked Out <span class="bg-zinc-800 text-zinc-300 text-xs px-2 py-0.5 rounded-full font-mono">${checkedOut.length}</span></h3>
+        ${checkedOutHtml}
+      </div>
+    </div>
+  `;
+}
+
+function processCheckout() {
+  const name = document.getElementById("checkout-name").value.trim();
+  const val = document.getElementById("checkout-select").value;
+  if (!name) { alert("Please enter an employee name."); return; }
+  if (!val) { alert("Please select a bottle."); return; }
+
+  const parts = val.split("|");
+  const locName = parts[0];
+  const listType = parts[1];
+  const idx = parseInt(parts[2]);
+
+  let targetList;
+  if (listType === "officeStock") targetList = officeStock;
+  else if (listType === "inventory") targetList = inventory[locName];
+
+  if (targetList && targetList[idx]) {
+    targetList[idx].checkedOutBy = name;
+    targetList[idx].checkedOutDate = formatDateTime(Date.now());
+    logEvent("Checked Out", targetList[idx], locName, name);
+    saveToDatabase();
+    updateSystemCanvas();
+  }
+}
+
+function returnCheckedOut(locName, listType, idx) {
+  let targetList;
+  if (listType === "officeStock") targetList = officeStock;
+  else if (listType === "inventory") targetList = inventory[locName];
+
+  if (targetList && targetList[idx]) {
+    const name = targetList[idx].checkedOutBy;
+    delete targetList[idx].checkedOutBy;
+    delete targetList[idx].checkedOutDate;
+    logEvent("Returned from Checkout", targetList[idx], name, locName);
+    saveToDatabase();
+    updateSystemCanvas();
+  }
+}
+
+
+// ── BOTTLE CARDS ──────────────────────────────────────────
+function setBottleView(v){_bottleView=v;renderBottleGrid();}
+function sortBottles(mode){_bottleSort=mode;renderBottleGrid();}
+function searchBottles(q){_bottleSearch=q.toLowerCase().trim();renderBottleGrid();}
+function renderBottles(){
+  const area=document.getElementById("content-area");
+  const isOffice=currentTab===2;
+  const totalUnfiltered=(getCurrentList()||[]).length;
+  const searchBar=`<div class="flex items-center gap-2 mb-2 flex-wrap" id="bottle-search-bar">
+    <div class="relative flex-1 min-w-[160px] max-w-xs">
+      <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 text-xs pointer-events-none"></i>
+      <input id="bottle-search-input" type="text" value="${_bottleSearch}" oninput="searchBottles(this.value)" placeholder="Search gas type…" class="w-full bg-zinc-950 border border-zinc-700 rounded-lg pl-8 pr-3 py-2 text-sm font-bold text-white placeholder-zinc-600 outline-none focus:border-emerald-600 transition"/>
+    </div>
+    <button id="bottle-search-clear" onclick="searchBottles('');document.getElementById('bottle-search-input').value=''" class="${_bottleSearch?'':'hidden'} text-xs font-black text-zinc-500 hover:text-zinc-200 border border-zinc-700 rounded-lg px-3 py-2 transition bg-zinc-900 hover:bg-zinc-800"><i class="fa-solid fa-xmark mr-1"></i>Clear</button>
+    <div class="flex items-center gap-1 ml-auto bg-zinc-900 border border-zinc-800 rounded-lg p-1">
+      <button onclick="setBottleView('card')" title="Card view" class="px-2.5 py-1.5 rounded-md text-xs font-black transition ${_bottleView==='card'?'bg-zinc-700 text-white':'text-zinc-500 hover:text-zinc-300'}"><i class="fa-solid fa-id-card"></i></button>
+      <button onclick="setBottleView('icon')" title="Icon view" class="px-2.5 py-1.5 rounded-md text-xs font-black transition ${_bottleView==='icon'?'bg-zinc-700 text-white':'text-zinc-500 hover:text-zinc-300'}"><i class="fa-solid fa-grip"></i></button>
+      <button onclick="setBottleView('list')" title="List view" class="px-2.5 py-1.5 rounded-md text-xs font-black transition ${_bottleView==='list'?'bg-zinc-700 text-white':'text-zinc-500 hover:text-zinc-300'}"><i class="fa-solid fa-list"></i></button>
+    </div>
+    <span id="bottle-search-count" class="text-xs font-black text-zinc-600">${totalUnfiltered} bottle${totalUnfiltered!==1?"s":""}</span>
+  </div>`;
+  const showSort=!(isOffice&&!canAddBottles());
+  const sortBar=showSort?`<div class="flex items-center gap-2 mb-3 flex-wrap" id="bottle-sort-bar"><span class="text-xs font-black text-zinc-500 uppercase tracking-wider mr-1">Sort:</span><button onclick="sortBottles('default')" class="text-xs font-black px-3 py-1.5 rounded-lg border transition ${_bottleSort==='default'?'bg-emerald-600 border-emerald-500 text-zinc-950':'bg-zinc-900 border-zinc-700 text-zinc-300 hover:border-zinc-500'}">Default</button><button onclick="sortBottles('name')" class="text-xs font-black px-3 py-1.5 rounded-lg border transition ${_bottleSort==='name'?'bg-emerald-600 border-emerald-500 text-zinc-950':'bg-zinc-900 border-zinc-700 text-zinc-300 hover:border-zinc-500'}">A–Z Name</button><button onclick="sortBottles('psi')" class="text-xs font-black px-3 py-1.5 rounded-lg border transition ${_bottleSort==='psi'?'bg-emerald-600 border-emerald-500 text-zinc-950':'bg-zinc-900 border-zinc-700 text-zinc-300 hover:border-zinc-500'}">Emptiest First</button></div>`:"";
+  area.innerHTML=searchBar+sortBar+`<div id="bottle-grid-area"></div>`;
+  renderBottleGrid();
+}
+function renderBottleGrid(){
+  const gridArea=document.getElementById("bottle-grid-area");
+  if(!gridArea)return;
+  const rawList=getCurrentList()||[];
+  let list=rawList.map((b,i)=>({...b,_origIdx:i}));
+  if(_bottleSort==="name")list.sort((a,b)=>a.type.localeCompare(b.type));
+  else if(_bottleSort==="psi")list.sort((a,b)=>(a.currentPSI/a.maxPSI)-(b.currentPSI/b.maxPSI));
+  if(_bottleSearch)list=list.filter(b=>b.type.toLowerCase().includes(_bottleSearch));
+  const isOffice=currentTab===2;
+  const totalUnfiltered=rawList.length;
+  const countEl=document.getElementById("bottle-search-count");
+  if(countEl)countEl.textContent=`${_bottleSearch?list.length+" of "+totalUnfiltered:totalUnfiltered} bottle${totalUnfiltered!==1?"s":""}`;
+  const clearBtn=document.getElementById("bottle-search-clear");
+  if(clearBtn)clearBtn.classList.toggle("hidden",!_bottleSearch);
+  // Update view toggle active state without re-rendering the bar
+  ["card","icon","list"].forEach(v=>{
+    const btn=document.querySelector(`button[onclick="setBottleView('${v}')"]`);
+    if(btn){btn.className=btn.className.replace(/bg-zinc-700 text-white|text-zinc-500 hover:text-zinc-300/g,"");btn.classList.add(...(_bottleView===v?["bg-zinc-700","text-white"]:["text-zinc-500","hover:text-zinc-300"]));}
+  });
+  if(!list||list.length===0){
+    const msg=_bottleSearch?`No bottles matching "${_bottleSearch}" in this inventory.`:isOffice?"No bottles in office stock.":currentTab===1?"No bottles on cart.":"No bottles on this vehicle yet.";
+    gridArea.innerHTML=`<div class="dash-panel rounded-xl py-16 text-center border-dashed border-2 border-zinc-800"><div class="bg-zinc-900 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3 text-zinc-500 border border-zinc-800"><i class="fa-solid fa-box-open text-lg"></i></div><p class="text-zinc-400 font-black text-sm px-4">${msg}</p></div>`;
+    return;
+  }
+
+  // ── LIST VIEW ──────────────────────────────────────────
+  if(_bottleView==="list"){
+    const isPullOnly=isOffice&&!canAddBottles();
+    let html=`<div class="dash-panel rounded-xl overflow-hidden border border-zinc-800">
+      <table class="w-full text-left border-collapse text-sm font-bold">
+        <thead><tr class="border-b border-zinc-800 text-zinc-500 uppercase tracking-wider text-xs">
+          <th class="px-4 py-3">Gas Type</th>
+          <th class="px-4 py-3">Size</th>
+          <th class="px-4 py-3">PSI</th>
+          <th class="px-4 py-3 hidden sm:table-cell">Part #</th>
+          <th class="px-4 py-3 hidden md:table-cell">Sage #</th>
+          <th class="px-4 py-3 hidden lg:table-cell">Expires</th>
+          <th class="px-4 py-3">Status</th>
+          <th class="px-4 py-3 text-right text-zinc-700"><i class="fa-solid fa-chevron-right text-xs"></i></th>
+        </tr></thead>
+        <tbody>`;
+    list.forEach(b=>{
+      const i=b._origIdx,entry=gasCatalog[b.type]||{},color=entry.color||"#71717a";
+      const fillPct=Math.round((b.currentPSI/b.maxPSI)*100);
+      const isLow=b.currentPSI<300,isCrit=b.currentPSI<150;
+      const expStatus=getExpStatus(b.expDate);
+      const expColor=expStatus==="expired"?"text-red-400":expStatus==="exp30"?"text-orange-400":expStatus==="exp60"?"text-amber-400":"text-zinc-500";
+      const psiColor=isCrit?"text-red-400":isLow?"text-amber-400":"text-zinc-100";
+      const rowBg=expStatus==="expired"?"bg-red-950/10":isCrit?"bg-red-950/5":"";
+      html+=`<tr class="border-b border-zinc-900/60 hover:bg-zinc-800/30 transition cursor-pointer ${rowBg}" onclick="openBottleDetail(${i})">
+        <td class="px-4 py-3">
+          <div class="flex items-center gap-2">
+            <span class="font-black uppercase text-sm" style="color:${color}">${b.type}</span>
+            ${b.assetNum ? `<span class="bg-blue-600 border border-blue-400 text-white text-xs px-2.5 py-0.5 rounded-full font-black font-mono shadow-sm shrink-0">#${b.assetNum}</span>` : ""}
+          </div>
+          ${b.checkedOutBy ? `<div class="text-[10px] text-purple-400 mt-0.5 font-black"><i class="fa-solid fa-user-check"></i> Out: ${b.checkedOutBy}</div>` : ''}
+        </td>
+        <td class="px-4 py-3 text-zinc-400">${b.capacity==="Large"?`<span class="text-green-400 font-black">Large</span>`:"Reg"}</td>
+        <td class="px-4 py-3">
+          <div class="flex items-center gap-2">
+            <span class="font-mono font-black text-base ${psiColor}">${b.currentPSI}</span>
+            <div class="hidden sm:block w-20 h-2 rounded-full bg-zinc-800 overflow-hidden"><div class="h-full rounded-full transition-all" style="width:${fillPct}%;background-color:${isCrit?'#ef4444':isLow?'#f59e0b':color}"></div></div>
+          </div>
+        </td>
+        <td class="px-4 py-3 font-mono text-zinc-400 hidden sm:table-cell">${b.partNum||entry.partNum||"—"}</td>
+        <td class="px-4 py-3 font-mono text-zinc-400 hidden md:table-cell">${b.sageNum||entry.sageNum||"—"}</td>
+        <td class="px-4 py-3 ${expColor} hidden lg:table-cell">${b.expDate||"—"}</td>
+        <td class="px-4 py-3">${isCrit?`<span class="text-red-400 font-black text-xs">⚠ CRIT</span>`:isLow?`<span class="text-amber-400 font-black text-xs">⚠ LOW</span>`:expStatus==="expired"?`<span class="text-red-400 font-black text-xs">EXPIRED</span>`:`<span class="text-zinc-500 text-xs">OK</span>`}</td>
+        <td class="px-4 py-3 text-right text-zinc-600 text-xs font-black"><i class="fa-solid fa-chevron-right"></i></td>
+      </tr>`;
+    });
+    html+=`</tbody></table></div>`;
+    gridArea.innerHTML=html;return;
+  }
+
+  // ── ICON VIEW ──────────────────────────────────────────
+  if(_bottleView==="icon"){
+    const isPullOnly=isOffice&&!canAddBottles();
+    let html=`<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7 gap-3">`;
+    list.forEach(b=>{
+      const i=b._origIdx,entry=gasCatalog[b.type]||{},color=entry.color||"#71717a";
+      const fillPct=Math.round((b.currentPSI/b.maxPSI)*100);
+      const isCrit=b.currentPSI<150,isLow=b.currentPSI<300;
+      const barColor=isCrit?"#ef4444":isLow?"#f59e0b":color;
+      const isLarge=b.capacity==="Large";
+      const expStatus=getExpStatus(b.expDate);
+      const borderCls=expStatus==="expired"?"border-red-800/60":isCrit?"border-red-800/40":isLarge?"border-green-800/50":"border-zinc-700/60";
+      const isLight=document.body.classList.contains("light");
+      const bodyFill=isLight?"#f4f4f5":"#1c1c1e";
+      const bodyStroke=isLight?"#a1a1aa":"#3f3f46";
+      const capFill=isLight?"#d4d4d8":"#3f3f46";
+      const largeFill=isLight?"#dcfce7":"#0d1a0d";
+      const largeStroke=color==="#71717a"?"#16a34a":color;
+      const valveFill=isLight?"#3f3f46":"#0a0a0a";
+      const valveBar=isLight?"#52525b":"#111";
+      html+=`<div class="relative flex flex-col items-center gap-2 p-3 rounded-xl border ${borderCls} dash-panel hover:opacity-80 transition cursor-pointer" onclick="openBottleDetail(${i})">
+        ${isLarge?`<span class="absolute top-1.5 right-1.5 text-xs font-black text-green-600 bg-green-100 dark:bg-green-950/60 px-1.5 py-0.5 rounded leading-tight border border-green-300 dark:border-green-800">L</span>`:""}
+        <svg width="44" height="68" viewBox="0 0 44 72">
+          <defs><linearGradient id="ig${i}" x1="0%" y1="100%" x2="0%" y2="0%"><stop offset="0%" stop-color="${barColor}" stop-opacity="0.9"/><stop offset="100%" stop-color="${barColor}" stop-opacity="0.2"/></linearGradient></defs>
+          ${isLarge
+            ?`<path d="M22 4 Q6 6 6 18 L6 64 Q6 70 14 70 L30 70 Q38 70 38 64 L38 18 Q38 6 22 4Z" fill="${largeFill}" stroke="${largeStroke}" stroke-width="2"/>
+               <rect x="10" y="${4+(66*(1-fillPct/100))}" width="24" height="${fillPct>0?66*(fillPct/100):0}" fill="url(#ig${i})" rx="2"/>
+               <rect x="16" y="0" width="12" height="6" rx="2" fill="${valveFill}"/>
+               <rect x="10" y="1" width="24" height="4" rx="2" fill="${valveBar}"/>`
+            :`<path d="M22 6 Q8 8 8 20 L8 62 Q8 68 16 68 L28 68 Q36 68 36 62 L36 20 Q36 8 22 6Z" fill="${bodyFill}" stroke="${bodyStroke}" stroke-width="1.5"/>
+               <rect x="12" y="${6+(56*(1-fillPct/100))}" width="20" height="${fillPct>0?56*(fillPct/100):0}" fill="url(#ig${i})" rx="2"/>
+               <path d="M17 3 L27 3 L25 7 L19 7Z" fill="${capFill}"/>`}
+        </svg>
+        <span class="text-sm font-black uppercase text-center leading-tight" style="color:${color}">${b.type}</span>
+        ${b.assetNum ? `<span class="text-[11px] font-black text-white bg-blue-600 border border-blue-400 px-2 py-0.5 rounded font-mono leading-tight">#${b.assetNum}</span>` : ""}
+        ${b.checkedOutBy ? `<span class="text-[10px] font-black text-purple-400 bg-purple-900/30 px-1 rounded truncate w-full text-center"><i class="fa-solid fa-user-check"></i> Out: ${b.checkedOutBy}</span>` : ""}
+        <span class="text-base font-mono font-black ${isCrit?"text-red-500":isLow?"text-amber-500":isLight?"text-zinc-700":"text-zinc-300"}">${b.currentPSI}<span class="text-xs ml-0.5 font-bold">psi</span></span>
+        ${isCrit?`<span class="text-xs font-black text-red-500 animate-pulse">⚠ CRIT</span>`:expStatus==="expired"?`<span class="text-xs font-black text-red-500">EXP</span>`:""}
+      </div>`;
+    });
+    html+=`</div>`;gridArea.innerHTML=html;return;
+  }
+
+  // ── CARD VIEW (default) ────────────────────────────────
+  const isPullOnlyCard=isOffice&&!canAddBottles();
+  let html=isPullOnlyCard?`<div class="mb-3 bg-blue-950/20 border border-blue-900/40 rounded-xl p-3 text-xs font-black text-blue-400 flex items-center gap-2"><i class="fa-solid fa-info-circle"></i> Office Stock — pull bottles to your vehicle from here.</div>`:"";
+  html+=`<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">`;
+  list.forEach((b)=>{const i=b._origIdx;
+    const entry=gasCatalog[b.type]||{},baseColor=entry.color||"#bae6fd",concentration=entry.concentration||"";
+    const expStatus=getExpStatus(b.expDate),fillPercent=Math.min((b.currentPSI/b.maxPSI)*100,100);
+    let gaugeColor=baseColor,warningBadge="";
+    if(b.currentPSI<150){gaugeColor="#ef4444";warningBadge=`<span class="text-xs font-black text-red-400 animate-pulse">⚠ CRITICAL</span>`;}
+    else if(b.currentPSI<300){gaugeColor="#f59e0b";warningBadge=`<span class="text-xs font-black text-amber-400">⚠ LOW</span>`;}
+    const cardBorder=expStatus==="expired"?"border-red-900/70":expStatus==="exp30"?"border-orange-900/60":expStatus==="exp60"?"border-amber-900/40":"";
+    const partNum=b.partNum||entry.partNum||"N/A",sageNum=b.sageNum||entry.sageNum||"N/A";
+    html+=`<div class="bottle-card relative rounded-xl p-5 flex flex-col justify-between ${b.capacity==="Large"?"min-h-[560px]":"min-h-[480px]"} shadow-md ${b.capacity==="Large"?(cardBorder||"border-emerald-900/40"):cardBorder}">
+      <div class="font-bold min-w-0 border-b border-zinc-800/60 pb-2">
+        <div class="flex items-center justify-between gap-2">
+          <span style="color:${baseColor}" class="text-xl font-black leading-tight tracking-tight uppercase break-words">${b.type}</span>
+          ${b.assetNum ? `<span class="bg-blue-600 border border-blue-400 text-white text-sm px-3 py-1 rounded-lg font-black font-mono shadow-md shrink-0 leading-tight">#${b.assetNum}</span>` : ""}
+        </div>
+        <div class="flex items-center justify-between mt-1"><span class="text-xs uppercase font-black tracking-wider text-zinc-500">${b.capacity} Cylinder</span>${concentration?`<span class="text-xs font-black text-zinc-600">${concentration}</span>`:""}</div>
+        ${b.checkedOutBy ? `<div class="bg-purple-900/30 border border-purple-800/50 text-purple-300 text-xs px-2 py-1.5 rounded mt-2 font-bold flex items-center gap-1.5"><i class="fa-solid fa-user-check"></i> Out: ${b.checkedOutBy} (${b.checkedOutDate})</div>` : ""}
+      </div>
+      <div class="relative py-4 flex items-center justify-center bg-zinc-950/40 rounded-lg border border-zinc-900/60 shadow-inner my-3 flex-grow">
+        ${b.capacity==="Large"?`<div class="absolute top-2 right-2"><span class="text-[11px] font-black uppercase tracking-widest text-emerald-400 bg-emerald-950/60 border border-emerald-800/60 px-1.5 py-0.5 rounded">LARGE</span></div>`:""}
+        <div class="relative ${b.capacity==="Large"?"w-36 h-56":"w-28 h-44"} flex items-center justify-center">
+          ${b.capacity==="Large"?`
+          <svg width="118" height="210" viewBox="0 0 130 260">
+            <defs>
+              <linearGradient id="bM${i}" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#052e16"/><stop offset="25%" stop-color="#14532d"/><stop offset="50%" stop-color="#166534"/><stop offset="75%" stop-color="#14532d"/><stop offset="100%" stop-color="#052e16"/></linearGradient>
+              <linearGradient id="gF${i}" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="${gaugeColor}"/><stop offset="30%" stop-color="#ffffff" stop-opacity="0.45"/><stop offset="70%" stop-color="${gaugeColor}"/><stop offset="100%" stop-color="#000000" stop-opacity="0.5"/></linearGradient>
+            </defs>
+            <!-- Black hand valve / top cap -->
+            <path d="M 50,6 L 80,6 L 75,22 L 55,22 Z" fill="#0a0a0a" stroke="#1a1a1a" stroke-width="1.5"/>
+            <rect x="48" y="22" width="34" height="10" rx="2" fill="#111111"/>
+            <!-- Hand valve T-bar -->
+            <rect x="38" y="8" width="54" height="6" rx="3" fill="#0d0d0d" stroke="#222" stroke-width="1"/>
+            <!-- Large green bottle body -->
+            <path d="M 65,32 Q 12,35 12,72 L 12,240 Q 12,254 30,254 L 100,254 Q 118,254 118,240 L 118,72 Q 118,35 65,32 Z" fill="#141a10"/>
+            <path d="M 65,32 Q 12,35 12,72 L 12,240 Q 12,254 30,254 L 100,254 Q 118,254 118,240 L 118,72 Q 118,35 65,32 Z" fill="url(#bM${i})" opacity="0.7"/>
+            <mask id="tM${i}"><path d="M 65,36 Q 16,39 16,72 L 16,236 Q 16,249 32,249 L 98,249 Q 114,249 114,236 L 114,72 Q 114,39 65,36 Z" fill="white"/></mask>
+            <g mask="url(#tM${i})"><rect x="12" y="${249-(fillPercent*2.13)}" width="106" height="${fillPercent*2.13}" fill="url(#gF${i})"/><ellipse cx="65" cy="${249-(fillPercent*2.13)}" rx="49" ry="5" fill="${gaugeColor}" opacity="0.6"/></g>
+            <!-- Sheen highlight -->
+            <path d="M 28,62 L 28,236" stroke="white" stroke-width="3.5" stroke-linecap="round" opacity="0.15"/>
+            <!-- Green outline -->
+            <path d="M 65,32 Q 12,35 12,72 L 12,240 Q 12,254 30,254 L 100,254 Q 118,254 118,240 L 118,72 Q 118,35 65,32 Z" fill="none" stroke="#16a34a" stroke-width="2.5"/>
+          </svg>`:`
+          <svg width="100" height="175" viewBox="0 0 110 220">
+            <defs>
+              <linearGradient id="bM${i}" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#2d2d30"/><stop offset="25%" stop-color="#4e4e54"/><stop offset="50%" stop-color="#6b6b74"/><stop offset="75%" stop-color="#3f3f46"/><stop offset="100%" stop-color="#1c1c1e"/></linearGradient>
+              <linearGradient id="cM${i}" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#52525b"/><stop offset="50%" stop-color="#d4d4d8"/><stop offset="100%" stop-color="#27272a"/></linearGradient>
+              <linearGradient id="gF${i}" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="${gaugeColor}"/><stop offset="30%" stop-color="#ffffff" stop-opacity="0.45"/><stop offset="70%" stop-color="${gaugeColor}"/><stop offset="100%" stop-color="#000000" stop-opacity="0.5"/></linearGradient>
+            </defs>
+            <path d="M 44,6 L 66,6 L 62,20 L 48,20 Z" fill="url(#cM${i})" stroke="#18181b" stroke-width="1.5"/>
+            <rect x="42" y="20" width="26" height="8" rx="2" fill="#09090b"/>
+            <path d="M 55,28 Q 15,30 15,62 L 15,202 Q 15,214 30,214 L 80,214 Q 95,214 95,202 L 95,62 Q 95,30 55,28 Z" fill="#141416"/>
+            <path d="M 55,28 Q 15,30 15,62 L 15,202 Q 15,214 30,214 L 80,214 Q 95,214 95,202 L 95,62 Q 95,30 55,28 Z" fill="url(#bM${i})" opacity="0.35"/>
+            <mask id="tM${i}"><path d="M 55,31 Q 19,33 19,62 L 19,198 Q 19,209 32,209 L 78,209 Q 91,209 91,198 L 91,62 Q 91,33 55,31 Z" fill="white"/></mask>
+            <g mask="url(#tM${i})"><rect x="15" y="${209-(fillPercent*1.78)}" width="80" height="${fillPercent*1.78}" fill="url(#gF${i})"/><ellipse cx="55" cy="${209-(fillPercent*1.78)}" rx="36" ry="4" fill="${gaugeColor}" opacity="0.6"/></g>
+            <path d="M 26,52 L 26,198" stroke="white" stroke-width="3" stroke-linecap="round" opacity="0.2"/>
+            <path d="M 55,28 Q 15,30 15,62 L 15,202 Q 15,214 30,214 L 80,214 Q 95,214 95,202 L 95,62 Q 95,30 55,28 Z" fill="none" stroke="#2a2a2e" stroke-width="2"/>
+          </svg>`}
+          <button onclick="openPSIModal(${i})" class="no-zoom-btn absolute bottom-1 left-1/2 -translate-x-1/2 bg-zinc-950 border border-zinc-700 hover:border-emerald-600 text-center font-mono text-sm px-3 py-1 rounded-lg shadow-md min-w-[90px] transition group">
+            <span class="block font-black text-white leading-tight group-hover:text-emerald-400 transition">${b.currentPSI}<span class="text-xs text-zinc-400 ml-0.5">PSI</span></span>
+            <span class="text-[11px] text-zinc-600 group-hover:text-emerald-700 transition">tap to edit</span>
+          </button>
+        </div>
+      </div>
+      <div class="grid grid-cols-4 gap-1.5 mb-2">
+        <button onclick="updatePSI(${i},-10)" class="no-zoom-btn bg-zinc-900 border border-zinc-800 hover:border-zinc-600 rounded-md text-zinc-300 font-black text-xs h-9 flex items-center justify-center transition select-none">-10</button>
+        <button onclick="updatePSI(${i},10)"  class="no-zoom-btn bg-zinc-900 border border-zinc-800 hover:border-zinc-600 rounded-md text-zinc-300 font-black text-xs h-9 flex items-center justify-center transition select-none">+10</button>
+        <button onclick="updatePSI(${i},50)"  class="no-zoom-btn bg-zinc-900 border border-zinc-800 hover:border-zinc-600 rounded-md text-zinc-300 font-black text-xs h-9 flex items-center justify-center transition select-none">+50</button>
+        <button onclick="updatePSI(${i},-50)" class="no-zoom-btn bg-zinc-900 border border-zinc-800 hover:border-zinc-600 rounded-md text-zinc-300 font-black text-xs h-9 flex items-center justify-center transition select-none">-50</button>
+      </div>
+      <div class="font-sans text-xs font-bold space-y-1.5">
+        <div class="grid grid-cols-2 gap-x-3 border-b border-zinc-900 pb-1.5">
+          <span class="text-zinc-400"><i class="fa-solid fa-barcode mr-1 text-zinc-600"></i>P/N: <span class="text-white font-mono">${partNum}</span></span>
+          <span class="text-zinc-400"><i class="fa-solid fa-hashtag mr-1 text-zinc-600"></i>Sage: <span class="text-white font-mono">${sageNum}</span></span>
+        </div>
+        <div class="flex items-center justify-between border-b border-zinc-900 pb-1.5">
+          <span class="text-zinc-400"><i class="fa-solid fa-flask mr-1 text-zinc-600"></i><span class="text-white">${concentration||"—"}</span></span>
+          ${expBadge(b.expDate)}
+        </div>
+        <div class="flex items-center justify-between pt-0.5">
+          <span class="${b.currentPSI<300?"text-amber-400":"text-zinc-500"} text-xs">${b.currentPSI}/${b.maxPSI} PSI</span>${warningBadge}
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-2 mt-3 text-xs font-black">
+        ${isPullOnlyCard
+          ?`<button onclick="pullToMyTruck(${i})" class="bg-zinc-900 border border-zinc-700 hover:border-emerald-700 hover:bg-emerald-950/20 text-emerald-400 rounded-lg font-black col-span-2 h-10 flex items-center justify-center gap-1.5 transition"><i class="fa-solid fa-arrow-right-long"></i> Pull to My Vehicle</button>`
+          :`${currentTab===0?`<button onclick="moveToCart(${i})" class="bg-zinc-900 border border-zinc-800 hover:border-emerald-800 hover:bg-emerald-950/20 text-emerald-400 rounded-lg font-black col-span-2 h-10 flex items-center justify-center gap-1.5 transition"><i class="fa-solid fa-arrow-right-long"></i> Move to Cart</button>`:""}
+        ${currentTab===1?`<button onclick="returnToInventory(${i})" class="bg-zinc-900 border border-zinc-800 hover:border-amber-800 hover:bg-amber-950/20 text-amber-400 rounded-lg font-black col-span-2 h-10 flex items-center justify-center gap-1.5 transition"><i class="fa-solid fa-arrow-left-long"></i> Return to Truck</button>`:""}
+        <button onclick="openMoveModal(${i})" class="bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-300 rounded-lg font-bold flex items-center justify-center gap-1 h-10 transition"><i class="fa-solid fa-right-left text-xs"></i> Route</button>
+        <button onclick="openRetireModal(${i})" class="bg-zinc-900 border border-zinc-800 hover:border-zinc-600 text-zinc-400 hover:text-white rounded-lg flex items-center justify-center gap-1.5 h-10 transition"><i class="fa-solid fa-box-archive text-xs"></i> Retire</button>
+        ${canAddBottles()?`<button onclick="openAssetModal(${i})" class="col-span-2 bg-zinc-900 border border-zinc-800 hover:border-zinc-600 text-zinc-300 rounded-lg flex items-center justify-center gap-1.5 h-9 transition text-xs"><i class="fa-solid fa-tag text-xs"></i> Assign Asset #</button>`:""}
+        ${isSupervisor()?`<button onclick="removeBottle(${i})" class="col-span-2 bg-zinc-900 border border-zinc-800 hover:border-red-900 hover:bg-red-950/20 text-red-500 rounded-lg flex items-center justify-center gap-1.5 h-9 transition text-xs"><i class="fa-solid fa-trash-can"></i> Delete Permanently</button>`:""}`}
+      </div>
+    </div>`;
+  });
+  html+=`</div>`;gridArea.innerHTML=html;
+}
+
+// ── BOTTLE DETAIL MODAL ──────────────────────────────────
+function openBottleDetail(i){
+  const b=getCurrentList()[i];
+  if(!b)return;
+  const entry=gasCatalog[b.type]||{},baseColor=entry.color||"#bae6fd",concentration=entry.concentration||"";
+  const expStatus=getExpStatus(b.expDate),fillPercent=Math.min((b.currentPSI/b.maxPSI)*100,100);
+  let gaugeColor=baseColor,warningBadge="";
+  if(b.currentPSI<150){gaugeColor="#ef4444";warningBadge=`<span class="text-xs font-black text-red-400 animate-pulse">⚠ CRITICAL</span>`;}
+  else if(b.currentPSI<300){gaugeColor="#f59e0b";warningBadge=`<span class="text-xs font-black text-amber-400">⚠ LOW</span>`;}
+  const cardBorder=expStatus==="expired"?"border-red-900/70":expStatus==="exp30"?"border-orange-900/60":expStatus==="exp60"?"border-amber-900/40":"";
+  const partNum=b.partNum||entry.partNum||"N/A",sageNum=b.sageNum||entry.sageNum||"N/A";
+  const isOffice=currentTab===2;
+  const isPullOnly=isOffice&&!canAddBottles();
+
+  const svgHtml=b.capacity==="Large"?`
+    <svg width="118" height="210" viewBox="0 0 130 260">
+      <defs>
+        <linearGradient id="bMD" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#052e16"/><stop offset="25%" stop-color="#14532d"/><stop offset="50%" stop-color="#166534"/><stop offset="75%" stop-color="#14532d"/><stop offset="100%" stop-color="#052e16"/></linearGradient>
+        <linearGradient id="gFD" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="${gaugeColor}"/><stop offset="30%" stop-color="#ffffff" stop-opacity="0.45"/><stop offset="70%" stop-color="${gaugeColor}"/><stop offset="100%" stop-color="#000000" stop-opacity="0.5"/></linearGradient>
+      </defs>
+      <path d="M 50,6 L 80,6 L 75,22 L 55,22 Z" fill="#0a0a0a" stroke="#1a1a1a" stroke-width="1.5"/>
+      <rect x="48" y="22" width="34" height="10" rx="2" fill="#111111"/>
+      <rect x="38" y="8" width="54" height="6" rx="3" fill="#0d0d0d" stroke="#222" stroke-width="1"/>
+      <path d="M 65,32 Q 12,35 12,72 L 12,240 Q 12,254 30,254 L 100,254 Q 118,254 118,240 L 118,72 Q 118,35 65,32 Z" fill="#141a10"/>
+      <path d="M 65,32 Q 12,35 12,72 L 12,240 Q 12,254 30,254 L 100,254 Q 118,254 118,240 L 118,72 Q 118,35 65,32 Z" fill="url(#bMD)" opacity="0.7"/>
+      <mask id="tMD"><path d="M 65,36 Q 16,39 16,72 L 16,236 Q 16,249 32,249 L 98,249 Q 114,249 114,236 L 114,72 Q 114,39 65,36 Z" fill="white"/></mask>
+      <g mask="url(#tMD)"><rect x="12" y="${249-(fillPercent*2.13)}" width="106" height="${fillPercent*2.13}" fill="url(#gFD)"/><ellipse cx="65" cy="${249-(fillPercent*2.13)}" rx="49" ry="5" fill="${gaugeColor}" opacity="0.6"/></g>
+      <path d="M 28,62 L 28,236" stroke="white" stroke-width="3.5" stroke-linecap="round" opacity="0.15"/>
+      <path d="M 65,32 Q 12,35 12,72 L 12,240 Q 12,254 30,254 L 100,254 Q 118,254 118,240 L 118,72 Q 118,35 65,32 Z" fill="none" stroke="#16a34a" stroke-width="2.5"/>
+    </svg>`:`
+    <svg width="100" height="175" viewBox="0 0 110 220">
+      <defs>
+        <linearGradient id="bMD" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#2d2d30"/><stop offset="25%" stop-color="#4e4e54"/><stop offset="50%" stop-color="#6b6b74"/><stop offset="75%" stop-color="#3f3f46"/><stop offset="100%" stop-color="#1c1c1e"/></linearGradient>
+        <linearGradient id="cMD" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#52525b"/><stop offset="50%" stop-color="#d4d4d8"/><stop offset="100%" stop-color="#27272a"/></linearGradient>
+        <linearGradient id="gFD" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="${gaugeColor}"/><stop offset="30%" stop-color="#ffffff" stop-opacity="0.45"/><stop offset="70%" stop-color="${gaugeColor}"/><stop offset="100%" stop-color="#000000" stop-opacity="0.5"/></linearGradient>
+      </defs>
+      <path d="M 44,6 L 66,6 L 62,20 L 48,20 Z" fill="url(#cMD)" stroke="#18181b" stroke-width="1.5"/>
+      <rect x="42" y="20" width="26" height="8" rx="2" fill="#09090b"/>
+      <path d="M 55,28 Q 15,30 15,62 L 15,202 Q 15,214 30,214 L 80,214 Q 95,214 95,202 L 95,62 Q 95,30 55,28 Z" fill="#141416"/>
+      <path d="M 55,28 Q 15,30 15,62 L 15,202 Q 15,214 30,214 L 80,214 Q 95,214 95,202 L 95,62 Q 95,30 55,28 Z" fill="url(#bMD)" opacity="0.35"/>
+      <mask id="tMD"><path d="M 55,31 Q 19,33 19,62 L 19,198 Q 19,209 32,209 L 78,209 Q 91,209 91,198 L 91,62 Q 91,33 55,31 Z" fill="white"/></mask>
+      <g mask="url(#tMD)"><rect x="15" y="${209-(fillPercent*1.78)}" width="80" height="${fillPercent*1.78}" fill="url(#gFD)"/><ellipse cx="55" cy="${209-(fillPercent*1.78)}" rx="36" ry="4" fill="${gaugeColor}" opacity="0.6"/></g>
+      <path d="M 26,52 L 26,198" stroke="white" stroke-width="3" stroke-linecap="round" opacity="0.2"/>
+      <path d="M 55,28 Q 15,30 15,62 L 15,202 Q 15,214 30,214 L 80,214 Q 95,214 95,202 L 95,62 Q 95,30 55,28 Z" fill="none" stroke="#2a2a2e" stroke-width="2"/>
+    </svg>`;
+
+  const cardHtml=`
+    <div class="font-bold min-w-0 border-b border-zinc-800/60 pb-2">
+      <span style="color:${baseColor}" class="text-xl font-black leading-tight tracking-tight uppercase break-words flex items-center gap-2">
+        ${b.type}
+        ${b.assetNum ? `<span class="bg-blue-600 border-2 border-blue-400 text-white text-sm px-3 py-1 rounded-full font-black font-mono shadow-md shrink-0">#${b.assetNum}</span>` : ""}
+      </span>
+      <div class="flex items-center justify-between mt-1"><span class="text-xs uppercase font-black tracking-wider text-zinc-500">${b.capacity} Cylinder</span>${concentration?`<span class="text-xs font-black text-zinc-600">${concentration}</span>`:""}</div>
+      ${b.checkedOutBy ? `<div class="bg-purple-900/30 border border-purple-800/50 text-purple-300 text-xs px-2 py-1.5 rounded mt-2 font-bold flex items-center gap-1.5"><i class="fa-solid fa-user-check"></i> Out: ${b.checkedOutBy} (${b.checkedOutDate})</div>` : ""}
+    </div>
+    <div class="relative py-4 flex items-center justify-center bg-zinc-950/40 rounded-lg border border-zinc-900/60 shadow-inner my-3">
+      ${b.capacity==="Large"?`<div class="absolute top-2 right-2"><span class="text-xs font-black uppercase tracking-widest text-emerald-400 bg-emerald-950/60 border border-emerald-800/60 px-1.5 py-0.5 rounded">LARGE</span></div>`:""}
+      <div class="relative flex items-center justify-center">
+        ${svgHtml}
+        <button onclick="closeBottleDetail();openPSIModal(${i})" class="no-zoom-btn absolute bottom-1 left-1/2 -translate-x-1/2 bg-zinc-950 border border-zinc-700 hover:border-emerald-600 text-center font-mono text-sm px-3 py-1 rounded-lg shadow-md min-w-[90px] transition group">
+          <span class="block font-black text-white leading-tight group-hover:text-emerald-400 transition">${b.currentPSI}<span class="text-xs text-zinc-400 ml-0.5">PSI</span></span>
+          <span class="text-xs text-zinc-600 group-hover:text-emerald-700 transition">tap to edit</span>
+        </button>
+      </div>
+    </div>
+    <div class="grid grid-cols-4 gap-1.5 mb-2">
+      <button onclick="updatePSI(${i},-10);closeBottleDetail();openBottleDetail(${i})" class="no-zoom-btn bg-zinc-900 border border-zinc-800 hover:border-zinc-600 rounded-md text-zinc-300 font-black text-xs h-9 flex items-center justify-center transition select-none">-10</button>
+      <button onclick="updatePSI(${i},10);closeBottleDetail();openBottleDetail(${i})"  class="no-zoom-btn bg-zinc-900 border border-zinc-800 hover:border-zinc-600 rounded-md text-zinc-300 font-black text-xs h-9 flex items-center justify-center transition select-none">+10</button>
+      <button onclick="updatePSI(${i},50);closeBottleDetail();openBottleDetail(${i})"  class="no-zoom-btn bg-zinc-900 border border-zinc-800 hover:border-zinc-600 rounded-md text-zinc-300 font-black text-xs h-9 flex items-center justify-center transition select-none">+50</button>
+      <button onclick="updatePSI(${i},-50);closeBottleDetail();openBottleDetail(${i})" class="no-zoom-btn bg-zinc-900 border border-zinc-800 hover:border-zinc-600 rounded-md text-zinc-300 font-black text-xs h-9 flex items-center justify-center transition select-none">-50</button>
+    </div>
+    <div class="font-sans text-xs font-bold space-y-1.5 mb-3">
+      <div class="grid grid-cols-2 gap-x-3 border-b border-zinc-900 pb-1.5">
+        <span class="text-zinc-400"><i class="fa-solid fa-barcode mr-1 text-zinc-600"></i>P/N: <span class="text-white font-mono">${partNum}</span></span>
+        <span class="text-zinc-400"><i class="fa-solid fa-hashtag mr-1 text-zinc-600"></i>Sage: <span class="text-white font-mono">${sageNum}</span></span>
+      </div>
+      <div class="flex items-center justify-between border-b border-zinc-900 pb-1.5">
+        <span class="text-zinc-400"><i class="fa-solid fa-flask mr-1 text-zinc-600"></i><span class="text-white">${concentration||"—"}</span></span>
+        ${expBadge(b.expDate)}
+      </div>
+      <div class="flex items-center justify-between pt-0.5">
+        <span class="${b.currentPSI<300?"text-amber-400":"text-zinc-500"} text-xs">${b.currentPSI}/${b.maxPSI} PSI</span>${warningBadge}
+      </div>
+    </div>
+    <div class="grid grid-cols-2 gap-2 text-xs font-black">
+      ${isPullOnly
+        ?`<button onclick="closeBottleDetail();pullToMyTruck(${i})" class="bg-zinc-900 border border-zinc-700 hover:border-emerald-700 hover:bg-emerald-950/20 text-emerald-400 rounded-lg font-black col-span-2 h-10 flex items-center justify-center gap-1.5 transition"><i class="fa-solid fa-arrow-right-long"></i> Pull to My Vehicle</button>`
+        :`${currentTab===0?`<button onclick="closeBottleDetail();moveToCart(${i})" class="bg-zinc-900 border border-zinc-800 hover:border-emerald-800 hover:bg-emerald-950/20 text-emerald-400 rounded-lg font-black col-span-2 h-10 flex items-center justify-center gap-1.5 transition"><i class="fa-solid fa-arrow-right-long"></i> Move to Cart</button>`:""}
+        ${currentTab===1?`<button onclick="closeBottleDetail();returnToInventory(${i})" class="bg-zinc-900 border border-zinc-800 hover:border-amber-800 hover:bg-amber-950/20 text-amber-400 rounded-lg font-black col-span-2 h-10 flex items-center justify-center gap-1.5 transition"><i class="fa-solid fa-arrow-left-long"></i> Return to Truck</button>`:""}
+        <button onclick="closeBottleDetail();openMoveModal(${i})" class="bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-300 rounded-lg font-bold flex items-center justify-center gap-1 h-10 transition"><i class="fa-solid fa-right-left text-xs"></i> Route</button>
+        <button onclick="closeBottleDetail();openRetireModal(${i})" class="bg-zinc-900 border border-zinc-800 hover:border-zinc-600 text-zinc-400 hover:text-white rounded-lg flex items-center justify-center gap-1.5 h-10 transition"><i class="fa-solid fa-box-archive text-xs"></i> Retire</button>
+        ${canAddBottles()?`<button onclick="closeBottleDetail();openAssetModal(${i})" class="col-span-2 bg-zinc-900 border border-zinc-800 hover:border-zinc-600 text-zinc-300 rounded-lg flex items-center justify-center gap-1.5 h-9 transition text-xs"><i class="fa-solid fa-tag text-xs"></i> Assign Asset #</button>`:""}
+        ${isSupervisor()?`<button onclick="closeBottleDetail();removeBottle(${i})" class="col-span-2 bg-zinc-900 border border-zinc-800 hover:border-red-900 hover:bg-red-950/20 text-red-500 rounded-lg flex items-center justify-center gap-1.5 h-9 transition text-xs"><i class="fa-solid fa-trash-can"></i> Delete Permanently</button>`:""}`}
+    </div>`;
+
+  document.getElementById("bottle-detail-inner").innerHTML=cardHtml;
+  document.getElementById("bottle-detail-modal").classList.remove("hidden");
+}
+function closeBottleDetail(){
+  document.getElementById("bottle-detail-modal").classList.add("hidden");
+}
+function exportInventory(){
+  const rawList=getCurrentList()||[];
+  const isOffice=currentTab===2;
+  const locLabel=isOffice?"Office Stock":currentTab===1?`${currentLocation} — Cart`:`${currentLocation} — Truck`;
+  // Tally by gas type
+  const tally={};
+  rawList.forEach(b=>{
+    if(!tally[b.type])tally[b.type]={type:b.type,reg:0,large:0,minPSI:b.currentPSI,maxPSI:b.currentPSI,totalPSI:0,count:0};
+    const t=tally[b.type];
+    if(b.capacity==="Large")t.large++;else t.reg++;
+    t.count++;t.totalPSI+=b.currentPSI;
+    if(b.currentPSI<t.minPSI)t.minPSI=b.currentPSI;
+    if(b.currentPSI>t.maxPSI)t.maxPSI=b.currentPSI;
+  });
+  const rows=Object.values(tally).sort((a,b)=>a.type.localeCompare(b.type));
+  const now=new Date().toLocaleString();
+  const printHtml=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${locLabel} — Gas Inventory</title>
+  <style>
+    body{font-family:system-ui,sans-serif;padding:24px;color:#111;background:#fff;font-size:13px;}
+    h1{font-size:18px;font-weight:900;margin:0 0 4px;}
+    p.sub{color:#555;margin:0 0 20px;font-size:12px;}
+    table{width:100%;border-collapse:collapse;}
+    th{background:#f4f4f5;font-weight:900;text-transform:uppercase;font-size:11px;letter-spacing:.05em;padding:8px 10px;border-bottom:2px solid #e4e4e7;text-align:left;}
+    td{padding:7px 10px;border-bottom:1px solid #f0f0f0;font-weight:600;}
+    tr:last-child td{border-bottom:none;}
+    .total-row td{font-weight:900;background:#f9f9f9;border-top:2px solid #e4e4e7;}
+    .large{color:#16a34a;font-weight:900;}
+    @media print{body{padding:0;}}
+  </style></head><body>
+  <h1>${locLabel} — Gas Inventory Report</h1>
+  <p class="sub">Generated: ${now} &nbsp;·&nbsp; ${rawList.length} total cylinders</p>
+  <table>
+    <thead><tr><th>Gas Type</th><th>Regular</th><th>Large</th><th>Total</th><th>Avg PSI</th><th>Low PSI</th><th>High PSI</th></tr></thead>
+    <tbody>
+      ${rows.map(r=>`<tr>
+        <td><strong>${r.type}</strong></td>
+        <td>${r.reg}</td>
+        <td>${r.large>0?`<span class="large">${r.large}</span>`:"—"}</td>
+        <td><strong>${r.count}</strong></td>
+        <td>${Math.round(r.totalPSI/r.count)}</td>
+        <td>${r.minPSI}</td>
+        <td>${r.maxPSI}</td>
+      </tr>`).join("")}
+      <tr class="total-row">
+        <td>TOTAL</td>
+        <td>${rows.reduce((s,r)=>s+r.reg,0)}</td>
+        <td>${rows.reduce((s,r)=>s+r.large,0)||"—"}</td>
+        <td>${rawList.length}</td>
+        <td colspan="3"></td>
+      </tr>
+    </tbody>
+  </table>
+  <script>window.onload=()=>{window.print();}<\/script>
+  </body></html>`;
+  const w=window.open("","_blank","width=800,height=600");
+  w.document.write(printHtml);w.document.close();
+}
+// ── RETIRED TAB ───────────────────────────────────────────
+function renderRetired(){
+  const area=document.getElementById("content-area");
+  if(!retiredStock||retiredStock.length===0){area.innerHTML=`<div class="dash-panel rounded-xl py-20 text-center border-dashed border-2 border-zinc-800"><div class="bg-zinc-900 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3 text-zinc-500 border border-zinc-800"><i class="fa-solid fa-box-archive text-lg"></i></div><p class="text-zinc-400 font-black text-sm px-4">No retired bottles yet.</p></div>`;return;}
+  const rows=retiredStock.map((b,i)=>{const entry=gasCatalog[b.type]||{},color=entry.color||"#71717a";
+    return`<tr class="border-b border-zinc-900 hover:bg-zinc-900/30 font-bold text-sm"><td class="p-3 font-black uppercase tracking-tight" style="color:${color}">${b.type}</td><td class="p-3 text-zinc-400">${b.capacity}</td><td class="p-3 text-zinc-400 font-mono text-xs">${entry.concentration||"—"}</td><td class="p-3 text-zinc-400 font-mono text-xs">${b.partNum||"—"}</td><td class="p-3 text-zinc-400 font-mono text-xs">${b.sageNum||"—"}</td><td class="p-3 font-mono text-xs ${checkExpired(b.expDate)?"text-red-400":"text-zinc-400"}">${formatDate(b.expDate)}</td><td class="p-3 text-zinc-500 text-xs font-mono">${formatDateTime(b.retiredAt)}</td><td class="p-3 text-zinc-500 text-xs">${b.retiredFrom||"—"}</td><td class="p-3 text-zinc-600 text-xs">${b.user||"—"}</td><td class="p-3"><div class="flex gap-2"><button onclick="restoreRetired(${i})" class="bg-zinc-800 hover:bg-emerald-900/40 border border-zinc-700 hover:border-emerald-700 text-emerald-400 text-xs font-black px-3 py-1.5 rounded-lg transition whitespace-nowrap"><i class="fa-solid fa-rotate-left mr-1"></i>Restore</button><button onclick="permanentlyDeleteRetired(${i})" class="bg-zinc-800 hover:bg-red-950/40 border border-zinc-700 hover:border-red-800 text-red-400 text-xs font-black px-3 py-1.5 rounded-lg transition"><i class="fa-solid fa-trash-can"></i></button></div></td></tr>`;
+  }).join("");
+  area.innerHTML=`<div class="bg-zinc-950 border border-zinc-800 rounded-xl p-5 shadow-xl"><div class="flex items-center justify-between mb-4 border-b border-zinc-900 pb-3"><h3 class="text-sm font-black uppercase tracking-wider text-white flex items-center gap-2"><i class="fa-solid fa-box-archive text-zinc-500"></i> Retired Cylinders <span class="bg-zinc-800 text-zinc-300 text-xs px-2 py-0.5 rounded-full font-mono">${retiredStock.length}</span></h3><p class="text-xs text-zinc-600 font-bold">Kept until permanently deleted</p></div><div class="overflow-x-auto custom-scrollbar"><table class="w-full text-left border-collapse"><thead><tr class="border-b border-zinc-800 text-xs uppercase text-zinc-500 font-black tracking-wider"><th class="p-3">Gas</th><th class="p-3">Size</th><th class="p-3">Conc.</th><th class="p-3">Part #</th><th class="p-3">Sage #</th><th class="p-3">Exp</th><th class="p-3">Retired On</th><th class="p-3">From</th><th class="p-3">By</th><th class="p-3">Actions</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+}
+
+// ── HISTORY TAB ───────────────────────────────────────────
+function renderHistory(){
+  const area=document.getElementById("content-area");
+  const topGases=getMostUsedGases(),maxD=topGases.length>0?topGases[0].deploys:1;
+  const topHtml=topGases.length===0?`<p class="text-zinc-500 font-black text-sm text-center py-6">No deployment events yet.</p>`:topGases.map((g,rank)=>{
+    const entry=gasCatalog[g.type]||{},color=entry.color||"#71717a",pct=Math.round((g.deploys/maxD)*100),medal=rank===0?"🥇":rank===1?"🥈":rank===2?"🥉":"";
+    return`<div class="flex items-center gap-3 py-2 border-b border-zinc-900/60"><span class="text-xs font-black text-zinc-500 w-5 text-right shrink-0">${medal||`#${rank+1}`}</span><span class="w-3 h-3 rounded-full shrink-0" style="background-color:${color}"></span><span class="text-xs font-black uppercase text-zinc-200 truncate flex-1">${g.type}</span><div class="flex-1 bg-zinc-900 rounded-full h-2 overflow-hidden"><div class="bar-fill h-2 rounded-full" style="width:${pct}%;background-color:${color}"></div></div><span class="text-xs font-mono font-black text-white shrink-0 w-16 text-right">${g.deploys} deploy${g.deploys!==1?"s":""}</span><span class="text-xs font-mono text-zinc-500 shrink-0 w-16 text-right">${g.returns} return${g.returns!==1?"s":""}</span></div>`;
+  }).join("");
+  const actionIcon=a=>{if(a==="Deployed")return`<span class="text-emerald-400 font-black"><i class="fa-solid fa-arrow-right mr-1"></i>Deployed</span>`;if(a==="Returned")return`<span class="text-amber-400 font-black"><i class="fa-solid fa-arrow-left mr-1"></i>Returned</span>`;if(a==="Retired")return`<span class="text-zinc-400 font-black"><i class="fa-solid fa-box-archive mr-1"></i>Retired</span>`;if(a==="Restored")return`<span class="text-blue-400 font-black"><i class="fa-solid fa-rotate-left mr-1"></i>Restored</span>`;if(a==="Added")return`<span class="text-green-400 font-black"><i class="fa-solid fa-plus mr-1"></i>Added</span>`;if(a==="Moved")return`<span class="text-purple-400 font-black"><i class="fa-solid fa-right-left mr-1"></i>Moved</span>`;if(a==="Checked Out")return`<span class="text-purple-400 font-black"><i class="fa-solid fa-user-check mr-1"></i>Checked Out</span>`;if(a==="Returned from Checkout")return`<span class="text-emerald-400 font-black"><i class="fa-solid fa-check-double mr-1"></i>Returned</span>`;return`<span class="text-zinc-400">${a}</span>`;};
+  const rows=activityLog.map(e=>{const entry=gasCatalog[e.gasType]||{},color=entry.color||"#71717a";return`<tr class="border-b border-zinc-900 hover:bg-zinc-900/20 text-xs font-bold"><td class="p-3 font-mono text-zinc-500 whitespace-nowrap">${formatDateTime(e.ts)}</td><td class="p-3">${actionIcon(e.action)}</td><td class="p-3 font-black uppercase tracking-tight" style="color:${color}">${e.gasType}</td><td class="p-3 text-zinc-400">${e.capacity||"—"}</td><td class="p-3 text-zinc-500 font-mono">${e.from||"—"}</td><td class="p-3 text-zinc-500 font-mono">${e.to||"—"}</td><td class="p-3 text-zinc-600 font-mono">${e.user||"—"}</td></tr>`;}).join("");
+  area.innerHTML=`<div class="flex flex-col gap-4">
+    <div class="dash-panel border border-zinc-800 rounded-xl p-5"><h3 class="text-sm font-black uppercase text-zinc-400 tracking-wider mb-1 flex items-center gap-2"><i class="fa-solid fa-fire text-orange-400"></i> Most Deployed Gases <span class="text-zinc-600 font-normal normal-case text-xs ml-1">(${activityLog.filter(e=>e.action==="Deployed").length} total deploys)</span></h3><p class="text-xs text-zinc-600 font-bold mb-4">Top 15 by times moved to a job site cart</p>${topHtml}</div>
+    <div class="dash-panel border border-zinc-800 rounded-xl p-5 shadow-xl"><div class="flex items-center justify-between mb-4 border-b border-zinc-900 pb-3"><h3 class="text-sm font-black uppercase tracking-wider text-zinc-100 flex items-center gap-2"><i class="fa-solid fa-clock-rotate-left text-zinc-500"></i> Activity Log <span class="bg-zinc-800 text-zinc-300 text-xs px-2 py-0.5 rounded-full font-mono">${activityLog.length}</span></h3><button onclick="if(confirm('Clear all history?')){activityLog=[];saveToDatabase();}" class="text-xs font-black text-zinc-600 hover:text-red-400 transition uppercase tracking-wider"><i class="fa-solid fa-trash mr-1"></i>Clear Log</button></div><div class="overflow-x-auto custom-scrollbar"><table class="w-full text-left border-collapse"><thead><tr class="border-b border-zinc-800 text-xs uppercase text-zinc-500 font-black tracking-wider"><th class="p-3">Timestamp</th><th class="p-3">Action</th><th class="p-3">Gas Type</th><th class="p-3">Size</th><th class="p-3">From</th><th class="p-3">To</th><th class="p-3">By</th></tr></thead><tbody>${rows}</tbody></table></div></div>
+  </div>`;
+}
+
+// ── OVERVIEW ──────────────────────────────────────────────
+function renderOverview(){
+  let officeCount=officeStock.length,totalTrucksCount=0,totalCartCount=0,expiredCount=0,lowPSICount=0,exp30Count=0,exp60Count=0,exp90Count=0;
+  let matrix={combustible:0,toxic:0,refrigerant:0,inert:0},vehicleLoads=[],dynamicLedger={},dynamicLedgerLarge={};
+  gasTypes.forEach(t=>{dynamicLedger[t]=0;dynamicLedgerLarge[t]=0;});
+  let flatExpiredList=[],flatLowPSIlist=[],flatExpiringSoonList=[];
+  const proc=(b,loc)=>{
+    const s=getExpStatus(b.expDate);
+    if(s==="expired"){expiredCount++;flatExpiredList.push({...b,loc});}
+    if(["exp30","exp60","exp90"].includes(s)){flatExpiringSoonList.push({...b,loc,expStatus:s});if(s==="exp30")exp30Count++;else if(s==="exp60")exp60Count++;else exp90Count++;}
+    if(b.currentPSI<300){lowPSICount++;flatLowPSIlist.push({...b,loc});}
+    if(b.capacity==="Large"){if(dynamicLedgerLarge[b.type]!==undefined)dynamicLedgerLarge[b.type]++;else dynamicLedgerLarge[b.type]=1;}
+    else{if(dynamicLedger[b.type]!==undefined)dynamicLedger[b.type]++;else dynamicLedger[b.type]=1;}
+    const t=b.type.toUpperCase();
+    if(t.includes("CH4")||t.includes("H2 ")||t.includes("PROPANE")||t.includes("MULTI")||t.includes("ETHYLENE 1.15")||t.includes("ISOBUTYLENE"))matrix.combustible++;
+    else if(t.includes("CO ")||t.includes("NH3")||t.includes("CL2")||t.includes("SO2")||t.includes("H2S")||t.includes("NO2")||t.includes("HCL")||t.includes("NO ")||t.includes("ETHYLENE OXIDE"))matrix.toxic++;
+    else if(t.startsWith("R-")||t.includes("134A")||t.includes("1234YF"))matrix.refrigerant++;
+    else matrix.inert++;
+  };
+  officeStock.forEach(b=>proc(b,"Office Stock"));
+  vehicles.forEach(v=>{const tC=(inventory[v]||[]).length,cC=(cart[v]||[]).length;totalTrucksCount+=tC;totalCartCount+=cC;vehicleLoads.push({name:v,total:tC+cC});(inventory[v]||[]).forEach(b=>proc(b,`${v} Stock`));(cart[v]||[]).forEach(b=>proc(b,`${v} (On Cart)`));});
+  const grandTotal=officeCount+totalTrucksCount+totalCartCount;
+  let maxTruck={name:"N/A",total:-1},minTruck={name:"N/A",total:Infinity};
+  vehicleLoads.forEach(v=>{if(v.total>maxTruck.total)maxTruck=v;if(v.total<minTruck.total)minTruck=v;});
+  if(vehicleLoads.length===0){minTruck={name:"N/A",total:0};maxTruck={name:"N/A",total:0};}
+  const reorderItems=getReorderList();
+  const area=document.getElementById("content-area");
+  const allLedgerKeys=new Set([...Object.keys(dynamicLedger),...Object.keys(dynamicLedgerLarge)]);
+  const hasAnyLargeFleet=[...allLedgerKeys].some(k=>(dynamicLedgerLarge[k]||0)>0);
+  const ledgerRowsHtml=[...allLedgerKeys].map(gasName=>({gasName,s:dynamicLedger[gasName]||0,l:dynamicLedgerLarge[gasName]||0})).sort((a,b)=>(b.s+b.l)-(a.s+a.l)).map(({gasName,s,l})=>{
+    const entry=gasCatalog[gasName]||{},dotColor=entry.color||"#3f3f46",thresh=reorderThresholds[gasName]||0,isBelow=thresh>0&&s<=thresh;
+    const total=s+l;
+    const isLargeCapable=LARGE_BOTTLE_TYPES.has(gasName);
+    return`<div class="ledger-item dash-panel flex items-center justify-between p-3 border ${isBelow?"border-blue-800/60":"border-zinc-800/80"} rounded-lg font-black ${total===0?"opacity-40":""}" data-gas="${gasName.toLowerCase()}"><div class="flex items-center gap-2 min-w-0"><span class="w-3 h-3 rounded-full shrink-0" style="background-color:${dotColor}"></span><span class="text-zinc-100 truncate uppercase tracking-tight text-base">${gasName}</span>${isBelow?`<span class="text-xs text-blue-400 font-black whitespace-nowrap">⬇ REORDER</span>`:""}</div><div class="flex items-center gap-2 shrink-0"><span class="inline-flex items-baseline px-2.5 py-1 rounded font-mono font-black text-lg ${isBelow?"bg-blue-950 border border-blue-700 text-blue-200":"bg-zinc-800 border border-zinc-600 text-zinc-100"}">${s}</span>${isLargeCapable?`<span class="inline-flex items-baseline gap-0.5 px-2.5 py-1 rounded font-mono font-black text-base bg-green-900 border border-green-600 text-green-200">${l}<span class="text-xs font-bold ml-0.5 text-green-400">L</span></span>`:""}</div></div>`;
+  }).join("");
+  let subReportTableHtml="";
+  if(activeReportFilter==="expired")subReportTableHtml=generateAlertTable("Expired Fleet Cylinders",flatExpiredList,"expired");
+  else if(activeReportFilter==="expiring")subReportTableHtml=generateAlertTable("Expiring Within 90 Days",flatExpiringSoonList,"expiring");
+  else if(activeReportFilter==="low")subReportTableHtml=generateAlertTable("Low Volume (<300 PSI)",flatLowPSIlist,"low");
+  else if(activeReportFilter==="reorder")subReportTableHtml=generateReorderTable(reorderItems);
+  const supControls=isSupervisor()?`<button onclick="openReorderModal()" class="bg-blue-950 border border-blue-800 hover:bg-blue-900 text-blue-400 text-xs font-black px-3 rounded-lg h-9 min-h-0 whitespace-nowrap transition"><i class="fa-solid fa-sliders mr-1"></i>Thresholds</button><button onclick="exportCSV()" class="bg-zinc-800 border border-zinc-700 hover:bg-zinc-700 text-zinc-300 hover:text-white text-xs font-black px-3 rounded-lg h-9 min-h-0 whitespace-nowrap transition"><i class="fa-solid fa-download mr-1"></i>Export CSV</button>`:"";
+  area.innerHTML=`<div class="flex flex-col gap-4">
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 font-bold text-sm select-none">
+      <div onclick="toggleReportFilter('all')" class="cursor-pointer dash-panel p-4 rounded-xl flex items-center justify-between shadow-md transition border-2 ${activeReportFilter==="all"?"border-zinc-400 bg-zinc-900":"border-zinc-800/60 hover:border-zinc-700"}"><div><span class="text-3xl font-black text-white block">${grandTotal}</span><span class="text-xs font-black text-zinc-400 block mt-1 uppercase">Total Fleet</span></div><i class="fa-solid fa-boxes-stacked text-2xl text-zinc-800/60"></i></div>
+      <div onclick="toggleReportFilter('expired')" class="cursor-pointer p-4 rounded-xl flex items-center justify-between shadow-md transition border-2 ${activeReportFilter==="expired"?"border-red-500 bg-red-950/20":expiredCount>0?"border-red-950/80 bg-red-950/10 hover:border-red-900":"border-zinc-800/60 hover:border-zinc-700"}"><div><span class="text-3xl font-black ${expiredCount>0?"text-red-500":"text-zinc-500"} block">${expiredCount}</span><span class="text-xs font-black text-zinc-400 block mt-1 uppercase">Expired</span></div><i class="fa-solid fa-calendar-xmark text-2xl ${expiredCount>0?"text-red-900/40":"text-zinc-800/60"}"></i></div>
+      <div onclick="toggleReportFilter('expiring')" class="cursor-pointer p-4 rounded-xl flex items-center justify-between shadow-md transition border-2 ${activeReportFilter==="expiring"?"border-orange-500 bg-orange-950/20":exp30Count>0?"border-orange-900/60 bg-orange-950/10":"border-zinc-800/60 hover:border-zinc-700"}"><div><span class="text-3xl font-black ${exp30Count>0?"text-orange-400":(exp60Count+exp90Count)>0?"text-amber-400":"text-zinc-500"} block">${exp30Count+exp60Count+exp90Count}</span><span class="text-xs font-black text-zinc-400 block mt-1 uppercase">Expiring</span>${exp30Count>0?`<span class="text-xs text-orange-400 font-black">${exp30Count} &lt;30d</span>`:""}</div><i class="fa-solid fa-clock text-2xl ${exp30Count>0?"text-orange-900/40":"text-zinc-800/60"}"></i></div>
+      <div onclick="toggleReportFilter('low')" class="cursor-pointer p-4 rounded-xl flex items-center justify-between shadow-md transition border-2 ${activeReportFilter==="low"?"border-amber-500 bg-amber-950/20":lowPSICount>0?"border-amber-950/80 bg-amber-950/10":"border-zinc-800/60 hover:border-zinc-700"}"><div><span class="text-3xl font-black ${lowPSICount>0?"text-amber-500":"text-zinc-500"} block">${lowPSICount}</span><span class="text-xs font-black text-zinc-400 block mt-1 uppercase">Low PSI</span></div><i class="fa-solid fa-triangle-exclamation text-2xl ${lowPSICount>0?"text-amber-900/40":"text-zinc-800/60"}"></i></div>
+      <div onclick="toggleReportFilter('reorder')" class="cursor-pointer p-4 rounded-xl flex items-center justify-between shadow-md transition border-2 ${activeReportFilter==="reorder"?"border-blue-500 bg-blue-950/20":reorderItems.length>0?"border-blue-900/60 bg-blue-950/10":"border-zinc-800/60 hover:border-zinc-700"}"><div><span class="text-3xl font-black ${reorderItems.length>0?"text-blue-400":"text-zinc-500"} block">${reorderItems.length}</span><span class="text-xs font-black text-zinc-400 block mt-1 uppercase">Reorder</span></div><i class="fa-solid fa-cart-shopping text-2xl ${reorderItems.length>0?"text-blue-900/40":"text-zinc-800/60"}"></i></div>
+      <div onclick="${isSupervisor()?"setTab(4)":"void(0)"}" class="cursor-pointer p-4 rounded-xl flex items-center justify-between shadow-md transition border-2 border-zinc-800/60 hover:border-zinc-700"><div><span class="text-3xl font-black text-zinc-500 block">${retiredStock.length}</span><span class="text-xs font-black text-zinc-400 block mt-1 uppercase">Retired</span></div><i class="fa-solid fa-box-archive text-2xl text-zinc-800/60"></i></div>
+    </div>
+    ${subReportTableHtml}
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="dash-panel border border-zinc-800 p-5 rounded-xl"><h3 class="text-sm font-black uppercase text-zinc-400 tracking-wider mb-3 flex items-center gap-1.5"><i class="fa-solid fa-map-location-dot text-emerald-400"></i> Asset Location Split</h3><div class="space-y-2.5 text-sm font-bold"><div class="flex justify-between border border-zinc-800/60 p-3 rounded-lg"><span class="text-zinc-400">Office Storage:</span><span class="text-zinc-100">${officeCount} Cylinders</span></div><div class="flex justify-between border border-zinc-800/60 p-3 rounded-lg"><span class="text-zinc-400">Fleet Vehicles:</span><span class="text-zinc-100">${totalTrucksCount} Cylinders</span></div><div class="flex justify-between border border-emerald-900/40 p-3 rounded-lg"><span class="text-zinc-400">Job Site Carts:</span><span class="text-emerald-400">${totalCartCount} Cylinders</span></div></div></div>
+      <div class="dash-panel border border-zinc-800 p-5 rounded-xl"><h3 class="text-sm font-black uppercase text-zinc-400 tracking-wider mb-3 flex items-center gap-1.5"><i class="fa-solid fa-biohazard text-amber-500"></i> Hazard Profile</h3><div class="grid grid-cols-2 gap-3 text-sm font-bold"><div class="border border-red-900/30 p-2.5 rounded-lg flex flex-col"><span class="text-xs text-zinc-500 uppercase">Combustibles</span><span class="text-xl text-red-400 font-black">${matrix.combustible}</span></div><div class="border border-purple-900/30 p-2.5 rounded-lg flex flex-col"><span class="text-xs text-zinc-500 uppercase">Toxics</span><span class="text-xl text-purple-400 font-black">${matrix.toxic}</span></div><div class="border border-cyan-900/30 p-2.5 rounded-lg flex flex-col"><span class="text-xs text-zinc-500 uppercase">Refrigerants</span><span class="text-xl text-cyan-400 font-black">${matrix.refrigerant}</span></div><div class="border border-zinc-700/40 p-2.5 rounded-lg flex flex-col"><span class="text-xs text-zinc-500 uppercase">Inerts</span><span class="text-xl text-zinc-400 font-black">${matrix.inert}</span></div></div></div>
+    </div>
+    <div class="dash-panel border border-zinc-800 p-5 rounded-xl"><h3 class="text-sm font-black uppercase text-zinc-400 tracking-wider mb-3 flex items-center gap-1.5"><i class="fa-solid fa-scale-balanced text-blue-400"></i> Fleet Load Balance</h3><div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm font-bold"><div class="border border-zinc-700/50 p-4 rounded-lg flex items-center justify-between"><div><span class="text-xs uppercase text-zinc-500 block">Highest Load</span><span class="text-base font-black text-zinc-100">${maxTruck.name}</span></div><span class="border border-zinc-600/60 px-3 py-1.5 rounded text-zinc-300 font-black">${maxTruck.total} Bottles</span></div><div class="border border-blue-800/40 p-4 rounded-lg flex items-center justify-between"><div><span class="text-xs uppercase text-zinc-500 block">Lowest Load</span><span class="text-base font-black text-zinc-400">${minTruck.name}</span></div><span class="border border-blue-700/50 px-3 py-1.5 rounded text-blue-400 font-black">${minTruck.total} Bottles</span></div></div></div>
+    <div class="dash-panel border border-zinc-800 p-5 rounded-xl flex flex-col"><div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4"><h3 class="text-sm font-black uppercase text-zinc-400 tracking-wider flex items-center gap-1.5"><i class="fa-solid fa-list-ol text-amber-400"></i> Gas Blend Stock Ledger</h3><div class="flex gap-2 w-full sm:w-auto"><input type="text" id="ledger-search" oninput="filterLedger()" placeholder="Filter gas name..." class="bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-1 text-white placeholder-zinc-600 outline-none font-black text-sm w-full sm:w-48 h-9 min-h-0">${supControls}</div></div><div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5" id="ledger-container">${ledgerRowsHtml}</div></div>
+  </div>`;
+}
+
+function generateReorderTable(items){
+  const atThresh=getAtThresholdList();
+  if(items.length===0&&atThresh.length===0)return`<div class="bg-zinc-950 border border-zinc-800 p-6 rounded-xl text-center"><p class="text-sm font-black text-zinc-500 uppercase"><i class="fa-solid fa-circle-check text-emerald-500 mr-1"></i> All gases above reorder thresholds</p></div>`;
+  const rows=items.map(item=>{const entry=gasCatalog[item.type]||{},color=entry.color||"#71717a";return`<tr class="border-b border-zinc-900 hover:bg-zinc-900/30 font-bold text-sm"><td class="p-3 font-black uppercase tracking-tight" style="color:${color}">${item.type}</td><td class="p-3 text-zinc-400 font-mono text-xs">${entry.partNum||"—"}</td><td class="p-3 text-zinc-400 font-mono text-xs">${entry.sageNum||"—"}</td><td class="p-3 font-mono font-black text-blue-400">${item.count}</td><td class="p-3 font-mono text-zinc-500">${item.threshold}</td><td class="p-3 font-black text-amber-400">Order ${item.need}</td></tr>`;}).join("");
+  const atRows=atThresh.map(item=>{const entry=gasCatalog[item.type]||{},color=entry.color||"#71717a";return`<tr class="border-b border-zinc-900/40 hover:bg-zinc-900/20 font-bold text-sm opacity-60"><td class="p-3 font-black uppercase tracking-tight" style="color:${color}">${item.type}</td><td class="p-3 text-zinc-400 font-mono text-xs">${entry.partNum||"—"}</td><td class="p-3 text-zinc-400 font-mono text-xs">${entry.sageNum||"—"}</td><td class="p-3 font-mono font-black text-zinc-400">${item.count}</td><td class="p-3 font-mono text-zinc-500">${item.threshold}</td><td class="p-3 font-black text-zinc-500">At minimum</td></tr>`;}).join("");
+  return`<div class="dash-panel border border-blue-900/40 rounded-xl p-5 shadow-xl"><div class="flex items-center justify-between mb-4 border-b border-zinc-900 pb-2.5"><h3 class="text-sm font-black uppercase tracking-wider text-zinc-100 flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse"></span>Reorder List</h3><div class="flex gap-3 items-center">${isSupervisor()?`<button onclick="openReorderModal()" class="text-xs font-black text-blue-400 hover:text-white transition"><i class="fa-solid fa-sliders mr-1"></i>Edit Thresholds</button>`:""}<button onclick="toggleReportFilter('all')" class="text-xs uppercase font-black tracking-widest text-zinc-500 hover:text-zinc-300 transition"><i class="fa-solid fa-xmark mr-1"></i>Clear</button></div></div><div class="overflow-x-auto custom-scrollbar"><table class="w-full text-left border-collapse"><thead><tr class="border-b border-zinc-800 text-xs uppercase text-zinc-400 font-black tracking-wider"><th class="p-3">Gas Type</th><th class="p-3">Part #</th><th class="p-3">Sage #</th><th class="p-3">Current Stock</th><th class="p-3">Min Threshold</th><th class="p-3">Action Needed</th></tr></thead><tbody>${rows}${atRows}</tbody></table></div></div>`;
+}
+
+function generateAlertTable(title,targetBottles,mode){
+  if(targetBottles.length===0)return`<div class="bg-zinc-950 border border-zinc-800 p-6 rounded-xl text-center"><p class="text-sm font-black text-zinc-500 uppercase"><i class="fa-solid fa-circle-check text-emerald-500 mr-1"></i> Clear — No Cylinders Flagged</p></div>`;
+  const rows=targetBottles.map(b=>{const entry=gasCatalog[b.type]||{},baseColor=entry.color||"#ffffff",days=daysUntilExp(b.expDate),expStatus=b.expStatus||getExpStatus(b.expDate);const daysCell=mode==="expiring"?`<td class="p-3 font-mono font-black text-xs ${expStatus==="exp30"?"text-orange-400":expStatus==="exp60"?"text-amber-400":"text-zinc-400"}">${days!==null?days+"d left":"—"}</td>`:"";return`<tr class="border-b border-zinc-900 hover:bg-zinc-900/30 font-bold text-sm"><td class="p-3 uppercase tracking-tight font-black" style="color:${baseColor}">${b.type}</td><td class="p-3 text-white font-mono text-xs">${b.partNum||entry.partNum||"N/A"}</td><td class="p-3 text-zinc-300 font-mono text-xs">${b.sageNum||entry.sageNum||"N/A"}</td><td class="p-3 text-zinc-400 text-xs">${entry.concentration||"—"}</td><td class="p-3 text-zinc-400">${b.capacity}</td><td class="p-3 font-mono ${b.currentPSI<300?"text-amber-400 font-black":"text-zinc-400"}">${b.currentPSI}/${b.maxPSI} PSI</td><td class="p-3 font-mono ${checkExpired(b.expDate)?"text-red-400 font-black":expStatus==="exp30"?"text-orange-400 font-black":expStatus==="exp60"?"text-amber-400":"text-zinc-400"}">${formatDate(b.expDate)}</td>${daysCell}<td class="p-3"><span class="px-2 py-1 rounded-md text-xs bg-zinc-900 border border-zinc-800 text-white inline-flex items-center gap-1.5 font-black"><i class="fa-solid ${b.loc.includes("Cart")?"fa-cart-shopping text-emerald-400":b.loc.includes("Stock")&&!b.loc.startsWith("Office")?"fa-truck text-zinc-400":"fa-warehouse text-amber-500"}"></i>${b.loc}</span></td></tr>`;}).join("");
+  const pulse=mode==="expired"?"bg-red-500":mode==="expiring"?"bg-orange-500":"bg-amber-500",extraHeader=mode==="expiring"?`<th class="p-3">Days Left</th>`:"";
+  return`<div class="dash-panel border border-zinc-800 rounded-xl p-5 shadow-xl"><div class="flex items-center justify-between mb-4 border-b border-zinc-900 pb-2.5"><h3 class="text-sm font-black uppercase tracking-wider text-zinc-100 flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full ${pulse} animate-pulse"></span>${title}</h3><button onclick="toggleReportFilter('all')" class="text-xs uppercase font-black tracking-widest text-zinc-500 hover:text-zinc-300 transition"><i class="fa-solid fa-xmark mr-1"></i>Clear</button></div><div class="overflow-x-auto custom-scrollbar"><table class="w-full text-left border-collapse"><thead><tr class="border-b border-zinc-800 text-xs uppercase text-zinc-400 font-black tracking-wider"><th class="p-3">Gas</th><th class="p-3">Part #</th><th class="p-3">Sage #</th><th class="p-3">Concentration</th><th class="p-3">Size</th><th class="p-3">PSI</th><th class="p-3">Exp Date</th>${extraHeader}<th class="p-3">Location</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+}
+
+function toggleReportFilter(f){activeReportFilter=activeReportFilter===f?"all":f;renderOverview();}
+function filterLedger(){const q=document.getElementById("ledger-search").value.toLowerCase().trim();document.querySelectorAll(".ledger-item").forEach(item=>item.classList.toggle("hidden",!item.getAttribute("data-gas").includes(q)));}
+// ── BOTTLE ACTIONS ────────────────────────────────────────
+function addBottle(){
+  if(!isSupervisor())return;
+  const type=document.getElementById("gas-type").value,capacity=document.getElementById("capacity").value;
+  const expDate=document.getElementById("exp-date").value,currentPSI=parseInt(document.getElementById("current-psi").value)||1000;
+  const maxPSI=parseInt(document.getElementById("max-psi").value),entry=gasCatalog[type]||{};
+  const partNum=document.getElementById("part-num").value.trim()||entry.partNum||"";
+  const sageNum=document.getElementById("sage-num").value.trim()||entry.sageNum||"";
+  const assetNum=document.getElementById("asset-num").value.trim();
+  const bottle={type,partNum,sageNum,capacity,expDate,currentPSI,maxPSI,assetNum};
+  const dest=currentTab===2?"Office Stock":currentLocationLabel();
+  if(currentTab===2)officeStock.push(bottle);
+  else{if(!inventory[currentLocation])inventory[currentLocation]=[];inventory[currentLocation].push(bottle);}
+  logEvent("Added",bottle,"",dest);setDefaultDate();onGasTypeChange();
+  document.getElementById("asset-num").value = "";
+  saveToDatabase();
+}
+
+function addBulkBottles(){
+  if(!isSupervisor())return;
+  const type=document.getElementById("bulk-gas-type").value,capacity=document.getElementById("bulk-capacity").value;
+  const qty=Math.min(50,Math.max(1,parseInt(document.getElementById("bulk-qty").value)||1));
+  const expDate=document.getElementById("bulk-exp-date").value,currentPSI=parseInt(document.getElementById("bulk-current-psi").value)||1000;
+  const maxPSI=parseInt(document.getElementById("bulk-max-psi").value),entry=gasCatalog[type]||{};
+  const partNum=document.getElementById("bulk-part-num").value.trim()||entry.partNum||"";
+  const sageNum=entry.sageNum||"";
+  const startAsset=document.getElementById("bulk-asset-num").value.trim();
+  const startNum=startAsset ? parseInt(startAsset) : null;
+  const dest=currentTab===2?"Office Stock":currentLocationLabel();
+  for(let n=0;n<qty;n++){
+    const assetNum = startNum !== null ? String(startNum + n) : "";
+    const bottle={type,partNum,sageNum,capacity,expDate,currentPSI,maxPSI,assetNum};
+    if(currentTab===2)officeStock.push(bottle);
+    else{if(!inventory[currentLocation])inventory[currentLocation]=[];inventory[currentLocation].push(bottle);}
+  }
+  logEvent("Added",{type,partNum,sageNum,capacity},"",`${dest} (x${qty})`);
+  setDefaultDate();onBulkGasTypeChange();
+  document.getElementById("bulk-asset-num").value = "";
+  saveToDatabase();
+  const btn=document.querySelector('#bulk-add-panel button[onclick="addBulkBottles()"]');
+  if(btn){const orig=btn.innerHTML;btn.innerHTML=`<i class="fa-solid fa-check"></i> Added ${qty}x`;btn.classList.add("bg-emerald-700");setTimeout(()=>{btn.innerHTML=orig;btn.classList.remove("bg-emerald-700");},1500);}
+}
+
+function pullToMyTruck(i){
+  if(isSupervisor())return;
+  const bottle=officeStock.splice(i,1)[0];if(!bottle)return;
+  const dest=currentUser.vehicle;
+  if(!inventory[dest])inventory[dest]=[];
+  inventory[dest].push(bottle);
+  logEvent("Moved",bottle,"Office Stock",`${dest} (Truck)`);
+  saveToDatabase();
+}
+
+function updatePSI(i,change){const l=getCurrentList();if(l[i]){l[i].currentPSI=Math.max(0,Math.min(l[i].maxPSI,l[i].currentPSI+change));saveToDatabase();}}
+
+function moveToCart(i){
+  const from=currentLocationLabel(),bottle=inventory[currentLocation].splice(i,1)[0];
+  if(!cart[currentLocation])cart[currentLocation]=[];
+  cart[currentLocation].push(bottle);
+  logEvent("Deployed",bottle,from,`${currentLocation} (On Cart)`);saveToDatabase();
+}
+
+function returnToInventory(i){
+  const from=`${currentLocation} (On Cart)`,bottle=cart[currentLocation].splice(i,1)[0];
+  inventory[currentLocation].push(bottle);
+  logEvent("Returned",bottle,from,`${currentLocation} (Truck)`);saveToDatabase();
+}
+
+function openMoveModal(i){
+  selectedIndex=i;
+  let html="";
+  if(currentTab!==2)html+=`<option value="office">Office / Shop Stock</option>`;
+  vehicles.forEach(v=>{if(currentTab===2||v!==currentLocation)html+=`<option value="${v}">Truck: ${v}</option>`;});
+  document.getElementById("move-destination").innerHTML=html;
+  document.getElementById("move-modal").classList.remove("hidden");
+}
+
+function confirmMove(){
+  const dest=document.getElementById("move-destination").value,from=currentLocationLabel();
+  const bottle=getCurrentList().splice(selectedIndex,1)[0],toLabel=dest==="office"?"Office Stock":`${dest} (Truck)`;
+  if(dest==="office")officeStock.push(bottle);
+  else{if(!inventory[dest])inventory[dest]=[];inventory[dest].push(bottle);}
+  logEvent("Moved",bottle,from,toLabel);closeModal();saveToDatabase();
+}
+function closeModal(){document.getElementById("move-modal").classList.add("hidden");}
+
+function removeBottle(i){
+  if(!isSupervisor())return;
+  if(confirm("Permanently delete this bottle? This cannot be undone.")){getCurrentList().splice(i,1);saveToDatabase();}
+}
+
+// PSI Modal
+function openPSIModal(i){psiTargetIndex=i;const l=getCurrentList();document.getElementById("psi-custom-input").value=l[i]?l[i].currentPSI:"";document.getElementById("psi-modal").classList.remove("hidden");setTimeout(()=>document.getElementById("psi-custom-input").focus(),50);}
+function quickSetPSI(v){document.getElementById("psi-custom-input").value=v;}
+function confirmPSI(){const v=parseInt(document.getElementById("psi-custom-input").value);if(isNaN(v)){alert("Please enter a valid PSI.");return;}const l=getCurrentList();if(l[psiTargetIndex]){l[psiTargetIndex].currentPSI=Math.max(0,Math.min(l[psiTargetIndex].maxPSI,v));saveToDatabase();}closePSIModal();}
+function closePSIModal(){document.getElementById("psi-modal").classList.add("hidden");psiTargetIndex=null;}
+
+// Asset Modal
+let assetTargetIndex=null;
+function openAssetModal(i){if(!canAddBottles())return;assetTargetIndex=i;const l=getCurrentList();document.getElementById("asset-custom-input").value=l[i]&&l[i].assetNum?l[i].assetNum:"";document.getElementById("asset-modal").classList.remove("hidden");setTimeout(()=>document.getElementById("asset-custom-input").focus(),50);}
+function confirmAssetNum(){const v=document.getElementById("asset-custom-input").value.trim();const l=getCurrentList();if(l[assetTargetIndex]){if(v===""){delete l[assetTargetIndex].assetNum;}else{const n=parseInt(v);if(isNaN(n)||n<1||n>500){alert("Please enter a valid number between 1 and 500.");return;}l[assetTargetIndex].assetNum=String(n);}saveToDatabase();updateSystemCanvas();}closeAssetModal();}
+function closeAssetModal(){document.getElementById("asset-modal").classList.add("hidden");assetTargetIndex=null;}
+
+// Retire Modal
+function openRetireModal(i){retireTargetIndex=i;const b=getCurrentList()[i];if(b)document.getElementById("retire-bottle-label").textContent=`${b.type} · ${b.capacity} · ${b.currentPSI} PSI · EXP: ${formatDate(b.expDate)}`;document.getElementById("retire-modal").classList.remove("hidden");}
+function confirmRetire(){
+  const l=getCurrentList(),bottle=l.splice(retireTargetIndex,1)[0];
+  if(bottle){const from=currentLocationLabel();bottle.retiredAt=Date.now();bottle.retiredFrom=from;bottle.user=currentUser?currentUser.displayName:"";retiredStock.push(bottle);logEvent("Retired",bottle,from,"Retired Stock");saveToDatabase();}
+  closeRetireModal();
+}
+function closeRetireModal(){document.getElementById("retire-modal").classList.add("hidden");retireTargetIndex=null;}
+
+function permanentlyDeleteRetired(i){if(!isSupervisor())return;if(confirm("Permanently delete this retired bottle?")){retiredStock.splice(i,1);saveToDatabase();}}
+function restoreRetired(i){
+  if(!isSupervisor())return;
+  const bottle=retiredStock.splice(i,1)[0];
+  if(bottle){delete bottle.retiredAt;delete bottle.retiredFrom;officeStock.push(bottle);logEvent("Restored",bottle,"Retired Stock","Office Stock");saveToDatabase();}
+}
+
+// Reorder Modal
+function openReorderModal(){
+  if(!isSupervisor())return;
+  const counts=fleetCountByGas();
+  document.getElementById("reorder-threshold-list").innerHTML=gasTypes.map(t=>{
+    const entry=gasCatalog[t]||{},thresh=reorderThresholds[t]||0,count=counts[t]||0,isBelow=thresh>0&&count<=thresh;
+    return`<div class="flex items-center justify-between py-2 border-b border-zinc-900 gap-3">
+      <div class="flex items-center gap-2 min-w-0 flex-1"><span class="w-2.5 h-2.5 rounded-full shrink-0" style="background-color:${entry.color||"#71717a"}"></span><span class="text-xs font-black text-zinc-200 uppercase tracking-tight truncate">${t}</span></div>
+      <span class="text-xs font-mono text-zinc-500 shrink-0">Stock: <span class="${isBelow?"text-red-400 font-black":"text-zinc-300"}">${count}</span></span>
+      <div class="flex items-center gap-1.5 shrink-0"><label class="text-xs text-zinc-600 font-bold">Min:</label><input type="number" min="0" max="99" value="${thresh}" data-gas="${t}" class="reorder-input bg-zinc-950 border ${isBelow?"border-red-800":"border-zinc-700"} rounded px-2 text-white font-black text-xs w-16 outline-none focus:border-blue-500" style="min-height:32px;"></div>
+    </div>`;
+  }).join("");
+  document.getElementById("reorder-modal").classList.remove("hidden");
+}
+function saveReorderThresholds(){
+  const inputs=document.querySelectorAll(".reorder-input");
+  console.log("REORDER SAVE: found",inputs.length,"inputs");
+  inputs.forEach(input=>{const gas=input.getAttribute("data-gas"),val=parseInt(input.value)||0;console.log("  gas:",gas,"val:",val);if(val>0)reorderThresholds[gas]=val;else delete reorderThresholds[gas];});
+  console.log("SAVING reorderThresholds:",JSON.stringify(reorderThresholds));
+  saveToDatabase();closeReorderModal();
+}
+function closeReorderModal(){document.getElementById("reorder-modal").classList.add("hidden");}
+
+// ── VEHICLE SUMMARY ───────────────────────────────────────
+function renderVehicleSummary(){
+  const area=document.getElementById("content-area");
+  const isSup=isSupervisor();
+  const loc=currentLocation;
+  const allBottles=[...(inventory[loc]||[]),...(cart[loc]||[])];
+  // Split counts by size
+  const smallCounts={},largeCounts={},totalCounts={};
+  allBottles.forEach(b=>{
+    const isLarge=b.capacity==="Large";
+    if(isLarge)largeCounts[b.type]=(largeCounts[b.type]||0)+1;
+    else smallCounts[b.type]=(smallCounts[b.type]||0)+1;
+    totalCounts[b.type]=(totalCounts[b.type]||0)+1;
+  });
+  const vThresh=vehicleThresholds[loc]||{};
+
+  // Below-minimum uses small counts only (minimums are for Small bottles)
+  const belowMin=gasTypes.filter(t=>{const min=vThresh[t]||0;return min>0&&(smallCounts[t]||0)<min;});
+  const totalNeeded=belowMin.reduce((sum,t)=>{const min=vThresh[t]||0,count=smallCounts[t]||0;return sum+(min-count);},0);
+
+  // Alert panel — gases below minimum
+  const alertHtml=belowMin.length===0
+    ?`<div class="dash-panel border border-emerald-900/40 rounded-xl p-4 flex items-center gap-3"><i class="fa-solid fa-circle-check text-emerald-500 text-lg"></i><span class="text-sm font-black text-zinc-400 uppercase tracking-wide">All minimums satisfied</span></div>`
+    :`<div class="dash-panel border border-red-900/50 rounded-xl p-4">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-sm font-black uppercase tracking-wider text-red-400 flex items-center gap-2"><i class="fa-solid fa-triangle-exclamation"></i> Below Minimum — ${belowMin.length} Gas${belowMin.length!==1?"es":""}</h3>
+          <span class="text-xs font-black bg-red-950/60 border border-red-900/60 text-red-300 px-2.5 py-1 rounded-lg">${totalNeeded} regular bottle${totalNeeded!==1?"s":""} needed</span>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+          ${belowMin.map(t=>{const entry=gasCatalog[t]||{},color=entry.color||"#71717a",count=smallCounts[t]||0,lcount=largeCounts[t]||0,min=vThresh[t]||0,need=min-count;
+            return`<div class="flex items-center justify-between bg-red-950/20 border border-red-900/40 rounded-lg px-3 py-2">
+              <div class="flex items-center gap-2 min-w-0"><span class="w-2 h-2 rounded-full shrink-0" style="background-color:${color}"></span><span class="text-xs font-black uppercase truncate" style="color:${color}">${t}</span></div>
+              <div class="flex items-center gap-2 shrink-0 ml-2">
+                <span class="text-xs font-mono text-zinc-400">${count}${lcount>0?` · <span class="text-green-400">${lcount}L</span>`:""} / min ${min}</span>
+                <span class="text-xs font-black text-red-400 bg-red-950 border border-red-900 px-1.5 py-0.5 rounded">+${need}</span>
+              </div>
+            </div>`;}).join("")}
+        </div>
+      </div>`;
+
+  // Quick fill summary — what to pull from office to satisfy minimums (small only)
+  const fillHtml=belowMin.length===0?""
+    :`<div class="dash-panel border border-blue-900/40 rounded-xl p-4">
+        <h3 class="text-sm font-black uppercase tracking-wider text-blue-400 flex items-center gap-2 mb-3"><i class="fa-solid fa-cart-shopping"></i> Quick Fill — Pull List</h3>
+        <p class="text-xs text-zinc-500 font-bold mb-3">Bottles needed from office stock to meet minimums on ${loc}:</p>
+        <div class="overflow-x-auto custom-scrollbar">
+          <table class="w-full text-left border-collapse text-xs font-bold">
+            <thead><tr class="border-b border-zinc-800 text-zinc-500 font-black uppercase tracking-wider">
+              <th class="pb-2 pr-4">Gas Type</th><th class="pb-2 pr-4">Part #</th><th class="pb-2 pr-4">Sage #</th><th class="pb-2 pr-4 text-center">Regular</th><th class="pb-2 pr-4 text-center">Large</th><th class="pb-2 pr-4 text-center">Min</th><th class="pb-2 text-center">Pull</th>
+            </tr></thead>
+            <tbody>${belowMin.map(t=>{const entry=gasCatalog[t]||{},color=entry.color||"#71717a",scount=smallCounts[t]||0,lcount=largeCounts[t]||0,min=vThresh[t]||0,need=min-scount;
+              return`<tr class="border-b border-zinc-900/60">
+                <td class="py-2 pr-4 font-black uppercase tracking-tight" style="color:${color}">${t}</td>
+                <td class="py-2 pr-4 font-mono text-zinc-400">${entry.partNum||"—"}</td>
+                <td class="py-2 pr-4 font-mono text-zinc-400">${entry.sageNum||"—"}</td>
+                <td class="py-2 pr-4 text-center font-mono text-zinc-300">${scount}</td>
+                <td class="py-2 pr-4 text-center font-mono text-emerald-500">${lcount||"—"}</td>
+                <td class="py-2 pr-4 text-center font-mono text-zinc-300">${min}</td>
+                <td class="py-2 text-center"><span class="font-black text-blue-400 bg-blue-950/40 border border-blue-900/60 px-2 py-0.5 rounded">${need}</span></td>
+              </tr>`;}).join("")}
+            </tbody>
+          </table>
+        </div>
+      </div>`;
+
+  // Compact gas grid — all types, showing S and L counts separately
+  const truckSmall=(inventory[loc]||[]).filter(b=>b.capacity!=="Large").length;
+  const truckLarge=(inventory[loc]||[]).filter(b=>b.capacity==="Large").length;
+  const cartSmall=(cart[loc]||[]).filter(b=>b.capacity!=="Large").length;
+  const cartLarge=(cart[loc]||[]).filter(b=>b.capacity==="Large").length;
+
+  const hasAnyLarge=allBottles.some(b=>b.capacity==="Large");
+
+  const gridRows=gasTypes.map(t=>{
+    const entry=gasCatalog[t]||{},color=entry.color||"#71717a";
+    const scount=smallCounts[t]||0,lcount=largeCounts[t]||0,min=vThresh[t]||0;
+    const isBelow=min>0&&scount<min,isOk=min>0&&scount>=min,isEmpty=scount===0&&lcount===0&&min===0;
+    return`<div class="flex items-center gap-2 px-2.5 py-2 rounded-lg border ${isBelow?"border-red-900/50 bg-red-950/10":isOk?"border-emerald-900/30 bg-emerald-950/10":"border-zinc-800/50"} ${isEmpty?"opacity-30":""}">
+      <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background-color:${color}"></span>
+      <span class="text-sm font-black uppercase tracking-tight text-zinc-100 flex-1 truncate">${t}</span>
+      <div class="flex items-center gap-1.5 shrink-0">
+        <span class="inline-flex items-baseline px-2.5 py-1 rounded font-mono font-black text-base ${isBelow?"bg-red-950 border border-red-700 text-red-300":isOk?"bg-emerald-950 border border-emerald-700 text-emerald-300":"bg-zinc-800 border border-zinc-600 text-zinc-100"}">${scount}</span>
+        ${LARGE_BOTTLE_TYPES.has(t)?(lcount>0
+          ?`<span class="inline-flex items-baseline gap-0.5 px-2 py-0.5 rounded font-mono font-black text-sm bg-green-900 border border-green-600 text-green-200">${lcount}<span class="text-xs font-bold ml-0.5 text-green-400">L</span></span>`
+          :`<span class="inline-flex items-baseline gap-0.5 px-2 py-0.5 rounded font-mono font-black text-sm bg-zinc-900 border border-zinc-700 text-zinc-600">0<span class="text-xs font-bold ml-0.5 text-zinc-700">L</span></span>`)
+        :""}
+      </div>
+      ${isSup
+        ?`<input type="number" min="0" max="99" value="${min}" data-gas="${t}" class="vehicle-min-input bg-zinc-950 border ${isBelow?"border-red-800":"border-zinc-800"} rounded px-1.5 text-zinc-100 font-black text-xs w-10 outline-none focus:border-emerald-600 text-center" style="min-height:22px;max-height:22px;">`
+        :(min>0?`<span class="text-xs font-mono text-zinc-500 shrink-0">/${min}</span>`:`<span class="text-xs text-zinc-500">—</span>`)
+      }
+    </div>`;
+  }).join("");
+
+  area.innerHTML=`<div class="flex flex-col gap-3">
+    ${alertHtml}
+    ${fillHtml}
+    <div class="dash-panel border border-zinc-800 rounded-xl p-4">
+      <div class="flex items-center justify-between mb-3 pb-2 border-b border-zinc-800">
+        <div class="flex items-center gap-3 flex-wrap">
+          <h3 class="text-sm font-black uppercase tracking-wider text-zinc-100 flex items-center gap-2"><i class="fa-solid fa-list-check text-emerald-400"></i> ${loc} — All Gases</h3>
+          <div class="flex items-center gap-2 flex-wrap text-xs font-bold text-zinc-500">
+            <span class="bg-zinc-900 border border-zinc-800 px-2 py-0.5 rounded">Truck: <span class="text-zinc-300">${truckSmall}</span>${truckLarge>0?` · <span class="text-green-400 font-black">${truckLarge}<span class="text-xs ml-0.5">L</span></span>`:""}</span>
+            <span class="bg-zinc-900 border border-zinc-800 px-2 py-0.5 rounded">Cart: <span class="text-zinc-300">${cartSmall}</span>${cartLarge>0?` · <span class="text-green-400 font-black">${cartLarge}<span class="text-xs ml-0.5">L</span></span>`:""}</span>
+          </div>
+        </div>
+        ${isSup?`<button onclick="saveVehicleThresholds('${loc}')" class="bg-emerald-600 hover:bg-emerald-500 text-zinc-950 font-black text-xs px-3 py-1.5 rounded-lg transition flex items-center gap-1.5"><i class="fa-solid fa-floppy-disk"></i> Save Minimums</button>`:""}
+      </div>
+      ${isSup?`<p class="text-xs text-zinc-500 font-bold mb-2">Counts shown per gas · <span class="text-green-500">L = Large (2000 PSI)</span> · minimums apply to regular bottles only · set min qty and save</p>`:`<p class="text-xs text-zinc-600 font-bold mb-2"><span class="text-green-600">L = Large (2000 PSI)</span> · shown only for CH4, H2, Multi, and Zero</p>`}
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5">${gridRows}</div>
+    </div>
+  </div>`;
+}
+
+function saveVehicleThresholds(loc){
+  if(!isSupervisor())return;
+  if(!vehicleThresholds[loc])vehicleThresholds[loc]={};
+  const inputs=document.querySelectorAll(".vehicle-min-input");
+  console.log("SAVE: found",inputs.length,"inputs for",loc);
+  inputs.forEach(input=>{
+    const gas=input.getAttribute("data-gas"),val=parseInt(input.value)||0;
+    console.log("  gas:",gas,"val:",val);
+    if(val>0)vehicleThresholds[loc][gas]=val;
+    else delete vehicleThresholds[loc][gas];
+  });
+  console.log("SAVING vehicleThresholds:",JSON.stringify(vehicleThresholds));
+  saveToDatabase();
+  const btn=document.querySelector('button[onclick="saveVehicleThresholds(\''+loc+'\')"]');
+  if(btn){const orig=btn.innerHTML;btn.innerHTML=`<i class="fa-solid fa-check"></i> Saved!`;setTimeout(()=>{btn.innerHTML=orig;},1500);}
+}
+
+// CSV Export
+function exportCSV(){
+  if(!isSupervisor())return;
+  const rows=[["Gas Type","Part #","Sage #","Concentration","Size","Current PSI","Max PSI","Expiration","Location","Status"]];
+  const addRows=(list,loc)=>list.forEach(b=>{const e=gasCatalog[b.type]||{};rows.push([b.type,b.partNum||"",b.sageNum||"",e.concentration||"",b.capacity,b.currentPSI,b.maxPSI,b.expDate||"",loc,checkExpired(b.expDate)?"EXPIRED":"OK"]);});
+  addRows(officeStock,"Office Stock");
+  vehicles.forEach(v=>{addRows(inventory[v]||[],`${v} Truck`);addRows(cart[v]||[],`${v} Cart`);});
+  const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(",")).join("\n");
+  const a=document.createElement("a");a.href="data:text/csv;charset=utf-8,"+encodeURIComponent(csv);
+  a.download=`gas_inventory_${new Date().toISOString().slice(0,10)}.csv`;a.click();
+}
+
+// ── OFFICE STOCK SUMMARY ─────────────────────────────────
+function renderOfficeStockSummary(){
+  const area=document.getElementById("content-area");
+  const bottles=officeStock||[];
+  const smallCounts={},largeCounts={};
+  gasTypes.forEach(t=>{smallCounts[t]=0;largeCounts[t]=0;});
+  let expiredCount=0,lowPSICount=0,exp30Count=0;
+  bottles.forEach(b=>{
+    const s=getExpStatus(b.expDate);
+    if(s==="expired")expiredCount++;
+    if(s==="exp30")exp30Count++;
+    if(b.currentPSI<300)lowPSICount++;
+    if(b.capacity==="Large"){if(largeCounts[b.type]!==undefined)largeCounts[b.type]++;else largeCounts[b.type]=1;}
+    else{if(smallCounts[b.type]!==undefined)smallCounts[b.type]++;else smallCounts[b.type]=1;}
+  });
+  const totalSmall=bottles.filter(b=>b.capacity!=="Large").length;
+  const totalLarge=bottles.filter(b=>b.capacity==="Large").length;
+
+  // Stat pills
+  const statBar=`<div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+    <div class="dash-panel border border-zinc-800 rounded-xl p-4 flex items-center justify-between">
+      <div><span class="text-2xl font-black text-white block">${bottles.length}</span><span class="text-xs font-black text-zinc-500 uppercase">Total</span></div><i class="fa-solid fa-warehouse text-2xl text-zinc-800"></i></div>
+    <div class="dash-panel border ${expiredCount>0?"border-red-900/60":"border-zinc-800"} rounded-xl p-4 flex items-center justify-between">
+      <div><span class="text-2xl font-black ${expiredCount>0?"text-red-400":"text-zinc-500"} block">${expiredCount}</span><span class="text-xs font-black text-zinc-500 uppercase">Expired</span></div><i class="fa-solid fa-calendar-xmark text-2xl ${expiredCount>0?"text-red-900/40":"text-zinc-800"}"></i></div>
+    <div class="dash-panel border ${lowPSICount>0?"border-amber-900/60":"border-zinc-800"} rounded-xl p-4 flex items-center justify-between">
+      <div><span class="text-2xl font-black ${lowPSICount>0?"text-amber-400":"text-zinc-500"} block">${lowPSICount}</span><span class="text-xs font-black text-zinc-500 uppercase">Low PSI</span></div><i class="fa-solid fa-triangle-exclamation text-2xl ${lowPSICount>0?"text-amber-900/40":"text-zinc-800"}"></i></div>
+    <div class="dash-panel border ${exp30Count>0?"border-orange-900/60":"border-zinc-800"} rounded-xl p-4 flex items-center justify-between">
+      <div><span class="text-2xl font-black ${exp30Count>0?"text-orange-400":"text-zinc-500"} block">${exp30Count}</span><span class="text-xs font-black text-zinc-500 uppercase">Exp &lt;30d</span></div><i class="fa-solid fa-clock text-2xl ${exp30Count>0?"text-orange-900/40":"text-zinc-800"}"></i></div>
+  </div>`;
+
+  // Gas grid
+  const gridRows=gasTypes.map(t=>{
+    const entry=gasCatalog[t]||{},color=entry.color||"#71717a";
+    const sc=smallCounts[t]||0,lc=largeCounts[t]||0;
+    const isEmpty=sc===0&&lc===0;
+    return`<div class="flex items-center gap-2 px-2.5 py-2 rounded-lg border border-zinc-800/50 ${isEmpty?"opacity-25":""}">
+      <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background-color:${color}"></span>
+      <span class="text-sm font-black uppercase tracking-tight text-zinc-100 flex-1 truncate">${t}</span>
+      <div class="flex items-center gap-1.5 shrink-0">
+        <span class="inline-flex items-baseline px-2.5 py-1 rounded font-mono font-black text-base bg-zinc-800 border border-zinc-600 text-zinc-100">${sc}</span>
+        ${LARGE_BOTTLE_TYPES.has(t)?(lc>0
+          ?`<span class="inline-flex items-baseline gap-0.5 px-2 py-0.5 rounded font-mono font-black text-sm bg-green-900 border border-green-600 text-green-200">${lc}<span class="text-xs font-bold ml-0.5 text-green-400">L</span></span>`
+          :`<span class="inline-flex items-baseline gap-0.5 px-2 py-0.5 rounded font-mono font-black text-sm bg-zinc-900 border border-zinc-700 text-zinc-600">0<span class="text-xs font-bold ml-0.5 text-zinc-700">L</span></span>`)
+        :""}
+      </div>
+    </div>`;
+  }).join("");
+
+  area.innerHTML=`<div class="flex flex-col gap-4">
+    ${statBar}
+    <div class="dash-panel border border-zinc-800 rounded-xl p-4">
+      <div class="flex items-center justify-between mb-3 pb-2 border-b border-zinc-800 flex-wrap gap-2">
+        <div class="flex items-center gap-3 flex-wrap">
+          <h3 class="text-sm font-black uppercase tracking-wider text-zinc-100 flex items-center gap-2"><i class="fa-solid fa-warehouse text-amber-400"></i> Office Stock — All Gases</h3>
+          <div class="flex items-center gap-2 text-xs font-bold text-zinc-500">
+            <span class="bg-zinc-900 border border-zinc-800 px-2 py-0.5 rounded">Regular: <span class="text-zinc-300">${totalSmall}</span></span>
+            ${totalLarge>0?`<span class="bg-zinc-900 border border-zinc-800 px-2 py-0.5 rounded">Large: <span class="text-green-400 font-black">${totalLarge}<span class="text-xs ml-0.5">L</span></span></span>`:""}
+          </div>
+        </div>
+      </div>
+      <p class="text-xs text-zinc-600 font-bold mb-2"><span class="text-green-600">L = Large (2000 PSI)</span> · shown only for CH4, H2, Multi, and Zero</p>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5">${gridRows}</div>
+    </div>
+  </div>`;
+}
+
+// Navigation
+function setTab(tab){
+  if(tab!==2&&tab!==7)_bottleSearch="";
+  currentTab=tab;
+  updateSystemCanvas();
+}
+function switchLocation(v){
+  if(!isSupervisor()&&!isOfficeRole()&&v!==currentUser.vehicle)return;
+  _bottleSearch="";
+  currentLocation=v;if(currentTab===2||currentTab===7||currentTab>=3)currentTab=0;updateSystemCanvas();
+}
+function switchToOffice(){_bottleSearch="";currentTab=2;updateSystemCanvas();}
+function addNewVehicle(){if(!isSupervisor())return;const name=prompt("Enter name for the new vehicle:");if(name&&!vehicles.includes(name)){vehicles.push(name);inventory[name]=[];cart[name]=[];currentLocation=name;currentTab=0;saveToDatabase();}}
+function renameVehicle(oldName){if(!isSupervisor())return;const newName=prompt("Enter a new name:",oldName);if(newName&&newName!==oldName&&!vehicles.includes(newName)){vehicles=vehicles.map(v=>v===oldName?newName:v);inventory[newName]=inventory[oldName]||[];cart[newName]=cart[oldName]||[];delete inventory[oldName];delete cart[oldName];currentLocation=newName;saveToDatabase();}}
+function deleteVehicle(name){if(!isSupervisor())return;if(vehicles.length<=1){alert("Must keep at least one vehicle.");return;}const bCount=(inventory[name]||[]).length+(cart[name]||[]).length;if(bCount>0&&!confirm(`${name} has ${bCount} bottles. Delete anyway?`))return;vehicles=vehicles.filter(v=>v!==name);delete inventory[name];delete cart[name];if(currentLocation===name)currentLocation=vehicles[0];currentTab=0;saveToDatabase();}
+
+function updateSystemCanvas(){
+  renderLocationTabs();renderMainTabs();updateLiveCounters();
+  if(currentTab===3)renderOverview();
+  else if(currentTab===4)renderRetired();
+  else if(currentTab===5)renderHistory();
+  else if(currentTab===6)renderVehicleSummary();
+  else if(currentTab===7)renderOfficeStockSummary();
+  else if(currentTab===8)renderCheckOutTab();
+  else renderBottles();
+}
+</script>
+<!-- Bottle Detail Modal -->
+<div id="bottle-detail-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" style="background:rgba(0,0,0,0.75);backdrop-filter:blur(4px)">
+  <div class="relative w-full max-w-sm max-h-[92vh] overflow-y-auto custom-scrollbar">
+    <button onclick="closeBottleDetail()" class="absolute top-3 right-3 z-10 bg-zinc-900 border border-zinc-700 hover:border-zinc-500 text-zinc-400 hover:text-white rounded-lg w-9 h-9 flex items-center justify-center transition z-10"><i class="fa-solid fa-xmark"></i></button>
+    <div id="bottle-detail-inner" class="dash-panel rounded-xl p-5 border border-zinc-800"></div>
+  </div>
+</div>
+</body>
+</html><!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
