@@ -17,26 +17,43 @@
     .custom-scrollbar::-webkit-scrollbar{height:6px;width:6px;}
     .custom-scrollbar::-webkit-scrollbar-track{background:#18181b;}
     .custom-scrollbar::-webkit-scrollbar-thumb{background:#52525b;border-radius:3px;}
-    body.light{background-color:#f4f4f5;color:#18181b;}
+    body.light{background-color:#f4f4f5!important;color:#18181b!important;}
     body.light header{background-color:#fff!important;border-color:#e4e4e7!important;}
-    body.light .dash-panel{background-color:#fff;border-color:#e4e4e7;box-shadow:0 1px 4px rgba(0,0,0,.08);}
-    body.light .bottle-card{background:linear-gradient(180deg,#fff 0%,#fafafa 100%);border-color:#e4e4e7;}
-    body.light .bottle-card:hover{border-color:#a1a1aa;}
+    body.light .dash-panel{background-color:#fff!important;border-color:#e4e4e7!important;box-shadow:0 1px 4px rgba(0,0,0,.08)!important;}
+    body.light .bottle-card{background:linear-gradient(180deg,#fff 0%,#fafafa 100%)!important;border-color:#e4e4e7!important;}
+    body.light .bottle-card:hover{border-color:#a1a1aa!important;}
+    /* Login / Setup screen overlays */
+    body.light #login-screen,body.light #setup-screen{background-color:#f4f4f5!important;}
+    /* All bg-zinc-* overrides */
     body.light .bg-zinc-950{background-color:#f4f4f5!important;}
     body.light .bg-zinc-900{background-color:#e4e4e7!important;}
     body.light .bg-zinc-800{background-color:#d4d4d8!important;}
+    body.light .bg-zinc-700{background-color:#c4c4ca!important;}
+    /* Border overrides */
     body.light .border-zinc-800{border-color:#d4d4d8!important;}
     body.light .border-zinc-700{border-color:#a1a1aa!important;}
+    body.light .divide-zinc-800>*+*{border-color:#d4d4d8!important;}
+    /* Text overrides */
     body.light .text-zinc-100{color:#18181b!important;}
-    body.light .text-zinc-200{color:#18181b!important;} /* Fix for lighter text fields like Checked Out table */
+    body.light .text-zinc-200{color:#18181b!important;}
     body.light .text-zinc-300{color:#3f3f46!important;}
     body.light .text-zinc-400{color:#52525b!important;}
     body.light .text-zinc-500{color:#71717a!important;}
     body.light .text-white{color:#18181b!important;}
-    body.light select,body.light input{background-color:#fff!important;color:#18181b!important;border-color:#a1a1aa!important;}
+    /* Form elements */
+    body.light select,body.light input,body.light textarea{background-color:#fff!important;color:#18181b!important;border-color:#a1a1aa!important;}
+    body.light input::placeholder{color:#a1a1aa!important;}
+    /* Table rows */
+    body.light table thead tr{background-color:#e4e4e7!important;}
+    body.light table tbody tr:nth-child(even){background-color:#ebebed!important;}
+    body.light table tbody tr:nth-child(odd){background-color:#f4f4f5!important;}
+    body.light table td,body.light table th{border-color:#d4d4d8!important;color:#18181b!important;}
+    /* Scrollbar */
     body.light .custom-scrollbar::-webkit-scrollbar-track{background:#e4e4e7;}
     body.light .custom-scrollbar::-webkit-scrollbar-thumb{background:#a1a1aa;}
+    /* Bottle card interior */
     body.light .bottle-card .bg-zinc-950\/40{background-color:rgba(0,0,0,0.04)!important;border-color:rgba(0,0,0,0.06)!important;}
+    /* Bottle SVG overrides */
     body.light .bottle-card svg path[fill="#141416"],body.light .bottle-card svg path[fill="#09090b"]{fill:#c8c8cc!important;}
     body.light .bottle-card svg rect[fill="#09090b"]{fill:#a0a0a8!important;}
     body.light .bottle-card svg path[stroke="#2a2a2e"]{stroke:#b0b0b8!important;}
@@ -48,6 +65,11 @@
     body.light .bottle-card svg stop[stop-color="#52525b"]{stop-color:#b8b8c0!important;}
     body.light .bottle-card svg stop[stop-color="#27272a"]{stop-color:#c0c0c8!important;}
     body.light .bottle-card svg stop[stop-color="#d4d4d8"]{stop-color:#ffffff!important;}
+    /* Vehicle Summary / Office Stock tab cards */
+    body.light .rounded-xl.border{border-color:#d4d4d8!important;}
+    /* Alert/warning panels */
+    body.light .bg-red-950\/50{background-color:rgba(254,226,226,0.5)!important;}
+    body.light .bg-amber-950\/30{background-color:rgba(255,243,199,0.4)!important;}
     button,select,input{min-height:44px;}
     .no-zoom-btn{touch-action:manipulation;}
     .psi-input::-webkit-inner-spin-button,.psi-input::-webkit-outer-spin-button{opacity:1;}
@@ -340,7 +362,7 @@ async function resetTechPassword(){
 let isDarkMode=true;
 function initTheme(){const s=localStorage.getItem("gbt-theme");isDarkMode=s!=="light";applyTheme();}
 function toggleTheme(){isDarkMode=!isDarkMode;localStorage.setItem("gbt-theme",isDarkMode?"dark":"light");applyTheme();}
-function applyTheme(){document.body.classList.toggle("light",!isDarkMode);document.getElementById("theme-icon").className=isDarkMode?"fa-solid fa-moon text-xs":"fa-solid fa-sun text-xs text-amber-400";document.getElementById("theme-label").textContent=isDarkMode?"Light":"Dark";}
+function applyTheme(){document.body.classList.toggle("light",!isDarkMode);const ti=document.getElementById("theme-icon");const tl=document.getElementById("theme-label");if(ti)ti.className=isDarkMode?"fa-solid fa-moon text-xs":"fa-solid fa-sun text-xs text-amber-400";if(tl)tl.textContent=isDarkMode?"Light":"Dark";}
 initTheme();
 
 // ── GAS CATALOG ───────────────────────────────────────────
