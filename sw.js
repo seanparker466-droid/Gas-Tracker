@@ -1,9 +1,8 @@
-const CACHE = 'gas-tracker-v2';
+const CACHE = 'gas-tracker-v3';
 
-// Skip Firebase, CDN scripts, and external APIs — cache only same-origin assets
 const SKIP = [
   'firebaseio.com', 'googleapis.com', 'gstatic.com',
-  'cloudflare', 'tailwindcss.com', 'cdnjs.cloudflare.com'
+  'tailwindcss.com', 'cdnjs.cloudflare.com', 'fontawesome'
 ];
 
 self.addEventListener('install', () => self.skipWaiting());
