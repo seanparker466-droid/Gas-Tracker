@@ -330,6 +330,7 @@ function applyUserUI(){
 
 function isSupervisor(){return currentUser&&currentUser.role==="supervisor";}
 function isOfficeRole(){return currentUser&&currentUser.role==="office";}
+function isOfficeViewOnly(){return isOfficeRole();}  // office can add bottles but cannot edit existing ones
 function canAddBottles(){return isSupervisor()||isOfficeRole();}
 function techCanEditVehicle(v){return isSupervisor()||isOfficeRole()||currentUser.vehicle===v;}
 function visibleVehicles(){return (isSupervisor()||isOfficeRole())?vehicles:vehicles.filter(v=>v===currentUser.vehicle);}
@@ -594,7 +595,7 @@ function renderMainTabs(){
   if(isSup&&currentTab<2)mgmt.innerHTML=`<button onclick="renameVehicle('${currentLocation}')" class="bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 px-3 py-1.5 rounded-lg text-zinc-300 hover:text-white text-xs font-black flex items-center gap-1 transition"><i class="fa-solid fa-gear text-zinc-400"></i> Rename</button><button onclick="deleteVehicle('${currentLocation}')" class="bg-zinc-900 hover:bg-red-950/30 border border-zinc-800 hover:border-red-900 px-3 py-1.5 rounded-lg text-zinc-400 hover:text-red-400 text-xs font-black flex items-center gap-1 transition"><i class="fa-solid fa-trash text-zinc-500"></i> Remove</button>`;
   else mgmt.innerHTML="";
   const form=document.getElementById("add-bottle-form");
-  if(form)form.style.display=(currentTab>=3||!isSup)?"none":"";
+  if(form)form.style.display=(currentTab>=3||(!isSup&&!isOff))?"none":"";
 }
 
 // ── CHECKOUT SYSTEM ───────────────────────────────────────
@@ -848,8 +849,10 @@ function renderBottleGrid(){
 
   // ── CARD VIEW (default) ────────────────────────────────
   const isPullOnlyCard=isOffice&&!canAddBottles();
-  let html=isPullOnlyCard?`<div class="mb-3 bg-blue-950/20 border border-blue-900/40 rounded-xl p-3 text-xs font-black text-blue-400 flex items-center gap-2"><i class="fa-solid fa-info-circle"></i> Office Stock — pull bottles to your vehicle from here.</div>`:"";
-  html+=`<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">`;
+  let html=isOfficeViewOnly()
+    ?`<div class="mb-3 bg-amber-950/20 border border-amber-900/40 rounded-xl p-3 text-xs font-black text-amber-400 flex items-center gap-2"><i class="fa-solid fa-eye"></i> View-only — use the Add Bottle form below to add new bottles.</div>`
+    :isPullOnlyCard?`<div class="mb-3 bg-blue-950/20 border border-blue-900/40 rounded-xl p-3 text-xs font-black text-blue-400 flex items-center gap-2"><i class="fa-solid fa-info-circle"></i> Office Stock — pull bottles to your vehicle from here.</div>`
+    :"";  html+=`<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">`;
   list.forEach((b)=>{const i=b._origIdx;
     const entry=gasCatalog[b.type]||{},baseColor=entry.color||"#bae6fd",concentration=entry.concentration||"";
     const expStatus=getExpStatus(b.expDate),fillPercent=Math.min((b.currentPSI/b.maxPSI)*100,100);
@@ -906,18 +909,23 @@ function renderBottleGrid(){
             <path d="M 26,52 L 26,198" stroke="white" stroke-width="3" stroke-linecap="round" opacity="0.2"/>
             <path d="M 55,28 Q 15,30 15,62 L 15,202 Q 15,214 30,214 L 80,214 Q 95,214 95,202 L 95,62 Q 95,30 55,28 Z" fill="none" stroke="#2a2a2e" stroke-width="2"/>
           </svg>`}
-          <button onclick="openPSIModal(${i})" class="no-zoom-btn absolute bottom-1 left-1/2 -translate-x-1/2 bg-zinc-950 border border-zinc-700 hover:border-emerald-600 text-center font-mono text-sm px-3 py-1 rounded-lg shadow-md min-w-[90px] transition group">
-            <span class="block font-black text-white leading-tight group-hover:text-emerald-400 transition">${b.currentPSI}<span class="text-xs text-zinc-400 ml-0.5">PSI</span></span>
-            <span class="text-[11px] text-zinc-600 group-hover:text-emerald-700 transition">tap to edit</span>
-          </button>
+          ${isOfficeViewOnly()
+            ?`<button disabled class="no-zoom-btn absolute bottom-1 left-1/2 -translate-x-1/2 bg-zinc-950 border border-zinc-800 text-center font-mono text-sm px-3 py-1 rounded-lg shadow-md min-w-[90px] cursor-default">
+                <span class="block font-black text-white leading-tight">${b.currentPSI}<span class="text-xs text-zinc-400 ml-0.5">PSI</span></span>
+                <span class="text-[11px] text-zinc-700">view only</span>
+              </button>`
+            :`<button onclick="openPSIModal(${i})" class="no-zoom-btn absolute bottom-1 left-1/2 -translate-x-1/2 bg-zinc-950 border border-zinc-700 hover:border-emerald-600 text-center font-mono text-sm px-3 py-1 rounded-lg shadow-md min-w-[90px] transition group">
+                <span class="block font-black text-white leading-tight group-hover:text-emerald-400 transition">${b.currentPSI}<span class="text-xs text-zinc-400 ml-0.5">PSI</span></span>
+                <span class="text-[11px] text-zinc-600 group-hover:text-emerald-700 transition">tap to edit</span>
+              </button>`}
         </div>
       </div>
-      <div class="grid grid-cols-4 gap-1.5 mb-2">
+      ${isOfficeViewOnly()?"":`<div class="grid grid-cols-4 gap-1.5 mb-2">
         <button onclick="updatePSI(${i},-10)" class="no-zoom-btn bg-zinc-900 border border-zinc-800 hover:border-zinc-600 rounded-md text-zinc-300 font-black text-xs h-9 flex items-center justify-center transition select-none">-10</button>
         <button onclick="updatePSI(${i},10)"  class="no-zoom-btn bg-zinc-900 border border-zinc-800 hover:border-zinc-600 rounded-md text-zinc-300 font-black text-xs h-9 flex items-center justify-center transition select-none">+10</button>
         <button onclick="updatePSI(${i},50)"  class="no-zoom-btn bg-zinc-900 border border-zinc-800 hover:border-zinc-600 rounded-md text-zinc-300 font-black text-xs h-9 flex items-center justify-center transition select-none">+50</button>
         <button onclick="updatePSI(${i},-50)" class="no-zoom-btn bg-zinc-900 border border-zinc-800 hover:border-zinc-600 rounded-md text-zinc-300 font-black text-xs h-9 flex items-center justify-center transition select-none">-50</button>
-      </div>
+      </div>`}
       <div class="font-sans text-xs font-bold space-y-1.5">
         <div class="grid grid-cols-2 gap-x-3 border-b border-zinc-900 pb-1.5">
           <span class="text-zinc-400"><i class="fa-solid fa-barcode mr-1 text-zinc-600"></i>P/N: <span class="text-white font-mono">${partNum}</span></span>
@@ -934,6 +942,8 @@ function renderBottleGrid(){
       <div class="grid grid-cols-2 gap-2 mt-3 text-xs font-black">
         ${isPullOnlyCard
           ?`<button onclick="pullToMyTruck(${i})" class="bg-zinc-900 border border-zinc-700 hover:border-emerald-700 hover:bg-emerald-950/20 text-emerald-400 rounded-lg font-black col-span-2 h-10 flex items-center justify-center gap-1.5 transition"><i class="fa-solid fa-arrow-right-long"></i> Pull to My Vehicle</button>`
+          :isOfficeViewOnly()
+          ?`<span class="col-span-2 text-center text-zinc-600 text-xs font-bold py-2">View only — add new bottles below</span>`
           :`${currentTab===0?`<button onclick="moveToCart(${i})" class="bg-zinc-900 border border-zinc-800 hover:border-emerald-800 hover:bg-emerald-950/20 text-emerald-400 rounded-lg font-black col-span-2 h-10 flex items-center justify-center gap-1.5 transition"><i class="fa-solid fa-arrow-right-long"></i> Move to Cart</button>`:""}
         ${currentTab===1?`<button onclick="returnToInventory(${i})" class="bg-zinc-900 border border-zinc-800 hover:border-amber-800 hover:bg-amber-950/20 text-amber-400 rounded-lg font-black col-span-2 h-10 flex items-center justify-center gap-1.5 transition"><i class="fa-solid fa-arrow-left-long"></i> Return to Truck</button>`:""}
         <button onclick="openMoveModal(${i})" class="bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-300 rounded-lg font-bold flex items-center justify-center gap-1 h-10 transition"><i class="fa-solid fa-right-left text-xs"></i> Route</button>
@@ -1005,18 +1015,23 @@ function openBottleDetail(i){
       ${b.capacity==="Large"?`<div class="absolute top-2 right-2"><span class="text-xs font-black uppercase tracking-widest text-emerald-400 bg-emerald-950/60 border border-emerald-800/60 px-1.5 py-0.5 rounded">LARGE</span></div>`:""}
       <div class="relative flex items-center justify-center">
         ${svgHtml}
-        <button onclick="closeBottleDetail();openPSIModal(${i})" class="no-zoom-btn absolute bottom-1 left-1/2 -translate-x-1/2 bg-zinc-950 border border-zinc-700 hover:border-emerald-600 text-center font-mono text-sm px-3 py-1 rounded-lg shadow-md min-w-[90px] transition group">
-          <span class="block font-black text-white leading-tight group-hover:text-emerald-400 transition">${b.currentPSI}<span class="text-xs text-zinc-400 ml-0.5">PSI</span></span>
-          <span class="text-xs text-zinc-600 group-hover:text-emerald-700 transition">tap to edit</span>
-        </button>
+        ${isOfficeViewOnly()
+          ?`<button disabled class="no-zoom-btn absolute bottom-1 left-1/2 -translate-x-1/2 bg-zinc-950 border border-zinc-800 text-center font-mono text-sm px-3 py-1 rounded-lg shadow-md min-w-[90px] cursor-default">
+              <span class="block font-black text-white leading-tight">${b.currentPSI}<span class="text-xs text-zinc-400 ml-0.5">PSI</span></span>
+              <span class="text-xs text-zinc-700">view only</span>
+            </button>`
+          :`<button onclick="closeBottleDetail();openPSIModal(${i})" class="no-zoom-btn absolute bottom-1 left-1/2 -translate-x-1/2 bg-zinc-950 border border-zinc-700 hover:border-emerald-600 text-center font-mono text-sm px-3 py-1 rounded-lg shadow-md min-w-[90px] transition group">
+              <span class="block font-black text-white leading-tight group-hover:text-emerald-400 transition">${b.currentPSI}<span class="text-xs text-zinc-400 ml-0.5">PSI</span></span>
+              <span class="text-xs text-zinc-600 group-hover:text-emerald-700 transition">tap to edit</span>
+            </button>`}
       </div>
     </div>
-    <div class="grid grid-cols-4 gap-1.5 mb-2">
+    ${isOfficeViewOnly()?"":`<div class="grid grid-cols-4 gap-1.5 mb-2">
       <button onclick="updatePSI(${i},-10);closeBottleDetail();openBottleDetail(${i})" class="no-zoom-btn bg-zinc-900 border border-zinc-800 hover:border-zinc-600 rounded-md text-zinc-300 font-black text-xs h-9 flex items-center justify-center transition select-none">-10</button>
       <button onclick="updatePSI(${i},10);closeBottleDetail();openBottleDetail(${i})"  class="no-zoom-btn bg-zinc-900 border border-zinc-800 hover:border-zinc-600 rounded-md text-zinc-300 font-black text-xs h-9 flex items-center justify-center transition select-none">+10</button>
       <button onclick="updatePSI(${i},50);closeBottleDetail();openBottleDetail(${i})"  class="no-zoom-btn bg-zinc-900 border border-zinc-800 hover:border-zinc-600 rounded-md text-zinc-300 font-black text-xs h-9 flex items-center justify-center transition select-none">+50</button>
       <button onclick="updatePSI(${i},-50);closeBottleDetail();openBottleDetail(${i})" class="no-zoom-btn bg-zinc-900 border border-zinc-800 hover:border-zinc-600 rounded-md text-zinc-300 font-black text-xs h-9 flex items-center justify-center transition select-none">-50</button>
-    </div>
+    </div>`}
     <div class="font-sans text-xs font-bold space-y-1.5 mb-3">
       <div class="grid grid-cols-2 gap-x-3 border-b border-zinc-900 pb-1.5">
         <span class="text-zinc-400"><i class="fa-solid fa-barcode mr-1 text-zinc-600"></i>P/N: <span class="text-white font-mono">${partNum}</span></span>
@@ -1033,6 +1048,8 @@ function openBottleDetail(i){
     <div class="grid grid-cols-2 gap-2 text-xs font-black">
       ${isPullOnly
         ?`<button onclick="closeBottleDetail();pullToMyTruck(${i})" class="bg-zinc-900 border border-zinc-700 hover:border-emerald-700 hover:bg-emerald-950/20 text-emerald-400 rounded-lg font-black col-span-2 h-10 flex items-center justify-center gap-1.5 transition"><i class="fa-solid fa-arrow-right-long"></i> Pull to My Vehicle</button>`
+        :isOfficeViewOnly()
+        ?`<span class="col-span-2 text-center text-zinc-600 text-xs font-bold py-2">View only — add new bottles below</span>`
         :`${currentTab===0?`<button onclick="closeBottleDetail();moveToCart(${i})" class="bg-zinc-900 border border-zinc-800 hover:border-emerald-800 hover:bg-emerald-950/20 text-emerald-400 rounded-lg font-black col-span-2 h-10 flex items-center justify-center gap-1.5 transition"><i class="fa-solid fa-arrow-right-long"></i> Move to Cart</button>`:""}
         ${currentTab===1?`<button onclick="closeBottleDetail();returnToInventory(${i})" class="bg-zinc-900 border border-zinc-800 hover:border-amber-800 hover:bg-amber-950/20 text-amber-400 rounded-lg font-black col-span-2 h-10 flex items-center justify-center gap-1.5 transition"><i class="fa-solid fa-arrow-left-long"></i> Return to Truck</button>`:""}
         <button onclick="closeBottleDetail();openMoveModal(${i})" class="bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-300 rounded-lg font-bold flex items-center justify-center gap-1 h-10 transition"><i class="fa-solid fa-right-left text-xs"></i> Route</button>
@@ -1209,7 +1226,7 @@ function toggleReportFilter(f){activeReportFilter=activeReportFilter===f?"all":f
 function filterLedger(){const q=document.getElementById("ledger-search").value.toLowerCase().trim();document.querySelectorAll(".ledger-item").forEach(item=>item.classList.toggle("hidden",!item.getAttribute("data-gas").includes(q)));}
 // ── BOTTLE ACTIONS ────────────────────────────────────────
 function addBottle(){
-  if(!isSupervisor())return;
+  if(!isSupervisor()&&!isOfficeRole())return;
   const type=document.getElementById("gas-type").value,capacity=document.getElementById("capacity").value;
   const expDate=document.getElementById("exp-date").value,currentPSI=parseInt(document.getElementById("current-psi").value)||1000;
   const maxPSI=parseInt(document.getElementById("max-psi").value),entry=gasCatalog[type]||{};
@@ -1226,7 +1243,7 @@ function addBottle(){
 }
 
 function addBulkBottles(){
-  if(!isSupervisor())return;
+  if(!isSupervisor()&&!isOfficeRole())return;
   const type=document.getElementById("bulk-gas-type").value,capacity=document.getElementById("bulk-capacity").value;
   const qty=Math.min(50,Math.max(1,parseInt(document.getElementById("bulk-qty").value)||1));
   const expDate=document.getElementById("bulk-exp-date").value,currentPSI=parseInt(document.getElementById("bulk-current-psi").value)||1000;
@@ -1260,7 +1277,7 @@ function pullToMyTruck(i){
   saveToDatabase();
 }
 
-function updatePSI(i,change){const l=getCurrentList();if(l[i]){l[i].currentPSI=Math.max(0,Math.min(l[i].maxPSI,l[i].currentPSI+change));saveToDatabase();}}
+function updatePSI(i,change){if(isOfficeViewOnly())return;const l=getCurrentList();if(l[i]){l[i].currentPSI=Math.max(0,Math.min(l[i].maxPSI,l[i].currentPSI+change));saveToDatabase();}}
 
 function moveToCart(i){
   const from=currentLocationLabel(),bottle=inventory[currentLocation].splice(i,1)[0];
@@ -1299,9 +1316,9 @@ function removeBottle(i){
 }
 
 // PSI Modal
-function openPSIModal(i){psiTargetIndex=i;const l=getCurrentList();document.getElementById("psi-custom-input").value=l[i]?l[i].currentPSI:"";document.getElementById("psi-modal").classList.remove("hidden");setTimeout(()=>document.getElementById("psi-custom-input").focus(),50);}
+function openPSIModal(i){if(isOfficeViewOnly())return;psiTargetIndex=i;const l=getCurrentList();document.getElementById("psi-custom-input").value=l[i]?l[i].currentPSI:"";document.getElementById("psi-modal").classList.remove("hidden");setTimeout(()=>document.getElementById("psi-custom-input").focus(),50);}
 function quickSetPSI(v){document.getElementById("psi-custom-input").value=v;}
-function confirmPSI(){const v=parseInt(document.getElementById("psi-custom-input").value);if(isNaN(v)){alert("Please enter a valid PSI.");return;}const l=getCurrentList();if(l[psiTargetIndex]){l[psiTargetIndex].currentPSI=Math.max(0,Math.min(l[psiTargetIndex].maxPSI,v));saveToDatabase();}closePSIModal();}
+function confirmPSI(){if(isOfficeViewOnly())return;const v=parseInt(document.getElementById("psi-custom-input").value);if(isNaN(v)){alert("Please enter a valid PSI.");return;}const l=getCurrentList();if(l[psiTargetIndex]){l[psiTargetIndex].currentPSI=Math.max(0,Math.min(l[psiTargetIndex].maxPSI,v));saveToDatabase();}closePSIModal();}
 function closePSIModal(){document.getElementById("psi-modal").classList.add("hidden");psiTargetIndex=null;}
 
 // Asset Modal
