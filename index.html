@@ -3,7 +3,20 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#09090b">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Gas Tracker">
   <title>Gas Bottle Tracker</title>
+  <script>
+  (function(){
+    const m={name:"Gas Bottle Tracker",short_name:"Gas Tracker",description:"Parker HVAC Gas Cylinder Fleet Inventory",start_url:"./",display:"standalone",background_color:"#09090b",theme_color:"#09090b",orientation:"portrait-primary",icons:[{src:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='32' fill='%2309090b'/%3E%3Crect x='76' y='18' width='40' height='14' rx='4' fill='%2352525b'/%3E%3Cpath d='M96 32 Q44 36 44 72 L44 168 Q44 182 62 182 L130 182 Q148 182 148 168 L148 72 Q148 36 96 32Z' fill='%2318181b' stroke='%2310b981' stroke-width='4'/%3E%3Crect x='52' y='110' width='88' height='64' rx='4' fill='%2310b981' opacity='0.7'/%3E%3C/svg%3E",sizes:"192x192",type:"image/svg+xml",purpose:"any maskable"},{src:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%2309090b'/%3E%3Crect x='196' y='40' width='120' height='40' rx='10' fill='%2352525b'/%3E%3Cpath d='M256 80 Q100 90 100 180 L100 440 Q100 476 140 476 L372 476 Q412 476 412 440 L412 180 Q412 90 256 80Z' fill='%2318181b' stroke='%2310b981' stroke-width='10'/%3E%3Crect x='120' y='280' width='272' height='168' rx='10' fill='%2310b981' opacity='0.7'/%3E%3C/svg%3E",sizes:"512x512",type:"image/svg+xml",purpose:"any maskable"}]};
+    const b=new Blob([JSON.stringify(m)],{type:"application/json"});
+    const l=document.createElement("link");l.rel="manifest";l.href=URL.createObjectURL(b);
+    document.head.appendChild(l);
+  })();
+  </script>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
@@ -1610,4 +1623,11 @@ function updateSystemCanvas(){
   </div>
 </div>
 </body>
+<script>
+// ── PWA SERVICE WORKER ────────────────────────────────────
+// Requires sw.js committed to the same GitHub Pages repo root.
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('./sw.js').catch(()=>{});
+}
+</script>
 </html>
