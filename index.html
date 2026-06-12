@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html lang="en" id="html-root">
 <head>
@@ -84,7 +85,6 @@
 </head>
 <body class="text-zinc-100 min-h-screen flex flex-col text-sm md:text-base">
 
-<!-- LOGIN SCREEN -->
 <div id="login-screen" class="fixed inset-0 bg-zinc-950 flex items-center justify-center z-50 p-4">
   <div class="w-full max-w-sm">
     <div class="text-center mb-8">
@@ -107,7 +107,6 @@
   </div>
 </div>
 
-<!-- SETUP SCREEN -->
 <div id="setup-screen" class="hidden fixed inset-0 bg-zinc-950 flex items-center justify-center z-50 p-4">
   <div class="w-full max-w-sm">
     <div class="text-center mb-8">
@@ -130,7 +129,6 @@
   </div>
 </div>
 
-<!-- ACCOUNTS MODAL -->
 <div id="accounts-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
   <div class="dash-panel rounded-xl p-6 w-full max-w-lg shadow-2xl max-h-[90vh] flex flex-col">
     <div class="flex items-center justify-between mb-4 pb-3 border-b border-zinc-800">
@@ -149,7 +147,6 @@
   </div>
 </div>
 
-<!-- MAIN APP -->
 <div id="app" class="hidden flex-col min-h-screen">
 <header class="bg-zinc-900 border-b border-zinc-800 sticky top-0 z-40 px-4 py-3 md:px-6 shadow-md">
   <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-3">
@@ -211,7 +208,6 @@
 </main>
 </div>
 
-<!-- MODALS -->
 <div id="asset-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
   <div class="dash-panel rounded-xl p-6 w-full max-w-sm shadow-2xl border border-zinc-700">
     <div class="flex items-center gap-2 text-white mb-2"><i class="fa-solid fa-tag text-emerald-400 text-xl"></i><h3 class="text-lg font-black">Assign Asset Number</h3></div>
@@ -435,12 +431,59 @@ const largeCatalog={
   "ZERO":              {partNum:"AI ZA22N590",      sageNum:"3451"},
 };
 
+// ── PARTS CATALOG ─────────────────────────────────────────
+const partsCatalog = {
+  "Sensors": [
+    { mfg: "Armstrong", part: "AMC-98AC", range: "0-3PPM", type: "NO2" },
+    { mfg: "Armstrong", part: "AMC-91AD", range: "0-100PPM", type: "CO" },
+    { mfg: "Drager", part: "6809755", range: "0-100%LEL", type: "HC" },
+    { mfg: "Drager", part: "6814150", range: "0-100%LEL", type: "HC - DD" },
+    { mfg: "Drager", part: "6809605", range: "E-Chem PPM", type: "CO" },
+    { mfg: "Drager", part: "6809655", range: "E-Chem PPM", type: "NO2" },
+    { mfg: "Drager", part: "6809630", range: "0-25%VOL", type: "O2" },
+    { mfg: "Honeywell WPAFB", part: "S3KA1SS", range: "0-200PPM", type: "NH3" },
+    { mfg: "Honeywell WPAFB", part: "1226A0359", range: "0-100%LEL", type: "HC" },
+    { mfg: "I-Trans", part: "7702-4412", range: "0-25%VOL", type: "O2" },
+    { mfg: "I-Trans", part: "7702-4438", range: "Unknown", type: "CO" },
+    { mfg: "MSA", part: "813624", range: "0-100%LEL", type: "HC - Old Ultima" },
+    { mfg: "Armstrong", part: "AMC-70BD", range: "0-25%", type: "O2" },
+    { mfg: "Macurco CD-6MC (GM LIVE)", part: "70-2900-0301-2", range: "0-25000", type: "CO2" }
+  ],
+  "Filters": [
+    { mfg: "Bacharach", part: "3015-2906", type: "End of line" },
+    { mfg: "Bacharach", part: "07-1650", type: "Hydrophobic" },
+    { mfg: "Bacharach", part: "3015-3125", type: "Charcoal Filter" },
+    { mfg: "MSA", part: "637920", type: "End of line" },
+    { mfg: "MSA (blue)", part: "DIF-BN50", type: "End of line" },
+    { mfg: "Sam unit", part: "25-64-50K", type: "End of line" },
+    { mfg: "Sam unit", part: "44-38-00", type: "Zero filter" },
+    { mfg: "Sam unit", part: "331850", type: "Zero filter Fitting" }
+  ],
+  "Lights": [
+    { mfg: "Allen Bradley", part: "855T-B10GL5", type: "Amber LED" },
+    { mfg: "Allen Bradley", part: "855T-L10", type: "120VAC Bulb" },
+    { mfg: "Allen Bradley", part: "855T-L24", type: "24VDC Bulb" },
+    { mfg: "Allen Bradley (Power On)", part: "855PB-B10SE722", type: "LED" },
+    { mfg: "Federal Signal", part: "K8107181A", type: "Bulb" },
+    { mfg: "Federal Signal", part: "K8107194A", type: "Bulb" }
+  ],
+  "Miscellaneous": [
+    { mfg: "Drager Elektrolyte Kit HF/HCI", part: "6809381", type: "Bottles" },
+    { mfg: "MSA R-123 IR Source", part: "10048167", type: "R123 Diffusion" },
+    { mfg: "Duracell Ultra Battery", part: "DURA12-18NB", type: "12v18ah" },
+    { mfg: "Duracell Ultra Battery", part: "DURA12-55NB", type: "12v55ah" },
+    { mfg: "PLC Batteries", part: "LCPLC-706", type: "3 volt" },
+    { mfg: "Tripplite Power Inverter", part: "N/A", type: "" },
+    { mfg: "Bacharach Sample Pump", part: "3015-5176", type: "" }
+  ]
+};
+
 // ── STATE ─────────────────────────────────────────────────
 let vehicles=["Truck 21","Van 17","Van 20","Van 22"];let _bottleSort="default",_bottleSearch="";let _threshLoaded=false;
 let currentLocation="Truck 21",currentTab=0;
 let selectedIndex=null,psiTargetIndex=null,retireTargetIndex=null;
 let activeReportFilter="all";
-let inventory={},cart={},officeStock=[],retiredStock=[],activityLog=[],reorderThresholds={};
+let inventory={},cart={},officeStock=[],retiredStock=[],activityLog=[],reorderThresholds={},partsInventory={};
 
 // ── BOOT ──────────────────────────────────────────────────
 auth.signInAnonymously().catch(err=>console.warn("Anon sign-in failed:",err)).finally(()=>{
@@ -483,6 +526,7 @@ function initAppData(){
         return b;
       });};
       inventory=data.inventory||{};cart=data.cart||{};
+      partsInventory=fbDecodeObj(data.partsInventory||{});
       // Only load thresholds on first load — never let listener echo overwrite them
       if(!_threshLoaded){vehicleThresholds=fbDecodeObj(data.vehicleThresholds||{});reorderThresholds=fbDecodeObj(data.reorderThresholds||{});_threshLoaded=true;console.log("LOAD from Firebase - vehicleThresholds:",JSON.stringify(vehicleThresholds),"reorderThresholds:",JSON.stringify(reorderThresholds));}else{console.log("LISTENER fired (echo) - thresholds NOT overwritten");}
       vehicles.forEach(v=>{inventory[v]=san(inventory[v]);cart[v]=san(cart[v]);});
@@ -498,7 +542,7 @@ function fbDecodeKey(k){return k.replace(/_DOT_/g,".").replace(/_SLASH_/g,"/");}
 function fbEncodeObj(obj){if(!obj)return{};const out={};Object.keys(obj).forEach(k=>{const v=obj[k];out[fbEncodeKey(k)]=typeof v==="object"&&v!==null?fbEncodeObj(v):v;});return out;}
 function fbDecodeObj(obj){if(!obj)return{};const out={};Object.keys(obj).forEach(k=>{const v=obj[k];out[fbDecodeKey(k)]=typeof v==="object"&&v!==null?fbDecodeObj(v):v;});return out;}
 
-function saveToDatabase(){db.ref("gasTrackerData").set({vehicles,officeStock,inventory,cart,retiredStock,activityLog,reorderThresholds:fbEncodeObj(reorderThresholds),vehicleThresholds:fbEncodeObj(vehicleThresholds)});}
+function saveToDatabase(){db.ref("gasTrackerData").set({vehicles,officeStock,inventory,cart,retiredStock,activityLog,reorderThresholds:fbEncodeObj(reorderThresholds),vehicleThresholds:fbEncodeObj(vehicleThresholds),partsInventory:fbEncodeObj(partsInventory)});}
 
 // ── HELPERS ───────────────────────────────────────────────
 function logEvent(action,bottle,from,to){activityLog.unshift({ts:Date.now(),action,gasType:bottle.type,capacity:bottle.capacity,partNum:bottle.partNum||"",sageNum:bottle.sageNum||"",from:from||"",to:to||"",user:currentUser?currentUser.displayName:""});if(activityLog.length>500)activityLog=activityLog.slice(0,500);}
@@ -580,15 +624,17 @@ function renderLocationTabs(){
 function renderMainTabs(){
   const isSup=isSupervisor(),isOff=isOfficeRole();
   const isOfficeLoc=currentTab===2||currentTab===7;
-  const showExport=currentTab===0||currentTab===1||currentTab===2;
+  const showExport=currentTab===0||currentTab===1||currentTab===2||currentTab===9;
   document.getElementById("action-tabs").innerHTML=`<div class="flex flex-wrap items-center gap-2">
   <div class="bg-zinc-950 border border-zinc-800 rounded-lg p-1 flex gap-1 text-sm font-black flex-wrap">
     ${isOfficeLoc
       ?`<button onclick="switchToOffice()" class="px-4 py-2 rounded-md transition ${currentTab===2?"bg-zinc-800 text-white":"text-zinc-400 hover:text-white"}">Office Stock</button>
-         <button onclick="setTab(7)" class="px-4 py-2 rounded-md transition ${currentTab===7?"bg-zinc-800 text-white":"text-zinc-400 hover:text-white"}"><i class="fa-solid fa-list-check mr-1 text-amber-400"></i>Office Summary</button>`
+         <button onclick="setTab(7)" class="px-4 py-2 rounded-md transition ${currentTab===7?"bg-zinc-800 text-white":"text-zinc-400 hover:text-white"}"><i class="fa-solid fa-list-check mr-1 text-amber-400"></i>Office Summary</button>
+         <button onclick="setTab(9)" class="px-4 py-2 rounded-md transition ${currentTab===9?"bg-zinc-800 text-white":"text-zinc-400 hover:text-white"}"><i class="fa-solid fa-toolbox mr-1 text-cyan-400"></i>Parts</button>`
       :`<button onclick="setTab(0)" class="px-4 py-2 rounded-md transition ${currentTab===0?"bg-zinc-800 text-white":"text-zinc-400 hover:text-white"}">Truck Stock</button>
         <button onclick="setTab(1)" class="px-4 py-2 rounded-md transition ${currentTab===1?"bg-zinc-800 text-white":"text-zinc-400 hover:text-white"}">In Use (Cart)</button>
-        <button onclick="setTab(6)" class="px-4 py-2 rounded-md transition ${currentTab===6?"bg-zinc-800 text-white":"text-zinc-400 hover:text-white"}"><i class="fa-solid fa-list-check mr-1 text-emerald-400"></i>Summary</button>`
+        <button onclick="setTab(6)" class="px-4 py-2 rounded-md transition ${currentTab===6?"bg-zinc-800 text-white":"text-zinc-400 hover:text-white"}"><i class="fa-solid fa-list-check mr-1 text-emerald-400"></i>Summary</button>
+        <button onclick="setTab(9)" class="px-4 py-2 rounded-md transition ${currentTab===9?"bg-zinc-800 text-white":"text-zinc-400 hover:text-white"}"><i class="fa-solid fa-toolbox mr-1 text-cyan-400"></i>Parts</button>`
     }
     <button onclick="setTab(3)" class="px-4 py-2 rounded-md transition ${currentTab===3?"bg-zinc-800 text-white":"text-zinc-400 hover:text-white"}"><i class="fa-solid fa-chart-pie mr-1 text-amber-400"></i>Overview</button>
     <button onclick="setTab(8)" class="px-4 py-2 rounded-md transition ${currentTab===8?"bg-zinc-800 text-white":"text-zinc-400 hover:text-white"}"><i class="fa-solid fa-user-check mr-1 text-purple-400"></i>Check Out</button>
@@ -885,19 +931,14 @@ function renderBottleGrid(){
               <linearGradient id="bM${i}" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#052e16"/><stop offset="25%" stop-color="#14532d"/><stop offset="50%" stop-color="#166534"/><stop offset="75%" stop-color="#14532d"/><stop offset="100%" stop-color="#052e16"/></linearGradient>
               <linearGradient id="gF${i}" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="${gaugeColor}"/><stop offset="30%" stop-color="#ffffff" stop-opacity="0.45"/><stop offset="70%" stop-color="${gaugeColor}"/><stop offset="100%" stop-color="#000000" stop-opacity="0.5"/></linearGradient>
             </defs>
-            <!-- Black hand valve / top cap -->
             <path d="M 50,6 L 80,6 L 75,22 L 55,22 Z" fill="#0a0a0a" stroke="#1a1a1a" stroke-width="1.5"/>
             <rect x="48" y="22" width="34" height="10" rx="2" fill="#111111"/>
-            <!-- Hand valve T-bar -->
             <rect x="38" y="8" width="54" height="6" rx="3" fill="#0d0d0d" stroke="#222" stroke-width="1"/>
-            <!-- Large green bottle body -->
             <path d="M 65,32 Q 12,35 12,72 L 12,240 Q 12,254 30,254 L 100,254 Q 118,254 118,240 L 118,72 Q 118,35 65,32 Z" fill="#141a10"/>
             <path d="M 65,32 Q 12,35 12,72 L 12,240 Q 12,254 30,254 L 100,254 Q 118,254 118,240 L 118,72 Q 118,35 65,32 Z" fill="url(#bM${i})" opacity="0.7"/>
             <mask id="tM${i}"><path d="M 65,36 Q 16,39 16,72 L 16,236 Q 16,249 32,249 L 98,249 Q 114,249 114,236 L 114,72 Q 114,39 65,36 Z" fill="white"/></mask>
             <g mask="url(#tM${i})"><rect x="12" y="${249-(fillPercent*2.13)}" width="106" height="${fillPercent*2.13}" fill="url(#gF${i})"/><ellipse cx="65" cy="${249-(fillPercent*2.13)}" rx="49" ry="5" fill="${gaugeColor}" opacity="0.6"/></g>
-            <!-- Sheen highlight -->
             <path d="M 28,62 L 28,236" stroke="white" stroke-width="3.5" stroke-linecap="round" opacity="0.15"/>
-            <!-- Green outline -->
             <path d="M 65,32 Q 12,35 12,72 L 12,240 Q 12,254 30,254 L 100,254 Q 118,254 118,240 L 118,72 Q 118,35 65,32 Z" fill="none" stroke="#16a34a" stroke-width="2.5"/>
           </svg>`:`
           <svg width="100" height="175" viewBox="0 0 110 220">
@@ -1086,6 +1127,26 @@ function exportInventory(){
   });
   const rows=Object.values(tally).sort((a,b)=>a.type.localeCompare(b.type));
   const now=new Date().toLocaleString();
+  
+  const partsLocKey = isOffice ? "Office" : currentLocation;
+  const pInv = partsInventory[partsLocKey] || {};
+  let partsHtml = `<h2 style="font-size:16px;font-weight:900;margin:30px 0 10px;">Parts & Filters Inventory</h2><table>
+    <thead><tr><th>Category</th><th>Manufacturer</th><th>Part #</th><th>Type/Range</th><th>Qty</th></tr></thead><tbody>`;
+  Object.keys(partsCatalog).forEach(cat => {
+      partsCatalog[cat].forEach(p => {
+          const pId = fbEncodeKey(p.part || p.mfg.replace(/\s+/g,'_'));
+          const qty = pInv[pId] || 0;
+          partsHtml += `<tr>
+            <td>${cat}</td>
+            <td><strong>${p.mfg}</strong></td>
+            <td>${p.part || "N/A"}</td>
+            <td>${[p.range, p.type].filter(Boolean).join(" ")}</td>
+            <td><strong>${qty}</strong></td>
+          </tr>`;
+      });
+  });
+  partsHtml += `</tbody></table>`;
+
   const printHtml=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${locLabel} — Gas Inventory</title>
   <style>
     body{font-family:system-ui,sans-serif;padding:24px;color:#111;background:#fff;font-size:13px;}
@@ -1122,6 +1183,7 @@ function exportInventory(){
       </tr>
     </tbody>
   </table>
+  ${partsHtml}
   <script>window.onload=()=>{window.print();}<\/script>
   </body></html>`;
   const w=window.open("","_blank","width=800,height=600");
@@ -1500,7 +1562,9 @@ function saveVehicleThresholds(loc){
   console.log("SAVING vehicleThresholds:",JSON.stringify(vehicleThresholds));
   saveToDatabase();
   const btn=document.querySelector('button[onclick="saveVehicleThresholds(\''+loc+'\')"]');
-  if(btn){const orig=btn.innerHTML;btn.innerHTML=`<i class="fa-solid fa-check"></i> Saved!`;setTimeout(()=>{btn.innerHTML=orig;},1500);}
+  if(btn){const orig=btn.innerHTML;btn.innerHTML=`<i class="fa-solid fa-check"></i> Saved
+
+```!`;setTimeout(()=>{btn.innerHTML=orig;},1500);}
 }
 
 // CSV Export
@@ -1510,9 +1574,29 @@ function exportCSV(){
   const addRows=(list,loc)=>list.forEach(b=>{const e=gasCatalog[b.type]||{};rows.push([b.type,b.partNum||"",b.sageNum||"",e.concentration||"",b.capacity,b.currentPSI,b.maxPSI,b.expDate||"",loc,checkExpired(b.expDate)?"EXPIRED":"OK"]);});
   addRows(officeStock,"Office Stock");
   vehicles.forEach(v=>{addRows(inventory[v]||[],`${v} Truck`);addRows(cart[v]||[],`${v} Cart`);});
+  
+  // Add Parts to CSV
+  rows.push([]);
+  rows.push(["PARTS & FILTERS INVENTORY"]);
+  rows.push(["Location", "Category", "Manufacturer", "Part #", "Type/Range", "Quantity"]);
+  
+  const addPartsRows = (locKey, locName) => {
+    const pInv = partsInventory[locKey] || {};
+    Object.keys(partsCatalog).forEach(cat => {
+        partsCatalog[cat].forEach(p => {
+            const pId = fbEncodeKey(p.part || p.mfg.replace(/\s+/g,'_'));
+            const qty = pInv[pId] || 0;
+            rows.push([locName, cat, p.mfg, p.part || "N/A", [p.range, p.type].filter(Boolean).join(" "), qty]);
+        });
+    });
+  };
+  
+  addPartsRows("Office", "Office Stock");
+  vehicles.forEach(v => addPartsRows(v, v));
+
   const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(",")).join("\n");
   const a=document.createElement("a");a.href="data:text/csv;charset=utf-8,"+encodeURIComponent(csv);
-  a.download=`gas_inventory_${new Date().toISOString().slice(0,10)}.csv`;a.click();
+  a.download=`gas_and_parts_inventory_${new Date().toISOString().slice(0,10)}.csv`;a.click();
 }
 
 // ── OFFICE STOCK SUMMARY ─────────────────────────────────
@@ -1581,21 +1665,118 @@ function renderOfficeStockSummary(){
   </div>`;
 }
 
+// ── PARTS INVENTORY ─────────────────────────────────────
+function renderPartsInventory() {
+  const area = document.getElementById("content-area");
+  const isOffice = currentTab === 2 || currentTab === 7 || currentTab === 9 && isOfficeRole();
+  
+  // If we are on the global "Office Stock" location but not specifically "Office Display" account, we treat locKey as "Office"
+  let locKey = currentLocation;
+  if (currentTab === 2 || currentTab === 7 || (currentTab === 9 && (currentLocation === "Office Stock" || isOfficeRole()))) {
+      locKey = "Office";
+  } else if (currentTab === 9 && isOfficeRole() === false && isSupervisor() && document.querySelector('#location-tabs button.bg-white')?.textContent.includes('Office')) {
+      locKey = "Office";
+  }
+
+  const pInv = partsInventory[locKey] || {};
+  const canEdit = techCanEditVehicle(locKey) || (locKey === "Office" && (isSupervisor() || isOfficeRole()));
+  const locLabel = locKey === "Office" ? "Office / Shop Stock" : locKey + " Inventory";
+
+  let html = `<div class="dash-panel border border-zinc-800 rounded-xl p-5 shadow-xl">
+    <div class="flex items-center justify-between mb-4 border-b border-zinc-900 pb-3">
+      <h3 class="text-sm font-black uppercase tracking-wider text-cyan-400 flex items-center gap-2"><i class="fa-solid fa-toolbox"></i> ${locLabel} - Parts & Filters</h3>
+      ${canEdit ? `<button onclick="savePartsInventory('${locKey}')" class="bg-cyan-600 hover:bg-cyan-500 text-zinc-950 font-black text-xs px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 shadow-sm"><i class="fa-solid fa-floppy-disk"></i> Save Quantities</button>` : `<span class="text-xs text-zinc-500 font-bold"><i class="fa-solid fa-eye mr-1"></i>View Only</span>`}
+    </div>
+    <div class="flex flex-col gap-6">`;
+
+  Object.keys(partsCatalog).forEach(category => {
+      html += `<div>
+        <h4 class="text-xs font-black text-zinc-500 uppercase tracking-widest mb-3 border-b border-zinc-800/50 pb-1">${category}</h4>
+        <div class="overflow-x-auto custom-scrollbar">
+          <table class="w-full text-left border-collapse text-sm">
+            <thead><tr class="text-xs uppercase text-zinc-600 font-black tracking-wider border-b border-zinc-800/50">
+              <th class="pb-2 pr-3">Manufacturer</th>
+              <th class="pb-2 pr-3">Part #</th>
+              <th class="pb-2 pr-3">Type / Range</th>
+              <th class="pb-2 text-right">Qty</th>
+            </tr></thead>
+            <tbody>`;
+      
+      partsCatalog[category].forEach(p => {
+          const pId = fbEncodeKey(p.part || p.mfg.replace(/\s+/g, '_'));
+          const currentQty = pInv[pId] || 0;
+          
+          html += `<tr class="border-b border-zinc-900/40 hover:bg-zinc-800/20 transition">
+            <td class="py-2.5 pr-3 font-bold text-zinc-300">${p.mfg}</td>
+            <td class="py-2.5 pr-3 font-mono text-xs text-zinc-400">${p.part || "—"}</td>
+            <td class="py-2.5 pr-3 font-mono text-xs text-zinc-500">${[p.range, p.type].filter(Boolean).join(" ")}</td>
+            <td class="py-2.5 text-right">
+              ${canEdit ? `
+                <input type="number" min="0" max="9999" value="${currentQty}" data-part="${pId}" class="parts-qty-input bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-white font-black text-sm w-16 outline-none focus:border-cyan-500 text-center" style="min-height:32px;">
+              ` : `
+                <span class="inline-flex items-center justify-center font-mono font-black text-sm bg-zinc-900 border border-zinc-700 text-zinc-200 px-3 py-1 rounded min-w-[3rem]">${currentQty}</span>
+              `}
+            </td>
+          </tr>`;
+      });
+      html += `</tbody></table></div></div>`;
+  });
+
+  html += `</div></div>`;
+  area.innerHTML = html;
+}
+
+function savePartsInventory(locKey) {
+  if(!partsInventory[locKey]) partsInventory[locKey] = {};
+  const inputs = document.querySelectorAll(".parts-qty-input");
+  inputs.forEach(input => {
+    const pId = input.getAttribute("data-part");
+    const val = parseInt(input.value) || 0;
+    if(val > 0) partsInventory[locKey][pId] = val;
+    else delete partsInventory[locKey][pId];
+  });
+  saveToDatabase();
+  const btn = document.querySelector(`button[onclick="savePartsInventory('${locKey}')"]`);
+  if(btn){const orig=btn.innerHTML;btn.innerHTML=`<i class="fa-solid fa-check"></i> Saved!`;btn.classList.add("bg-emerald-600");btn.classList.remove("bg-cyan-600");setTimeout(()=>{btn.innerHTML=orig;btn.classList.remove("bg-emerald-600");btn.classList.add("bg-cyan-600");},1500);}
+}
+
 // Navigation
 function setTab(tab){
-  if(tab!==2&&tab!==7)_bottleSearch="";
+  if(tab!==2&&tab!==7&&tab!==9)_bottleSearch="";
   currentTab=tab;
   updateSystemCanvas();
 }
 function switchLocation(v){
   if(!isSupervisor()&&!isOfficeRole()&&v!==currentUser.vehicle)return;
   _bottleSearch="";
-  currentLocation=v;if(currentTab===2||currentTab===7||currentTab>=3)currentTab=0;updateSystemCanvas();
+  currentLocation=v;
+  
+  // Keep parts tab active if navigating between vehicles while on parts view
+  if(currentTab===9) {
+      updateSystemCanvas();
+      return;
+  }
+
+  if(currentTab===2||currentTab===7||currentTab>=3)currentTab=0;
+  updateSystemCanvas();
 }
-function switchToOffice(){_bottleSearch="";currentTab=2;updateSystemCanvas();}
+function switchToOffice(){
+  _bottleSearch="";
+  
+  if(currentTab===9) {
+      // Stay on parts tab but switch context to office
+      currentLocation="Office Stock";
+      updateSystemCanvas();
+      return;
+  }
+  
+  currentTab=2;
+  currentLocation="Office Stock";
+  updateSystemCanvas();
+}
 function addNewVehicle(){if(!isSupervisor())return;const name=prompt("Enter name for the new vehicle:");if(name&&!vehicles.includes(name)){vehicles.push(name);inventory[name]=[];cart[name]=[];currentLocation=name;currentTab=0;saveToDatabase();}}
-function renameVehicle(oldName){if(!isSupervisor())return;const newName=prompt("Enter a new name:",oldName);if(newName&&newName!==oldName&&!vehicles.includes(newName)){vehicles=vehicles.map(v=>v===oldName?newName:v);inventory[newName]=inventory[oldName]||[];cart[newName]=cart[oldName]||[];delete inventory[oldName];delete cart[oldName];currentLocation=newName;saveToDatabase();}}
-function deleteVehicle(name){if(!isSupervisor())return;if(vehicles.length<=1){alert("Must keep at least one vehicle.");return;}const bCount=(inventory[name]||[]).length+(cart[name]||[]).length;if(bCount>0&&!confirm(`${name} has ${bCount} bottles. Delete anyway?`))return;vehicles=vehicles.filter(v=>v!==name);delete inventory[name];delete cart[name];if(currentLocation===name)currentLocation=vehicles[0];currentTab=0;saveToDatabase();}
+function renameVehicle(oldName){if(!isSupervisor())return;const newName=prompt("Enter a new name:",oldName);if(newName&&newName!==oldName&&!vehicles.includes(newName)){vehicles=vehicles.map(v=>v===oldName?newName:v);inventory[newName]=inventory[oldName]||[];cart[newName]=cart[oldName]||[];partsInventory[newName]=partsInventory[oldName]||{};delete inventory[oldName];delete cart[oldName];delete partsInventory[oldName];currentLocation=newName;saveToDatabase();}}
+function deleteVehicle(name){if(!isSupervisor())return;if(vehicles.length<=1){alert("Must keep at least one vehicle.");return;}const bCount=(inventory[name]||[]).length+(cart[name]||[]).length;if(bCount>0&&!confirm(`${name} has ${bCount} bottles. Delete anyway?`))return;vehicles=vehicles.filter(v=>v!==name);delete inventory[name];delete cart[name];delete partsInventory[name];if(currentLocation===name)currentLocation=vehicles[0];currentTab=0;saveToDatabase();}
 
 function updateSystemCanvas(){
   renderLocationTabs();renderMainTabs();updateLiveCounters();
@@ -1605,10 +1786,10 @@ function updateSystemCanvas(){
   else if(currentTab===6)renderVehicleSummary();
   else if(currentTab===7)renderOfficeStockSummary();
   else if(currentTab===8)renderCheckOutTab();
+  else if(currentTab===9)renderPartsInventory();
   else renderBottles();
 }
 </script>
-<!-- Bottle Detail Modal -->
 <div id="bottle-detail-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" style="background:rgba(0,0,0,0.75);backdrop-filter:blur(4px)">
   <div class="relative w-full max-w-sm max-h-[92vh] overflow-y-auto custom-scrollbar">
     <button onclick="closeBottleDetail()" class="absolute top-3 right-3 z-10 bg-zinc-900 border border-zinc-700 hover:border-zinc-500 text-zinc-400 hover:text-white rounded-lg w-9 h-9 flex items-center justify-center transition z-10"><i class="fa-solid fa-xmark"></i></button>
