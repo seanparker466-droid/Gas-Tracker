@@ -386,7 +386,8 @@ const gasCatalog={
   "Ethylene Oxide 25PPM": {color:"#f59e0b",partNum:"X02NI99CP580088",sageNum:"6434", concentration:"25PPM"},
   "HANDHELD GAS":         {color:"#14b8a6",partNum:"X05NI79CP5844Y5",sageNum:"32006",concentration:"N/A"},
   "H2 50%LEL":            {color:"#dc2626",partNum:"X02AI98CP1000J0",sageNum:"6421", concentration:"2%VOL (50%LEL)"},
-  "H2 100PPM":            {color:"#f87171",partNum:"",               sageNum:"",     concentration:"100PPM"},
+  "H2 100PPM":            {color:"#fca5a5",partNum:"",               sageNum:"",     concentration:"100PPM"},
+  "H2 4000PPM":           {color:"#f87171",partNum:"",               sageNum:"",     concentration:"4000PPM"},
   "H2 750PPM":            {color:"#fca5a5",partNum:"X02AI99CP1078V6",sageNum:"3463", concentration:"750PPM"},
   "H2S 25PPM":            {color:"#db2777",partNum:"X02NI99CP581327",sageNum:"3466", concentration:"25PPM"},
   "HCL 25PPM":            {color:"#c084fc",partNum:"X02NI99CP58H821",sageNum:"6403", concentration:"25PPM"},
@@ -447,7 +448,20 @@ const partsCatalog = {
     { mfg: "I-Trans", part: "7702-4438", range: "Unknown", type: "CO" },
     { mfg: "MSA", part: "813624", range: "0-100%LEL", type: "HC - Old Ultima" },
     { mfg: "Armstrong", part: "AMC-70BD", range: "0-25%", type: "O2" },
-    { mfg: "Macurco CD-6MC (GM LIVE)", part: "70-2900-0301-2", range: "0-25000", type: "CO2" }
+    { mfg: "Macurco CD-6MC (GM LIVE)", part: "70-2900-0301-2", range: "0-25000", type: "CO2" },
+    { mfg: "Drager", part: "6809665", range: "Unknown", type: "CL2" },
+    { mfg: "Drager", part: "6810740", range: "Unknown", type: "OV1 (S/N ARTA-0276)" },
+    { mfg: "iTrans", part: "77024404", range: "0-100%LEL", type: "HC (S/N 201109B 041)" },
+    { mfg: "GfG", part: "2350450-20", range: "0-50PPM", type: "NH3 (S/N 8873)" },
+    { mfg: "GfG", part: "2210009", range: "0-25%VOL", type: "O2 (S/N 22111010)" },
+    { mfg: "RC Systems", part: "2621621", range: "0-50PPM", type: "NH3 (S/N 26843)" },
+    { mfg: "MSA", part: "480566", range: "0-25%VOL", type: "O2" },
+    { mfg: "MSA", part: "466324", range: "0-25%VOL", type: "O2" },
+    { mfg: "MSA Zgard Transmitter/Sensor", part: "10178245", range: "0-10PPM", type: "NO2" },
+    { mfg: "Enmet", part: "67025-1114", range: "0-30%VOL", type: "O2" },
+    { mfg: "Enmet", part: "67016-1151", range: "0-30%VOL", type: "O2 (S/N 6817 #6)" },
+    { mfg: "Enmet", part: "67016-1152", range: "0-30%VOL", type: "O2 (S/N 7039N #6)" },
+    { mfg: "Honeywell BW", part: "AAT80-390R-BW", range: "0-25%VOL", type: "O2 (S/N 215986884075)" }
   ],
   "Filters": [
     { mfg: "Bacharach", part: "3015-2906", type: "End of line" },
@@ -457,7 +471,8 @@ const partsCatalog = {
     { mfg: "MSA (blue)", part: "DIF-BN50", type: "End of line" },
     { mfg: "Sam unit", part: "25-64-50K", type: "End of line" },
     { mfg: "Sam unit", part: "44-38-00", type: "Zero filter" },
-    { mfg: "Sam unit", part: "331850", type: "Zero filter Fitting" }
+    { mfg: "Sam unit", part: "331850", type: "Zero filter Fitting" },
+    { mfg: "Enmet", part: "73089 004", type: "Internal Filter" }
   ],
   "Lights": [
     { mfg: "Allen Bradley", part: "855T-B10GL5", type: "Amber LED" },
@@ -465,7 +480,8 @@ const partsCatalog = {
     { mfg: "Allen Bradley", part: "855T-L24", type: "24VDC Bulb" },
     { mfg: "Allen Bradley (Power On)", part: "855PB-B10SE722", type: "LED" },
     { mfg: "Federal Signal", part: "K8107181A", type: "Bulb" },
-    { mfg: "Federal Signal", part: "K8107194A", type: "Bulb" }
+    { mfg: "Federal Signal", part: "K8107194A", type: "Bulb" },
+    { mfg: "Allen Bradley (Power On)", part: "855E-LL10B", type: "LED" }
   ],
   "Miscellaneous": [
     { mfg: "Drager Elektrolyte Kit HF/HCI", part: "6809381", type: "Bottles" },
@@ -474,7 +490,22 @@ const partsCatalog = {
     { mfg: "Duracell Ultra Battery", part: "DURA12-55NB", type: "12v55ah" },
     { mfg: "PLC Batteries", part: "LCPLC-706", type: "3 volt" },
     { mfg: "Tripplite Power Inverter", part: "N/A", type: "" },
-    { mfg: "Bacharach Sample Pump", part: "3015-5176", type: "" }
+    { mfg: "Bacharach Sample Pump", part: "3015-5176", type: "" },
+    { mfg: "Drager Polytron FX Board", part: "N/A", type: "Transmitter Board" },
+    { mfg: "Cordless Drill w/Spare Battery", part: "N/A", type: "" },
+    { mfg: "Label Maker", part: "N/A", type: "" },
+    { mfg: "4 Ft. Ladder", part: "N/A", type: "" },
+    { mfg: "Extension Cord", part: "N/A", type: "" },
+    { mfg: "Fire Extinguisher", part: "N/A", type: "" },
+    { mfg: "Arc Resistant Shirt", part: "N/A", type: "" },
+    { mfg: "Bump Cap", part: "N/A", type: "" },
+    { mfg: "Safety Vest", part: "N/A", type: "" },
+    { mfg: "Respirator", part: "N/A", type: "" },
+    { mfg: "Face Shield", part: "N/A", type: "" },
+    { mfg: "Lock Out Tag Out Kit", part: "N/A", type: "" },
+    { mfg: "Medical Kit", part: "N/A", type: "" },
+    { mfg: "Jump Start Pack", part: "N/A", type: "" },
+    { mfg: "Allen Bradley PLC Analog cards", part: "N/A", type: "" }
   ]
 };
 
@@ -512,7 +543,7 @@ function initAppData(){
         if(t==="99.99%vol N2"||t==="N2 99.99%"||t==="N2 100%")t="N2 99.99%VOL";
         if(t==="1000ppm CO2")t="CO2 1000PPM";if(t==="2000ppm CO2")t="CO2 2000PPM";if(t==="400ppm CO2")t="CO2 400PPM";
         if(t==="50%vol CH4")t="CH4 50%LEL";if(t==="50%vol H2")t="H2 50%LEL";
-        if(t==="4000ppm H2"||t==="H2 4000PPM")t="H2 100PPM";if(t==="750ppm H2")t="H2 750PPM";
+        if(t==="4000ppm H2"||t==="H2 4000PPM")t="H2 4000PPM";if(t==="750ppm H2")t="H2 750PPM";
         if(t==="0.1%vol Propane")t="PROPANE 0.1%VOL";
         if(t==="Multi (1% Propane + 100ppm CO)"||t==="PROPANE 1% + CO 100PPM"||t==="Multi Propane 1% CO 100PPM")t="MULTI w/100PPM CO";
         if(t==="200ppm CO")t="CO 200PPM";if(t==="50ppm NH3")t="NH3 50PPM";if(t==="10ppm CL2")t="CL2 10PPM";
