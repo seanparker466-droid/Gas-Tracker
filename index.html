@@ -1697,13 +1697,11 @@ function renderOfficeStockSummary(){
 // ── PARTS INVENTORY ─────────────────────────────────────
 function renderPartsInventory() {
   const area = document.getElementById("content-area");
-  const isOffice = currentTab === 2 || currentTab === 7 || currentTab === 9 && isOfficeRole();
+  const isOffice = currentTab === 2 || currentTab === 7 || (currentTab === 9 && currentLocation === "Office Stock");
   
-  // If we are on the global "Office Stock" location but not specifically "Office Display" account, we treat locKey as "Office"
+  // If we are on the global "Office Stock" location, we treat locKey as "Office"
   let locKey = currentLocation;
-  if (currentTab === 2 || currentTab === 7 || (currentTab === 9 && (currentLocation === "Office Stock" || isOfficeRole()))) {
-      locKey = "Office";
-  } else if (currentTab === 9 && isOfficeRole() === false && isSupervisor() && document.querySelector('#location-tabs button.bg-white')?.textContent.includes('Office')) {
+  if (currentTab === 2 || currentTab === 7 || (currentTab === 9 && currentLocation === "Office Stock")) {
       locKey = "Office";
   }
 
