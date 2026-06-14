@@ -285,7 +285,7 @@ const BUILTIN_ACCOUNTS={
   office:{displayName:"Office Display",role:"office",    vehicle:null},
   austin:{displayName:"Austin Parker", role:"tech",      vehicle:"Van 17"},
   mike:  {displayName:"Mike Bird",     role:"tech",      vehicle:"Van 22"},
-  james: {displayName:"James Peace",   role:"tech",      vehicle:"Van 20"},
+  james: {displayName:"James Peace",   role:"tech",      vehicle:"Van 18"},
 };
 let currentUser=null,appUsers={},vehicleThresholds={};
 let _bottleView="card"; // "card" | "list" | "icon"
@@ -316,6 +316,7 @@ async function attemptLogin(){
 
 function loginAs(username){
   currentUser={username,...BUILTIN_ACCOUNTS[username]};
+  if(appUsers[username]&&appUsers[username].vehicle)currentUser.vehicle=appUsers[username].vehicle;
   localStorage.setItem("gbt-session",username);
   auth.signInAnonymously().catch(()=>{});
   applyUserUI();showApp();initAppData();
@@ -342,14 +343,21 @@ function openAccountsModal(){
   document.getElementById("reset-user-select").innerHTML=resetableUsers.map(([u,a])=>`<option value="${u}">${a.displayName}</option>`).join("");
   document.getElementById("accounts-list").innerHTML=Object.entries(BUILTIN_ACCOUNTS).map(([u,a])=>{
     const hasPass=appUsers[u]&&appUsers[u].hash?"Set":"Not set";
+    const assignedVehicle=(appUsers[u]&&appUsers[u].vehicle)||a.vehicle;
     const badge=a.role==="supervisor"
       ?`<span class="text-emerald-400 font-black text-xs">Supervisor</span>`
       :a.role==="office"
       ?`<span class="text-amber-400 font-black text-xs">Office Display</span>`
-      :`<span class="text-zinc-400 text-xs font-black">${a.vehicle}</span>`;
+      :`<select onchange="reassignVehicle('${u}',this.value)" class="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-zinc-300 text-xs font-black">${vehicles.map(v=>`<option value="${v}" ${v===assignedVehicle?"selected":""}>${v}</option>`).join("")}</select>`;
     return`<div class="flex items-center justify-between py-3 border-b border-zinc-900"><div><p class="text-sm font-black text-white">${a.displayName} <span class="text-zinc-600 font-normal">@${u}</span></p>${badge}</div><span class="text-xs font-mono ${hasPass==="Set"?"text-emerald-400":"text-red-400"}">${hasPass}</span></div>`;
   }).join("");
   document.getElementById("accounts-modal").classList.remove("hidden");
+}
+async function reassignVehicle(username,vehicleName){
+  await db.ref(`appUsers/${username}/vehicle`).set(vehicleName);
+  appUsers[username]=appUsers[username]||{};appUsers[username].vehicle=vehicleName;
+  if(currentUser&&currentUser.username===username)currentUser.vehicle=vehicleName;
+  openAccountsModal();
 }
 function closeAccountsModal(){document.getElementById("accounts-modal").classList.add("hidden");}
 async function resetTechPassword(){
@@ -510,7 +518,7 @@ const partsCatalog = {
 };
 
 // ── STATE ─────────────────────────────────────────────────
-let vehicles=["Truck 21","Van 17","Van 20","Van 22"];let _bottleSort="default",_bottleSearch="";let _threshLoaded=false;
+let vehicles=["Truck 21","Van 17","Van 18","Van 22"];let _bottleSort="default",_bottleSearch="";let _threshLoaded=false;
 let currentLocation="Truck 21",currentTab=0;
 let selectedIndex=null,psiTargetIndex=null,retireTargetIndex=null;
 let activeReportFilter="all";
@@ -535,7 +543,7 @@ function initAppData(){
   db.ref("gasTrackerData").on("value",snap=>{
     const data=snap.val();
     if(data){
-      vehicles=data.vehicles||["Truck 21","Van 17","Van 20","Van 22"];
+      vehicles=data.vehicles||["Truck 21","Van 17","Van 18","Van 22"];
       officeStock=data.officeStock||[];retiredStock=data.retiredStock||[];
       activityLog=data.activityLog||[];
       const san=list=>{if(!list)return[];return list.map(b=>{
