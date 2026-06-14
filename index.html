@@ -1171,10 +1171,13 @@ function exportInventory(){
   const pInv = partsInventory[partsLocKey] || {};
   let partsHtml = `<h2 style="font-size:16px;font-weight:900;margin:30px 0 10px;">Parts & Filters Inventory</h2><table>
     <thead><tr><th>Category</th><th>Manufacturer</th><th>Part #</th><th>Type/Range</th><th>Qty</th></tr></thead><tbody>`;
+  let hasParts = false;
   Object.keys(partsCatalog).forEach(cat => {
       partsCatalog[cat].forEach(p => {
           const pId = fbEncodeKey(p.part || p.mfg.replace(/\s+/g,'_'));
           const qty = pInv[pId] || 0;
+          if(qty <= 0) return;
+          hasParts = true;
           partsHtml += `<tr>
             <td>${cat}</td>
             <td><strong>${p.mfg}</strong></td>
@@ -1185,6 +1188,7 @@ function exportInventory(){
       });
   });
   partsHtml += `</tbody></table>`;
+  if(!hasParts) partsHtml = `<h2 style="font-size:16px;font-weight:900;margin:30px 0 10px;">Parts & Filters Inventory</h2><p style="color:#777;font-size:12px;">No parts currently in stock at this location.</p>`;
 
   const printHtml=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${locLabel} — Gas Inventory</title>
   <style>
@@ -1192,10 +1196,10 @@ function exportInventory(){
     h1{font-size:18px;font-weight:900;margin:0 0 4px;}
     p.sub{color:#555;margin:0 0 20px;font-size:12px;}
     table{width:100%;border-collapse:collapse;}
-    th{background:#f4f4f5;font-weight:900;text-transform:uppercase;font-size:11px;letter-spacing:.05em;padding:8px 10px;border-bottom:2px solid #e4e4e7;text-align:left;}
-    td{padding:7px 10px;border-bottom:1px solid #f0f0f0;font-weight:600;}
+    th{background:#f4f4f5;font-weight:900;text-transform:uppercase;font-size:11px;letter-spacing:.05em;padding:8px 10px;border-bottom:2px solid #18181b;text-align:left;}
+    td{padding:7px 10px;border-bottom:1px solid #d4d4d8;font-weight:600;}
     tr:last-child td{border-bottom:none;}
-    .total-row td{font-weight:900;background:#f9f9f9;border-top:2px solid #e4e4e7;}
+    .total-row td{font-weight:900;background:#f9f9f9;border-top:2px solid #18181b;}
     .large{color:#16a34a;font-weight:900;}
     @media print{body{padding:0;}}
   </style></head><body>
@@ -1222,6 +1226,7 @@ function exportInventory(){
       </tr>
     </tbody>
   </table>
+  <hr style="border:none;border-top:2px solid #18181b;margin:24px 0;">
   ${partsHtml}
   <script>window.onload=()=>{window.print();}<\/script>
   </body></html>`;
@@ -1608,26 +1613,37 @@ function saveVehicleThresholds(loc){
 function exportCSV(){
   if(!isSupervisor())return;
   const rows=[["Gas Type","Part #","Sage #","Concentration","Size","Current PSI","Max PSI","Expiration","Location","Status"]];
-  const addRows=(list,loc)=>list.forEach(b=>{const e=gasCatalog[b.type]||{};rows.push([b.type,b.partNum||"",b.sageNum||"",e.concentration||"",b.capacity,b.currentPSI,b.maxPSI,b.expDate||"",loc,checkExpired(b.expDate)?"EXPIRED":"OK"]);});
+  const addRows=(list,loc)=>{
+    if(!list||list.length===0)return;
+    rows.push([`--- ${loc} ---`]);
+    list.forEach(b=>{const e=gasCatalog[b.type]||{};rows.push([b.type,b.partNum||"",b.sageNum||"",e.concentration||"",b.capacity,b.currentPSI,b.maxPSI,b.expDate||"",loc,checkExpired(b.expDate)?"EXPIRED":"OK"]);});
+    rows.push([]);
+  };
   addRows(officeStock,"Office Stock");
   vehicles.forEach(v=>{addRows(inventory[v]||[],`${v} Truck`);addRows(cart[v]||[],`${v} Cart`);});
-  
+
   // Add Parts to CSV
   rows.push([]);
   rows.push(["PARTS & FILTERS INVENTORY"]);
-  rows.push(["Location", "Category", "Manufacturer", "Part #", "Type/Range", "Quantity"]);
-  
+
   const addPartsRows = (locKey, locName) => {
     const pInv = partsInventory[locKey] || {};
+    const partsRows = [];
     Object.keys(partsCatalog).forEach(cat => {
         partsCatalog[cat].forEach(p => {
             const pId = fbEncodeKey(p.part || p.mfg.replace(/\s+/g,'_'));
             const qty = pInv[pId] || 0;
-            rows.push([locName, cat, p.mfg, p.part || "N/A", [p.range, p.type].filter(Boolean).join(" "), qty]);
+            if(qty <= 0) return;
+            partsRows.push([locName, cat, p.mfg, p.part || "N/A", [p.range, p.type].filter(Boolean).join(" "), qty]);
         });
     });
+    if(partsRows.length===0)return;
+    rows.push([`--- ${locName} ---`]);
+    rows.push(["Location", "Category", "Manufacturer", "Part #", "Type/Range", "Quantity"]);
+    partsRows.forEach(r=>rows.push(r));
+    rows.push([]);
   };
-  
+
   addPartsRows("Office", "Office Stock");
   vehicles.forEach(v => addPartsRows(v, v));
 
