@@ -980,6 +980,13 @@ function initAppData(){
 // Firebase key sanitization — keys cannot contain . # $ / [ ]
 function fbEncodeKey(k){return k.replace(/\./g,"_DOT_").replace(/\//g,"_SLASH_");}
 function fbDecodeKey(k){return k.replace(/_DOT_/g,".").replace(/_SLASH_/g,"/");}
+// Returns the unique storage key for a parts-catalog entry. Items without a real
+// part number use "N/A" as a placeholder, which would otherwise collide for every
+// such item — so fall back to the manufacturer name in that case.
+function getPartId(p){
+  const base=(p.part&&p.part!=="N/A")?p.part:p.mfg.replace(/\s+/g,'_');
+  return fbEncodeKey(base);
+}
 function fbEncodeObj(obj){if(!obj)return{};const out={};Object.keys(obj).forEach(k=>{const v=obj[k];out[fbEncodeKey(k)]=typeof v==="object"&&v!==null?fbEncodeObj(v):v;});return out;}
 function fbDecodeObj(obj){if(!obj)return{};const out={};Object.keys(obj).forEach(k=>{const v=obj[k];out[fbDecodeKey(k)]=typeof v==="object"&&v!==null?fbDecodeObj(v):v;});return out;}
 
@@ -991,7 +998,7 @@ function migratePartsInventoryKeys(pInvAll){
   let changed=false;
   const validPIds=new Set();
   Object.values(partsCatalog).forEach(list=>list.forEach(p=>{
-    validPIds.add(fbEncodeKey(p.part||p.mfg.replace(/\s+/g,'_')));
+    validPIds.add(getPartId(p));
   }));
   const out={};
   Object.keys(pInvAll).forEach(locKey=>{
@@ -999,6 +1006,10 @@ function migratePartsInventoryKeys(pInvAll){
     const newLocInv={};
     Object.keys(locInv).forEach(k=>{
       let key=k;
+      // Drop the legacy collided key "N_SLASH_A" — previously every catalog item
+      // without a real part number ("N/A") shared this single key, so any value
+      // stored under it can't be reliably attributed to one item.
+      if(key==="N_SLASH_A"){changed=true;return;}
       if(!validPIds.has(key)){
         const reEncoded=fbEncodeKey(key);
         if(validPIds.has(reEncoded)){key=reEncoded;changed=true;}
@@ -1607,7 +1618,7 @@ function exportInventory(){
   let hasParts = false;
   Object.keys(partsCatalog).forEach(cat => {
       partsCatalog[cat].forEach(p => {
-          const pId = fbEncodeKey(p.part || p.mfg.replace(/\s+/g,'_'));
+          const pId = getPartId(p);
           const qty = pInv[pId] || 0;
           if(qty <= 0) return;
           hasParts = true;
@@ -2064,7 +2075,7 @@ function exportCSV(){
     const partsRows = [];
     Object.keys(partsCatalog).forEach(cat => {
         partsCatalog[cat].forEach(p => {
-            const pId = fbEncodeKey(p.part || p.mfg.replace(/\s+/g,'_'));
+            const pId = getPartId(p);
             const qty = pInv[pId] || 0;
             if(qty <= 0) return;
             partsRows.push([locName, cat, p.mfg, p.part || "N/A", [p.range, p.type].filter(Boolean).join(" "), qty]);
@@ -2187,7 +2198,7 @@ function renderPartsInventory() {
             <tbody>`;
       
       partsCatalog[category].forEach(p => {
-          const pId = fbEncodeKey(p.part || p.mfg.replace(/\s+/g, '_'));
+          const pId = getPartId(p);
           const currentQty = pInv[pId] || 0;
           
           html += `<tr class="border-b border-zinc-900/40 hover:bg-zinc-800/20 transition">
