@@ -444,6 +444,56 @@ body.theme-company-colors .bottle-card svg stop[stop-color="#d4d4d8"]{stop-color
     #theme-select{color:inherit;appearance:none;-webkit-appearance:none;}
     #theme-select option{background:#18181b;color:#fff;}
     body.light #theme-select option,body.theme-sky-frost #theme-select option,body.theme-sandstone #theme-select option,body.theme-company-colors #theme-select option{background:#fff;color:#18181b;}
+    /* Theme trigger button — border and text adapt to each theme's header */
+    #theme-trigger{border-color:rgba(255,255,255,0.15);}
+    #theme-trigger:hover{border-color:rgba(255,255,255,0.35);}
+    /* Light theme variants — darker border on white header */
+    body.light #theme-trigger,body.theme-sky-frost #theme-trigger,body.theme-sandstone #theme-trigger,body.theme-company-colors #theme-trigger{border-color:rgba(0,0,0,0.18)!important;color:#444!important;}
+    body.light #theme-trigger:hover,body.theme-sky-frost #theme-trigger:hover,body.theme-sandstone #theme-trigger:hover,body.theme-company-colors #theme-trigger:hover{border-color:rgba(0,0,0,0.35)!important;color:#111!important;}
+    /* Dropdown panel — match header bg per theme */
+    body.light #theme-dropdown,body.theme-sky-frost #theme-dropdown,body.theme-sandstone #theme-dropdown,body.theme-company-colors #theme-dropdown{background:#fff!important;border-color:rgba(0,0,0,0.15)!important;}
+    body.theme-amber-forge #theme-dropdown{background:#2a1f17!important;border-color:#4a3a2c!important;}
+    body.theme-crimson-steel #theme-dropdown{background:#1a1a1c!important;border-color:#36363a!important;}
+    body.theme-arctic-blue #theme-dropdown{background:#0f1b2e!important;border-color:#223758!important;}
+    body.theme-crimson-forge #theme-dropdown{background:#2a1512!important;border-color:#52271f!important;}
+
+    /* Theme trigger button + dropdown panel — match each theme's surface */
+    /* Emerald Mist (body.light) */
+    body.light #theme-trigger{background-color:#fff!important;border-color:#d4d4d8!important;color:#18181b!important;}
+    body.light #theme-dropdown{background-color:#fff!important;border-color:#d4d4d8!important;}
+    body.light #theme-dropdown button{color:#3f3f46!important;}
+    body.light #theme-dropdown button:hover,body.light #theme-dropdown button.active-theme{background-color:#f4f4f5!important;color:#18181b!important;}
+    /* Sandstone */
+    body.theme-sandstone #theme-trigger{background-color:#f0e6d6!important;border-color:#d9c4a8!important;color:#46341f!important;}
+    body.theme-sandstone #theme-dropdown{background-color:#f0e6d6!important;border-color:#d9c4a8!important;}
+    body.theme-sandstone #theme-dropdown button{color:#5c462f!important;}
+    body.theme-sandstone #theme-dropdown button:hover,body.theme-sandstone #theme-dropdown button.active-theme{background-color:#e6d6c0!important;color:#33240f!important;}
+    /* Sky Frost */
+    body.theme-sky-frost #theme-trigger{background-color:#e3edf6!important;border-color:#c0d3e3!important;color:#26384c!important;}
+    body.theme-sky-frost #theme-dropdown{background-color:#e3edf6!important;border-color:#c0d3e3!important;}
+    body.theme-sky-frost #theme-dropdown button{color:#3a4f66!important;}
+    body.theme-sky-frost #theme-dropdown button:hover,body.theme-sky-frost #theme-dropdown button.active-theme{background-color:#d3e2ef!important;color:#16263a!important;}
+    /* Company Colors (Light) */
+    body.theme-company-colors #theme-trigger{background-color:#f7f7f8!important;border-color:#e8e9eb!important;color:#181a1f!important;}
+    body.theme-company-colors #theme-dropdown{background-color:#f7f7f8!important;border-color:#e8e9eb!important;}
+    body.theme-company-colors #theme-dropdown button{color:#4a4f58!important;}
+    body.theme-company-colors #theme-dropdown button:hover,body.theme-company-colors #theme-dropdown button.active-theme{background-color:#e8e9eb!important;color:#0a0b0d!important;}
+    /* Amber Forge — warm dark */
+    body.theme-amber-forge #theme-trigger{background-color:#2a1f17!important;border-color:#3a2c20!important;}
+    body.theme-amber-forge #theme-dropdown{background-color:#2a1f17!important;border-color:#3a2c20!important;}
+    body.theme-amber-forge #theme-dropdown button:hover,body.theme-amber-forge #theme-dropdown button.active-theme{background-color:#3a2c20!important;}
+    /* Crimson Forge — dark red */
+    body.theme-crimson-forge #theme-trigger{background-color:#2a1512!important;border-color:#3d1d18!important;}
+    body.theme-crimson-forge #theme-dropdown{background-color:#2a1512!important;border-color:#3d1d18!important;}
+    body.theme-crimson-forge #theme-dropdown button:hover,body.theme-crimson-forge #theme-dropdown button.active-theme{background-color:#3d1d18!important;}
+    /* Crimson Steel — charcoal */
+    body.theme-crimson-steel #theme-trigger{background-color:#1a1a1c!important;border-color:#262628!important;}
+    body.theme-crimson-steel #theme-dropdown{background-color:#1a1a1c!important;border-color:#262628!important;}
+    body.theme-crimson-steel #theme-dropdown button:hover,body.theme-crimson-steel #theme-dropdown button.active-theme{background-color:#262628!important;}
+    /* Arctic Blue — navy */
+    body.theme-arctic-blue #theme-trigger{background-color:#0f1b2e!important;border-color:#182842!important;}
+    body.theme-arctic-blue #theme-dropdown{background-color:#0f1b2e!important;border-color:#182842!important;}
+    body.theme-arctic-blue #theme-dropdown button:hover,body.theme-arctic-blue #theme-dropdown button.active-theme{background-color:#182842!important;}
   </style>
 </head>
 <body class="text-zinc-100 min-h-screen flex flex-col text-sm md:text-base">
@@ -516,7 +566,12 @@ body.theme-company-colors .bottle-card svg stop[stop-color="#d4d4d8"]{stop-color
     <div class="flex items-center gap-3 w-full sm:w-auto">
       <div class="bg-emerald-500/10 p-2.5 rounded-xl border border-emerald-500/20 text-emerald-400"><i class="fa-solid fa-truck-ramp-box text-xl"></i></div>
       <div><h1 class="text-2xl font-black tracking-tight text-white">Gas Bottle Tracker</h1><p class="text-xs text-zinc-400 font-bold">Live Field Fleet Inventory</p></div>
-      <div class="ml-2 px-2 py-1.5 text-zinc-300 hover:text-white text-xs font-black transition flex items-center gap-1.5" style="min-height:36px;"><i id="theme-icon" class="fa-solid fa-moon text-xs"></i><select id="theme-select" onchange="setTheme(this.value)" class="bg-transparent text-xs font-black text-zinc-300 hover:text-white focus:outline-none cursor-pointer" style="min-height:auto;padding:0;border:none;"></select></div>
+      <div class="ml-2 relative" style="min-height:36px;">
+        <button id="theme-trigger" onclick="toggleThemeDropdown()" class="h-full bg-transparent border border-zinc-700 hover:border-zinc-500 px-3 py-1.5 rounded-lg text-zinc-300 hover:text-white text-xs font-black transition flex items-center gap-1.5 whitespace-nowrap" style="min-height:36px;"><i id="theme-icon" class="fa-solid fa-moon text-xs"></i><span id="theme-label">Emerald Dark</span><i class="fa-solid fa-chevron-down text-xs opacity-50 ml-1"></i></button>
+        <div id="theme-dropdown" class="hidden absolute right-0 top-full mt-1 bg-zinc-900 border border-zinc-700 rounded-lg shadow-xl overflow-hidden z-50" style="min-width:160px;">
+          <div id="theme-dropdown-inner"></div>
+        </div>
+      </div>
     </div>
     <div class="flex gap-2 w-full sm:w-auto overflow-x-auto custom-scrollbar pb-1 sm:pb-0 font-mono text-xs items-center">
       <div class="bg-zinc-950 px-3 py-2 rounded-lg border border-zinc-800 flex items-center gap-1.5 whitespace-nowrap"><span class="h-2 w-2 rounded-full bg-emerald-500"></span><span class="text-zinc-300 font-bold">Total: <span id="ticker-total" class="text-white font-black">0</span></span></div>
@@ -751,14 +806,29 @@ function initTheme(){
   applyTheme();
 }
 function populateThemeSelect(){
-  const sel=document.getElementById("theme-select");
-  if(!sel)return;
+  const inner=document.getElementById("theme-dropdown-inner");
+  if(!inner)return;
   const groups={Dark:[],Light:[]};
   Object.entries(THEMES).forEach(([id,t])=>groups[t.group].push([id,t]));
-  sel.innerHTML=Object.entries(groups).map(([g,items])=>
-    `<optgroup label="${g} Themes">${items.map(([id,t])=>`<option value="${id}" ${id===currentTheme?"selected":""}>${t.label}</option>`).join("")}</optgroup>`
+  inner.innerHTML=Object.entries(groups).map(([g,items])=>
+    `<div class="px-3 py-1.5 text-zinc-500 text-xs font-black uppercase tracking-wider border-b border-zinc-800">${g}</div>`+
+    items.map(([id,t])=>
+      `<button onclick="setTheme('${id}');toggleThemeDropdown(false)" class="w-full text-left px-3 py-2 text-xs font-black transition hover:bg-zinc-800 flex items-center gap-2 ${id===currentTheme?'text-white bg-zinc-800':'text-zinc-400'}">${id===currentTheme?'<i class="fa-solid fa-check text-xs"></i>':'<span class="w-3"></span>'} ${t.label}</button>`
+    ).join("")
   ).join("");
 }
+function toggleThemeDropdown(force){
+  const dd=document.getElementById("theme-dropdown");
+  if(!dd)return;
+  const open=force!==undefined?force:dd.classList.contains("hidden");
+  dd.classList.toggle("hidden",!open);
+  if(open)populateThemeSelect();
+}
+// Close dropdown when clicking outside
+document.addEventListener("click",e=>{
+  const dd=document.getElementById("theme-dropdown");
+  if(dd&&!dd.classList.contains("hidden")&&!dd.closest(".relative").contains(e.target))toggleThemeDropdown(false);
+});
 function setTheme(themeId){
   if(!THEMES[themeId])return;
   currentTheme=themeId;
@@ -1098,7 +1168,7 @@ function setAddMode(mode){document.getElementById("single-add-panel").classList.
 // ── TABS & NAV ────────────────────────────────────────────
 function renderLocationTabs(){
   const vis=visibleVehicles();
-  let html=vis.map(v=>`<button onclick="switchLocation('${v}')" class="px-4 py-2 rounded-lg text-base font-black border transition-all whitespace-nowrap flex items-center gap-2 ${v===currentLocation&&currentTab<2?"bg-red-600 text-white border-red-600":"bg-zinc-900 text-zinc-300 border-zinc-800 hover:border-zinc-700 hover:text-white"}"><i class="fa-solid fa-truck"></i> ${v}</button>`).join("");
+  let html=vis.map(v=>`<button onclick="switchLocation('${v}')" class="px-4 py-2 rounded-lg text-base font-black border transition-all whitespace-nowrap flex items-center gap-2 ${v===currentLocation&&currentTab!==2&&currentTab!==7?"bg-red-600 text-white border-red-600":"bg-zinc-900 text-zinc-300 border-zinc-800 hover:border-zinc-700 hover:text-white"}"><i class="fa-solid fa-truck"></i> ${v}</button>`).join("");
   html+=`<button onclick="switchToOffice()" class="px-4 py-2 rounded-lg text-base font-black border transition-all whitespace-nowrap flex items-center gap-2 ${currentTab===2?"bg-red-600 text-white border-red-600":"bg-zinc-900 text-zinc-300 border-zinc-800 hover:border-zinc-700 hover:text-white"}"><i class="fa-solid fa-warehouse"></i> Office / Shop Stock</button>`;
   if(isSupervisor())html+=`<button onclick="addNewVehicle()" class="ml-auto px-4 py-2 rounded-lg text-xs font-black bg-blue-950 border border-blue-800 text-blue-400 hover:bg-blue-900 hover:text-blue-300 transition flex items-center gap-1.5 whitespace-nowrap"><i class="fas fa-plus"></i> Add Vehicle</button>`;
   document.getElementById("location-tabs").innerHTML=html;
