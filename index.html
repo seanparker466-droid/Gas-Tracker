@@ -843,6 +843,8 @@ function applyTheme(){
   const isLight=THEMES[currentTheme].group==="Light";
   const ti=document.getElementById("theme-icon");
   if(ti)ti.className=isLight?"fa-solid fa-sun text-xs text-amber-400":"fa-solid fa-moon text-xs";
+  const lbl=document.getElementById("theme-label");
+  if(lbl)lbl.textContent=THEMES[currentTheme].label;
   const sel=document.getElementById("theme-select");
   if(sel&&sel.value!==currentTheme)sel.value=currentTheme;
 }
