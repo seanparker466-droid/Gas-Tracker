@@ -1903,14 +1903,24 @@ function renderOverview(){
               return allBottles.map(b=>{
                 const entry=gasCatalog[b.type]||{},color=entry.color||"#71717a";
                 const isExp=checkExpired(b.expDate),expSoon=["exp30","exp60","exp90"].includes(getExpStatus(b.expDate));
+                const fillPct=Math.min(Math.round((b.currentPSI/b.maxPSI)*100),100);
+                let barColor=color;
+                if(b.currentPSI<150)barColor="#ef4444";
+                else if(b.currentPSI<300)barColor="#f59e0b";
                 const locIcon=b.loc.includes("Cart")?"fa-cart-shopping text-emerald-400":b.loc.includes("Office")?"fa-warehouse text-amber-400":"fa-truck text-zinc-400";
                 return`<tr class="fleet-locator-row border-b border-zinc-900/50 hover:bg-zinc-800/20 transition font-bold"
                   data-search="${b.type.toLowerCase()} ${b.loc.toLowerCase()} ${(b.partNum||"").toLowerCase()} ${(b.sageNum||"").toLowerCase()}">
-                  <td class="p-3 font-black uppercase tracking-tight" style="color:${color}">${b.type}</td>
-                  <td class="p-3 text-zinc-400">${b.capacity}</td>
-                  <td class="p-3 font-mono ${b.currentPSI<300?"text-amber-400 font-black":"text-zinc-400"}">${b.currentPSI}/${b.maxPSI}</td>
-                  <td class="p-3 font-mono text-xs text-zinc-500">${b.partNum||entry.partNum||"—"}</td>
-                  <td class="p-3 font-mono text-xs text-zinc-500">${b.sageNum||entry.sageNum||"—"}</td>
+                  <td class="p-3 font-black uppercase tracking-tight whitespace-nowrap"><span style="color:${color}">${b.type}</span></td>
+                  <td class="p-3" style="color:#a1a1aa">${b.capacity}</td>
+                  <td class="p-3">
+                    <div class="flex items-center gap-2 min-w-[110px]">
+                      <span class="font-mono text-xs font-black shrink-0" style="${b.currentPSI<300?"color:#fbbf24":"color:#e4e4e7"}">${b.currentPSI}</span>
+                      <div class="flex-1 rounded-full h-2 overflow-hidden min-w-[50px]" style="background:#27272a"><div class="bar-fill h-2 rounded-full" style="width:${fillPct}%;background-color:${barColor}"></div></div>
+                      <span class="font-mono text-xs shrink-0" style="color:#52525b">${b.maxPSI}</span>
+                    </div>
+                  </td>
+                  <td class="p-3 font-mono text-xs" style="color:#a1a1aa">${b.partNum||entry.partNum||"—"}</td>
+                  <td class="p-3 font-mono text-xs" style="color:#71717a">${b.sageNum||entry.sageNum||"—"}</td>
                   <td class="p-3 font-mono text-xs ${isExp?"text-red-400 font-black":expSoon?"text-amber-400":"text-zinc-500"}">${formatDate(b.expDate)||"—"}</td>
                   <td class="p-3"><span class="text-xs font-black px-2 py-0.5 rounded ${isExp?"bg-red-950 text-red-400 border border-red-900":"bg-zinc-900 text-zinc-400 border border-zinc-800"}">${isExp?"EXPIRED":"OK"}</span></td>
                   <td class="p-3"><span class="inline-flex items-center gap-1.5 text-xs font-black px-2.5 py-1 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-200"><i class="fa-solid ${locIcon}"></i>${b.loc}</span></td>
@@ -1928,15 +1938,45 @@ function renderOverview(){
 function generateReorderTable(items){
   const atThresh=getAtThresholdList();
   if(items.length===0&&atThresh.length===0)return`<div class="bg-zinc-950 border border-zinc-800 p-6 rounded-xl text-center"><p class="text-sm font-black text-zinc-500 uppercase"><i class="fa-solid fa-circle-check text-emerald-500 mr-1"></i> All gases above reorder thresholds</p></div>`;
-  const rows=items.map(item=>{const entry=gasCatalog[item.type]||{},color=entry.color||"#71717a";return`<tr class="border-b border-zinc-900 hover:bg-zinc-900/30 font-bold text-sm"><td class="p-3 font-black uppercase tracking-tight" style="color:${color}">${item.type}</td><td class="p-3 text-zinc-400 font-mono text-xs">${entry.partNum||"—"}</td><td class="p-3 text-zinc-400 font-mono text-xs">${entry.sageNum||"—"}</td><td class="p-3 font-mono font-black text-blue-400">${item.count}</td><td class="p-3 font-mono text-zinc-500">${item.threshold}</td><td class="p-3 font-black text-amber-400">Order ${item.need}</td></tr>`;}).join("");
-  const atRows=atThresh.map(item=>{const entry=gasCatalog[item.type]||{},color=entry.color||"#71717a";return`<tr class="border-b border-zinc-900/40 hover:bg-zinc-900/20 font-bold text-sm opacity-60"><td class="p-3 font-black uppercase tracking-tight" style="color:${color}">${item.type}</td><td class="p-3 text-zinc-400 font-mono text-xs">${entry.partNum||"—"}</td><td class="p-3 text-zinc-400 font-mono text-xs">${entry.sageNum||"—"}</td><td class="p-3 font-mono font-black text-zinc-400">${item.count}</td><td class="p-3 font-mono text-zinc-500">${item.threshold}</td><td class="p-3 font-black text-zinc-500">At minimum</td></tr>`;}).join("");
+  const rows=items.map(item=>{const entry=gasCatalog[item.type]||{},color=entry.color||"#71717a";return`<tr class="border-b border-zinc-900 hover:bg-zinc-900/30 font-bold text-sm"><td class="p-3 font-black uppercase tracking-tight"><span style="color:${color}">${item.type}</span></td><td class="p-3 text-zinc-400 font-mono text-xs">${entry.partNum||"—"}</td><td class="p-3 text-zinc-400 font-mono text-xs">${entry.sageNum||"—"}</td><td class="p-3 font-mono font-black text-blue-400">${item.count}</td><td class="p-3 font-mono text-zinc-500">${item.threshold}</td><td class="p-3 font-black text-amber-400">Order ${item.need}</td></tr>`;}).join("");
+  const atRows=atThresh.map(item=>{const entry=gasCatalog[item.type]||{},color=entry.color||"#71717a";return`<tr class="border-b border-zinc-900/40 hover:bg-zinc-900/20 font-bold text-sm opacity-60"><td class="p-3 font-black uppercase tracking-tight"><span style="color:${color}">${item.type}</span></td><td class="p-3 text-zinc-400 font-mono text-xs">${entry.partNum||"—"}</td><td class="p-3 text-zinc-400 font-mono text-xs">${entry.sageNum||"—"}</td><td class="p-3 font-mono font-black text-zinc-400">${item.count}</td><td class="p-3 font-mono text-zinc-500">${item.threshold}</td><td class="p-3 font-black text-zinc-500">At minimum</td></tr>`;}).join("");
   return`<div class="dash-panel border border-blue-900/40 rounded-xl p-5 shadow-xl"><div class="flex items-center justify-between mb-4 border-b border-zinc-900 pb-2.5"><h3 class="text-sm font-black uppercase tracking-wider text-zinc-100 flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse"></span>Reorder List</h3><div class="flex gap-3 items-center">${isSupervisor()?`<button onclick="openReorderModal()" class="text-xs font-black text-blue-400 hover:text-white transition"><i class="fa-solid fa-sliders mr-1"></i>Edit Thresholds</button>`:""}<button onclick="toggleReportFilter('all')" class="text-xs uppercase font-black tracking-widest text-zinc-500 hover:text-zinc-300 transition"><i class="fa-solid fa-xmark mr-1"></i>Clear</button></div></div><div class="overflow-x-auto custom-scrollbar"><table class="w-full text-left border-collapse"><thead><tr class="border-b border-zinc-800 text-xs uppercase text-zinc-400 font-black tracking-wider"><th class="p-3">Gas Type</th><th class="p-3">Part #</th><th class="p-3">Sage #</th><th class="p-3">Current Stock</th><th class="p-3">Min Threshold</th><th class="p-3">Action Needed</th></tr></thead><tbody>${rows}${atRows}</tbody></table></div></div>`;
 }
 
 function generateAlertTable(title,targetBottles,mode){
   if(targetBottles.length===0)return`<div class="bg-zinc-950 border border-zinc-800 p-6 rounded-xl text-center"><p class="text-sm font-black text-zinc-500 uppercase"><i class="fa-solid fa-circle-check text-emerald-500 mr-1"></i> Clear — No Cylinders Flagged</p></div>`;
-  const rows=targetBottles.map(b=>{const entry=gasCatalog[b.type]||{},baseColor=entry.color||"#ffffff",days=daysUntilExp(b.expDate),expStatus=b.expStatus||getExpStatus(b.expDate);const daysCell=mode==="expiring"?`<td class="p-3 font-mono font-black text-xs ${expStatus==="exp30"?"text-orange-400":expStatus==="exp60"?"text-amber-400":"text-zinc-400"}">${days!==null?days+"d left":"—"}</td>`:"";return`<tr class="border-b border-zinc-900 hover:bg-zinc-900/30 font-bold text-sm"><td class="p-3 uppercase tracking-tight font-black" style="color:${baseColor}">${b.type}</td><td class="p-3 text-white font-mono text-xs">${b.partNum||entry.partNum||"N/A"}</td><td class="p-3 text-zinc-300 font-mono text-xs">${b.sageNum||entry.sageNum||"N/A"}</td><td class="p-3 text-zinc-400 text-xs">${entry.concentration||"—"}</td><td class="p-3 text-zinc-400">${b.capacity}</td><td class="p-3 font-mono ${b.currentPSI<300?"text-amber-400 font-black":"text-zinc-400"}">${b.currentPSI}/${b.maxPSI} PSI</td><td class="p-3 font-mono ${checkExpired(b.expDate)?"text-red-400 font-black":expStatus==="exp30"?"text-orange-400 font-black":expStatus==="exp60"?"text-amber-400":"text-zinc-400"}">${formatDate(b.expDate)}</td>${daysCell}<td class="p-3"><span class="px-2 py-1 rounded-md text-xs bg-zinc-900 border border-zinc-800 text-white inline-flex items-center gap-1.5 font-black"><i class="fa-solid ${b.loc.includes("Cart")?"fa-cart-shopping text-emerald-400":b.loc.includes("Stock")&&!b.loc.startsWith("Office")?"fa-truck text-zinc-400":"fa-warehouse text-amber-500"}"></i>${b.loc}</span></td></tr>`;}).join("");
-  const pulse=mode==="expired"?"bg-red-500":mode==="expiring"?"bg-orange-500":"bg-amber-500",extraHeader=mode==="expiring"?`<th class="p-3">Days Left</th>`:"";
+  const rows=targetBottles.map(b=>{
+    const entry=gasCatalog[b.type]||{},baseColor=entry.color||"#ffffff";
+    const days=daysUntilExp(b.expDate),expStatus=b.expStatus||getExpStatus(b.expDate);
+    const fillPct=Math.min(Math.round((b.currentPSI/b.maxPSI)*100),100);
+    let barColor=baseColor;
+    if(b.currentPSI<150)barColor="#ef4444";
+    else if(b.currentPSI<300)barColor="#f59e0b";
+    const psiCell=`<td class="p-3">
+      <div class="flex items-center gap-2 min-w-[120px]">
+        <span class="font-mono text-xs font-black shrink-0" style="${b.currentPSI<300?"color:#fbbf24":"color:#e4e4e7"}">${b.currentPSI}</span>
+        <div class="flex-1 rounded-full h-2 overflow-hidden min-w-[60px]" style="background:#27272a"><div class="bar-fill h-2 rounded-full" style="width:${fillPct}%;background-color:${barColor}"></div></div>
+        <span class="font-mono text-xs shrink-0" style="color:#52525b">${b.maxPSI}</span>
+      </div>
+    </td>`;
+    const expColorStyle=checkExpired(b.expDate)?"color:#f87171;font-weight:900":expStatus==="exp30"?"color:#fb923c;font-weight:900":expStatus==="exp60"?"color:#fbbf24":"color:#71717a";
+    const daysCell=mode==="expiring"?`<td class="p-3 font-mono font-black text-xs" style="${expStatus==="exp30"?"color:#fb923c":expStatus==="exp60"?"color:#fbbf24":"color:#a1a1aa"}">${days!==null?days+"d left":"—"}</td>`:"";
+    const expColor=checkExpired(b.expDate)?"text-red-400 font-black":expStatus==="exp30"?"text-orange-400 font-black":expStatus==="exp60"?"text-amber-400":"text-zinc-400";
+    const locIcon=b.loc.includes("Cart")?"fa-cart-shopping text-emerald-400":b.loc.includes("Stock")&&!b.loc.startsWith("Office")?"fa-truck text-zinc-400":"fa-warehouse text-amber-500";
+    return`<tr class="border-b border-zinc-900 hover:bg-zinc-900/30 font-bold text-sm">
+      <td class="p-3 uppercase tracking-tight font-black whitespace-nowrap"><span style="color:${baseColor}">${b.type}</span></td>
+      <td class="p-3 font-mono text-xs" style="color:#a1a1aa">${b.partNum||entry.partNum||"N/A"}</td>
+      <td class="p-3 font-mono text-xs" style="color:#a1a1aa">${b.sageNum||entry.sageNum||"N/A"}</td>
+      <td class="p-3 text-xs" style="color:#71717a">${entry.concentration||"—"}</td>
+      <td class="p-3" style="color:#a1a1aa">${b.capacity}</td>
+      ${psiCell}
+      <td class="p-3 font-mono text-xs" style="${expColorStyle}">${formatDate(b.expDate)}</td>
+      ${daysCell}
+      <td class="p-3"><span class="px-2 py-1 rounded-md text-xs bg-zinc-900 border border-zinc-800 text-white inline-flex items-center gap-1.5 font-black" style="color:#e4e4e7!important"><i class="fa-solid ${locIcon}"></i>${b.loc}</span></td>
+    </tr>`;
+  }).join("");
+  const pulse=mode==="expired"?"bg-red-500":mode==="expiring"?"bg-orange-500":"bg-amber-500";
+  const extraHeader=mode==="expiring"?`<th class="p-3">Days Left</th>`:"";
   return`<div class="dash-panel border border-zinc-800 rounded-xl p-5 shadow-xl"><div class="flex items-center justify-between mb-4 border-b border-zinc-900 pb-2.5"><h3 class="text-sm font-black uppercase tracking-wider text-zinc-100 flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full ${pulse} animate-pulse"></span>${title}</h3><button onclick="toggleReportFilter('all')" class="text-xs uppercase font-black tracking-widest text-zinc-500 hover:text-zinc-300 transition"><i class="fa-solid fa-xmark mr-1"></i>Clear</button></div><div class="overflow-x-auto custom-scrollbar"><table class="w-full text-left border-collapse"><thead><tr class="border-b border-zinc-800 text-xs uppercase text-zinc-400 font-black tracking-wider"><th class="p-3">Gas</th><th class="p-3">Part #</th><th class="p-3">Sage #</th><th class="p-3">Concentration</th><th class="p-3">Size</th><th class="p-3">PSI</th><th class="p-3">Exp Date</th>${extraHeader}<th class="p-3">Location</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
 }
 
