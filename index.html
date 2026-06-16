@@ -440,6 +440,8 @@ body.theme-company-colors .bottle-card svg stop[stop-color="#d4d4d8"]{stop-color
     button,select,input{min-height:44px;}
     .no-zoom-btn{touch-action:manipulation;}
     .psi-input::-webkit-inner-spin-button,.psi-input::-webkit-outer-spin-button{opacity:1;}
+    .parts-qty-input::-webkit-inner-spin-button,.parts-qty-input::-webkit-outer-spin-button{display:none;}
+    .parts-qty-input{-moz-appearance:textfield;}
     .bar-fill{transition:width .6s ease;}
     #theme-select{color:inherit;appearance:none;-webkit-appearance:none;}
     #theme-select option{background:#18181b;color:#fff;}
@@ -556,6 +558,53 @@ body.theme-company-colors .bottle-card svg stop[stop-color="#d4d4d8"]{stop-color
         <input id="reset-new-pass" type="password" placeholder="new password" class="bg-zinc-950 border border-zinc-700 rounded-lg px-3 text-white font-bold text-sm flex-1">
         <button onclick="resetTechPassword()" class="bg-zinc-700 hover:bg-zinc-600 text-white font-black px-4 rounded-lg transition text-sm whitespace-nowrap">Reset</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ADD PART MODAL -->
+<div id="add-part-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
+  <div class="dash-panel rounded-xl p-6 w-full max-w-lg shadow-2xl">
+    <div class="flex items-center justify-between mb-5 pb-3 border-b border-zinc-800">
+      <div class="flex items-center gap-2"><i class="fa-solid fa-plus-circle text-cyan-400 text-xl"></i><h3 class="text-lg font-black text-white">Add New Part / Item</h3></div>
+      <button onclick="closeAddPartModal()" class="text-zinc-500 hover:text-white transition"><i class="fa-solid fa-xmark text-xl"></i></button>
+    </div>
+    <div class="flex flex-col gap-4">
+      <div>
+        <label class="text-xs font-black text-zinc-400 uppercase tracking-wider block mb-1.5">Category</label>
+        <div class="flex gap-2">
+          <select id="new-part-category" onchange="handleCategoryChange()" class="bg-zinc-950 border border-zinc-700 rounded-lg px-3 text-white font-bold text-sm flex-1" style="min-height:44px;">
+            <option value="Sensors">Sensors</option>
+            <option value="Filters">Filters</option>
+            <option value="Lights">Lights</option>
+            <option value="Miscellaneous">Miscellaneous</option>
+            <option value="__new__">+ New Category...</option>
+          </select>
+          <input id="new-part-category-custom" type="text" placeholder="Category name" class="hidden bg-zinc-950 border border-zinc-700 rounded-lg px-3 text-white font-bold text-sm flex-1" style="min-height:44px;">
+        </div>
+      </div>
+      <div>
+        <label class="text-xs font-black text-zinc-400 uppercase tracking-wider block mb-1.5">Manufacturer</label>
+        <input id="new-part-mfg" type="text" placeholder="e.g. Drager, MSA, Armstrong..." class="bg-zinc-950 border border-zinc-700 rounded-lg px-3 text-white font-bold text-sm w-full" style="min-height:44px;">
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="text-xs font-black text-zinc-400 uppercase tracking-wider block mb-1.5">Part # <span class="text-zinc-600 normal-case font-normal">(or leave blank)</span></label>
+          <input id="new-part-num" type="text" placeholder="e.g. 6809755" class="bg-zinc-950 border border-zinc-700 rounded-lg px-3 text-white font-bold text-sm w-full" style="min-height:44px;">
+        </div>
+        <div>
+          <label class="text-xs font-black text-zinc-400 uppercase tracking-wider block mb-1.5">Type</label>
+          <input id="new-part-type" type="text" placeholder="e.g. CO, NO2, O2..." class="bg-zinc-950 border border-zinc-700 rounded-lg px-3 text-white font-bold text-sm w-full" style="min-height:44px;">
+        </div>
+      </div>
+      <div>
+        <label class="text-xs font-black text-zinc-400 uppercase tracking-wider block mb-1.5">Range</label>
+        <input id="new-part-range" type="text" placeholder="e.g. 0-100PPM, 0-25%VOL..." class="bg-zinc-950 border border-zinc-700 rounded-lg px-3 text-white font-bold text-sm w-full" style="min-height:44px;">
+      </div>
+    </div>
+    <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-zinc-800">
+      <button onclick="closeAddPartModal()" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-black px-5 py-2 rounded-lg transition text-sm">Cancel</button>
+      <button onclick="submitNewPart()" class="bg-cyan-600 hover:bg-cyan-500 text-zinc-950 font-black px-5 py-2 rounded-lg transition text-sm flex items-center gap-2"><i class="fa-solid fa-plus"></i> Add to Catalog</button>
     </div>
   </div>
 </div>
@@ -996,7 +1045,7 @@ let vehicles=["Truck 21","Van 17","Van 18","Van 22"];let _bottleSort="default",_
 let currentLocation="Truck 21",currentTab=0;
 let selectedIndex=null,psiTargetIndex=null,retireTargetIndex=null;
 let activeReportFilter="all";
-let inventory={},cart={},officeStock=[],retiredStock=[],activityLog=[],reorderThresholds={},partsInventory={};
+let inventory={},cart={},officeStock=[],retiredStock=[],activityLog=[],reorderThresholds={},partsInventory={},customPartsCatalog={};
 
 // ── BOOT ──────────────────────────────────────────────────
 auth.signInAnonymously().catch(err=>console.warn("Anon sign-in failed:",err)).finally(()=>{
@@ -1040,6 +1089,7 @@ function initAppData(){
       });};
       inventory=data.inventory||{};cart=data.cart||{};
       partsInventory=migratePartsInventoryKeys(data.partsInventory||{});
+      customPartsCatalog=data.customPartsCatalog||{};
       // Only load thresholds on first load — never let listener echo overwrite them
       if(!_threshLoaded){vehicleThresholds=fbDecodeObj(data.vehicleThresholds||{});reorderThresholds=fbDecodeObj(data.reorderThresholds||{});_threshLoaded=true;console.log("LOAD from Firebase - vehicleThresholds:",JSON.stringify(vehicleThresholds),"reorderThresholds:",JSON.stringify(reorderThresholds));}else{console.log("LISTENER fired (echo) - thresholds NOT overwritten");}
       vehicles.forEach(v=>{inventory[v]=san(inventory[v]);cart[v]=san(cart[v]);});
@@ -1097,7 +1147,7 @@ function migratePartsInventoryKeys(pInvAll){
   return out;
 }
 
-function saveToDatabase(){db.ref("gasTrackerData").set({vehicles,officeStock,inventory,cart,retiredStock,activityLog,reorderThresholds:fbEncodeObj(reorderThresholds),vehicleThresholds:fbEncodeObj(vehicleThresholds),partsInventory});}
+function saveToDatabase(){db.ref("gasTrackerData").set({vehicles,officeStock,inventory,cart,retiredStock,activityLog,reorderThresholds:fbEncodeObj(reorderThresholds),vehicleThresholds:fbEncodeObj(vehicleThresholds),partsInventory,customPartsCatalog});}
 
 // ── HELPERS ───────────────────────────────────────────────
 function logEvent(action,bottle,from,to){activityLog.unshift({ts:Date.now(),action,gasType:bottle.type,capacity:bottle.capacity,partNum:bottle.partNum||"",sageNum:bottle.sageNum||"",from:from||"",to:to||"",user:currentUser?currentUser.displayName:""});if(activityLog.length>500)activityLog=activityLog.slice(0,500);}
@@ -1832,6 +1882,46 @@ function renderOverview(){
     </div>
     <div class="dash-panel border border-zinc-800 p-5 rounded-xl"><h3 class="text-sm font-black uppercase text-zinc-400 tracking-wider mb-3 flex items-center gap-1.5"><i class="fa-solid fa-scale-balanced text-blue-400"></i> Fleet Load Balance</h3><div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm font-bold"><div class="border border-zinc-700/50 p-4 rounded-lg flex items-center justify-between"><div><span class="text-xs uppercase text-zinc-500 block">Highest Load</span><span class="text-base font-black text-zinc-100">${maxTruck.name}</span></div><span class="border border-zinc-600/60 px-3 py-1.5 rounded text-zinc-300 font-black">${maxTruck.total} Bottles</span></div><div class="border border-blue-800/40 p-4 rounded-lg flex items-center justify-between"><div><span class="text-xs uppercase text-zinc-500 block">Lowest Load</span><span class="text-base font-black text-zinc-400">${minTruck.name}</span></div><span class="border border-blue-700/50 px-3 py-1.5 rounded text-blue-400 font-black">${minTruck.total} Bottles</span></div></div></div>
     <div class="dash-panel border border-zinc-800 p-5 rounded-xl flex flex-col"><div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4"><h3 class="text-sm font-black uppercase text-zinc-400 tracking-wider flex items-center gap-1.5"><i class="fa-solid fa-list-ol text-amber-400"></i> Gas Blend Stock Ledger</h3><div class="flex gap-2 w-full sm:w-auto"><input type="text" id="ledger-search" oninput="filterLedger()" placeholder="Filter gas name..." class="bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-1 text-white placeholder-zinc-600 outline-none font-black text-sm w-full sm:w-48 h-9 min-h-0">${supControls}</div></div><div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5" id="ledger-container">${ledgerRowsHtml}</div></div>
+    <div class="dash-panel border border-zinc-800 p-5 rounded-xl flex flex-col">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+        <h3 class="text-sm font-black uppercase text-zinc-400 tracking-wider flex items-center gap-1.5"><i class="fa-solid fa-magnifying-glass-location text-emerald-400"></i> Full Fleet Inventory Locator <span class="bg-zinc-800 border border-zinc-700 text-zinc-300 text-xs px-2 py-0.5 rounded-full font-mono ml-1">${grandTotal}</span></h3>
+        <input type="text" id="fleet-locator-search" oninput="filterFleetLocator()" placeholder="Search gas type, location, part #..." class="bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-1.5 text-white placeholder-zinc-600 outline-none font-black text-sm w-full sm:w-72 h-9 min-h-0">
+      </div>
+      <div class="overflow-x-auto custom-scrollbar">
+        <table class="w-full text-left border-collapse text-sm" id="fleet-locator-table">
+          <thead><tr class="border-b border-zinc-800 text-xs uppercase text-zinc-500 font-black tracking-wider">
+            <th class="p-3">Gas Type</th><th class="p-3">Size</th><th class="p-3">PSI</th><th class="p-3">Part #</th><th class="p-3">Sage #</th><th class="p-3">Expires</th><th class="p-3">Status</th><th class="p-3">Location</th>
+          </tr></thead>
+          <tbody id="fleet-locator-body">
+            ${(()=>{
+              const allBottles=[];
+              officeStock.forEach(b=>allBottles.push({...b,loc:"Office Stock"}));
+              vehicles.forEach(v=>{
+                (inventory[v]||[]).forEach(b=>allBottles.push({...b,loc:`${v} — Stock`}));
+                (cart[v]||[]).forEach(b=>allBottles.push({...b,loc:`${v} — Cart`}));
+              });
+              return allBottles.map(b=>{
+                const entry=gasCatalog[b.type]||{},color=entry.color||"#71717a";
+                const isExp=checkExpired(b.expDate),expSoon=["exp30","exp60","exp90"].includes(getExpStatus(b.expDate));
+                const locIcon=b.loc.includes("Cart")?"fa-cart-shopping text-emerald-400":b.loc.includes("Office")?"fa-warehouse text-amber-400":"fa-truck text-zinc-400";
+                return`<tr class="fleet-locator-row border-b border-zinc-900/50 hover:bg-zinc-800/20 transition font-bold"
+                  data-search="${b.type.toLowerCase()} ${b.loc.toLowerCase()} ${(b.partNum||"").toLowerCase()} ${(b.sageNum||"").toLowerCase()}">
+                  <td class="p-3 font-black uppercase tracking-tight" style="color:${color}">${b.type}</td>
+                  <td class="p-3 text-zinc-400">${b.capacity}</td>
+                  <td class="p-3 font-mono ${b.currentPSI<300?"text-amber-400 font-black":"text-zinc-400"}">${b.currentPSI}/${b.maxPSI}</td>
+                  <td class="p-3 font-mono text-xs text-zinc-500">${b.partNum||entry.partNum||"—"}</td>
+                  <td class="p-3 font-mono text-xs text-zinc-500">${b.sageNum||entry.sageNum||"—"}</td>
+                  <td class="p-3 font-mono text-xs ${isExp?"text-red-400 font-black":expSoon?"text-amber-400":"text-zinc-500"}">${formatDate(b.expDate)||"—"}</td>
+                  <td class="p-3"><span class="text-xs font-black px-2 py-0.5 rounded ${isExp?"bg-red-950 text-red-400 border border-red-900":"bg-zinc-900 text-zinc-400 border border-zinc-800"}">${isExp?"EXPIRED":"OK"}</span></td>
+                  <td class="p-3"><span class="inline-flex items-center gap-1.5 text-xs font-black px-2.5 py-1 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-200"><i class="fa-solid ${locIcon}"></i>${b.loc}</span></td>
+                </tr>`;
+              }).join("");
+            })()}
+          </tbody>
+        </table>
+      </div>
+      <p class="text-xs text-zinc-600 font-bold mt-3 text-center" id="fleet-locator-count"></p>
+    </div>
   </div>`;
 }
 
@@ -1852,6 +1942,15 @@ function generateAlertTable(title,targetBottles,mode){
 
 function toggleReportFilter(f){activeReportFilter=activeReportFilter===f?"all":f;renderOverview();}
 function filterLedger(){const q=document.getElementById("ledger-search").value.toLowerCase().trim();document.querySelectorAll(".ledger-item").forEach(item=>item.classList.toggle("hidden",!item.getAttribute("data-gas").includes(q)));}
+function filterFleetLocator(){
+  const q=(document.getElementById("fleet-locator-search")||{}).value||"";
+  const term=q.toLowerCase().trim();
+  const rows=document.querySelectorAll(".fleet-locator-row");
+  let visible=0;
+  rows.forEach(row=>{const match=!term||row.getAttribute("data-search").includes(term);row.classList.toggle("hidden",!match);if(match)visible++;});
+  const cnt=document.getElementById("fleet-locator-count");
+  if(cnt)cnt.textContent=term?`${visible} of ${rows.length} bottles match "${q}"`:`${rows.length} bottles total`;
+}
 // ── BOTTLE ACTIONS ────────────────────────────────────────
 function addBottle(){
   if(!isSupervisor()&&!isOfficeRole())return;
@@ -2238,62 +2337,136 @@ function renderOfficeStockSummary(){
 function renderPartsInventory() {
   const area = document.getElementById("content-area");
   const isOffice = currentTab === 2 || currentTab === 7 || (currentTab === 9 && currentLocation === "Office Stock");
-  
-  // If we are on the global "Office Stock" location, we treat locKey as "Office"
   let locKey = currentLocation;
-  if (currentTab === 2 || currentTab === 7 || (currentTab === 9 && currentLocation === "Office Stock")) {
-      locKey = "Office";
-  }
+  if (currentTab === 2 || currentTab === 7 || (currentTab === 9 && currentLocation === "Office Stock")) locKey = "Office";
 
   const pInv = partsInventory[locKey] || {};
   const canEdit = techCanEditVehicle(locKey) || (locKey === "Office" && (isSupervisor() || isOfficeRole()));
+  const isSup = isSupervisor();
   const locLabel = locKey === "Office" ? "Office / Shop Stock" : locKey + " Inventory";
+
+  // Merge hardcoded + custom catalog per category
+  const mergedCatalog = {};
+  Object.keys(partsCatalog).forEach(cat => { mergedCatalog[cat] = [...partsCatalog[cat]]; });
+  Object.keys(customPartsCatalog).forEach(cat => {
+    if(!mergedCatalog[cat]) mergedCatalog[cat] = [];
+    customPartsCatalog[cat].forEach(p => mergedCatalog[cat].push({...p, _custom: true}));
+  });
 
   let html = `<div class="dash-panel border border-zinc-800 rounded-xl p-5 shadow-xl">
     <div class="flex items-center justify-between mb-4 border-b border-zinc-900 pb-3">
       <h3 class="text-sm font-black uppercase tracking-wider text-cyan-400 flex items-center gap-2"><i class="fa-solid fa-toolbox"></i> ${locLabel} - Parts & Filters</h3>
-      ${canEdit ? `<button onclick="savePartsInventory('${locKey}')" class="bg-cyan-600 hover:bg-cyan-500 text-zinc-950 font-black text-xs px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 shadow-sm"><i class="fa-solid fa-floppy-disk"></i> Save Quantities</button>` : `<span class="text-xs text-zinc-500 font-bold"><i class="fa-solid fa-eye mr-1"></i>View Only</span>`}
+      <div class="flex items-center gap-2">
+        ${isSup ? `<button onclick="openAddPartModal()" class="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 hover:border-cyan-600 text-cyan-400 font-black text-xs px-3 py-1.5 rounded-lg transition flex items-center gap-1.5"><i class="fa-solid fa-plus"></i> Add Item</button>` : ""}
+        ${canEdit ? `<button onclick="savePartsInventory('${locKey}')" class="bg-cyan-600 hover:bg-cyan-500 text-zinc-950 font-black text-xs px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 shadow-sm"><i class="fa-solid fa-floppy-disk"></i> Save Quantities</button>` : `<span class="text-xs text-zinc-500 font-bold"><i class="fa-solid fa-eye mr-1"></i>View Only</span>`}
+      </div>
     </div>
     <div class="flex flex-col gap-6">`;
 
-  Object.keys(partsCatalog).forEach(category => {
-      html += `<div>
-        <h4 class="text-xs font-black text-zinc-500 uppercase tracking-widest mb-3 border-b border-zinc-800/50 pb-1">${category}</h4>
-        <div class="overflow-x-auto custom-scrollbar">
-          <table class="w-full text-left border-collapse text-sm">
-            <thead><tr class="text-xs uppercase text-zinc-600 font-black tracking-wider border-b border-zinc-800/50">
-              <th class="pb-2 pr-3">Manufacturer</th>
-              <th class="pb-2 pr-3">Part #</th>
-              <th class="pb-2 pr-3">Type / Range</th>
-              <th class="pb-2 text-right">Qty</th>
-            </tr></thead>
-            <tbody>`;
-      
-      partsCatalog[category].forEach(p => {
-          const pId = getPartId(p);
-          const currentQty = pInv[pId] || 0;
-          
-          html += `<tr class="border-b border-zinc-900/40 hover:bg-zinc-800/20 transition">
-            <td class="py-2.5 pr-3 font-bold text-zinc-300">${p.mfg}</td>
-            <td class="py-2.5 pr-3 font-mono text-xs text-zinc-400">${p.part || "—"}</td>
-            <td class="py-2.5 pr-3 font-mono text-xs text-zinc-500">${[p.range, p.type].filter(Boolean).join(" ")}</td>
-            <td class="py-2.5 text-right">
-              ${canEdit ? `
-                <input type="number" min="0" max="9999" value="${currentQty}" data-part="${pId}" class="parts-qty-input bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-white font-black text-sm w-16 outline-none focus:border-cyan-500 text-center" style="min-height:32px;">
-              ` : `
-                <span class="inline-flex items-center justify-center font-mono font-black text-sm bg-zinc-900 border border-zinc-700 text-zinc-200 px-3 py-1 rounded min-w-[3rem]">${currentQty}</span>
-              `}
-            </td>
-          </tr>`;
-      });
-      html += `</tbody></table></div></div>`;
+  Object.keys(mergedCatalog).forEach(category => {
+    html += `<div>
+      <h4 class="text-xs font-black text-zinc-500 uppercase tracking-widest mb-3 border-b border-zinc-800/50 pb-1">${category}</h4>
+      <div class="overflow-x-auto custom-scrollbar">
+        <table class="w-full text-left border-collapse text-sm">
+          <thead><tr class="text-xs uppercase text-zinc-600 font-black tracking-wider border-b border-zinc-800/50">
+            <th class="pb-2 pr-3">Manufacturer</th>
+            <th class="pb-2 pr-3">Part #</th>
+            <th class="pb-2 pr-3">Type / Range</th>
+            <th class="pb-2 text-right">Qty</th>
+            ${isSup ? `<th class="pb-2 w-6"></th>` : ""}
+          </tr></thead>
+          <tbody>`;
+
+    mergedCatalog[category].forEach(p => {
+      const pId = getPartId(p);
+      const currentQty = pInv[pId] || 0;
+      const isCustom = !!p._custom;
+      html += `<tr class="border-b border-zinc-900/40 hover:bg-zinc-800/20 transition">
+        <td class="py-2.5 pr-3 font-bold text-zinc-300">${p.mfg}${isCustom ? ` <span class="text-cyan-600 text-xs font-black">★</span>` : ""}</td>
+        <td class="py-2.5 pr-3 font-mono text-xs text-zinc-400">${p.part && p.part !== "N/A" ? p.part : "—"}</td>
+        <td class="py-2.5 pr-3 font-mono text-xs text-zinc-500">${[p.range, p.type].filter(Boolean).join(" ")}</td>
+        <td class="py-2.5 text-right">
+          ${canEdit
+            ? `<div class="flex items-center justify-end gap-1">
+                <button onclick="adjustPartQty(this,-1)" class="no-zoom-btn w-9 h-9 rounded-lg bg-zinc-800 border border-zinc-700 hover:bg-red-950 hover:border-red-800 hover:text-red-400 text-zinc-300 font-black text-base flex items-center justify-center transition" style="min-height:36px;min-width:36px;">−</button>
+                <input type="number" min="0" max="9999" value="${currentQty}" data-part="${pId}" class="parts-qty-input bg-zinc-950 border border-zinc-700 rounded-lg text-white font-black text-sm w-14 outline-none focus:border-cyan-500 text-center" style="min-height:36px;-moz-appearance:textfield;" oninput="this.value=Math.max(0,parseInt(this.value)||0)">
+                <button onclick="adjustPartQty(this,1)" class="no-zoom-btn w-9 h-9 rounded-lg bg-zinc-800 border border-zinc-700 hover:bg-emerald-950 hover:border-emerald-800 hover:text-emerald-400 text-zinc-300 font-black text-base flex items-center justify-center transition" style="min-height:36px;min-width:36px;">+</button>
+               </div>`
+            : `<span class="inline-flex items-center justify-center font-mono font-black text-sm bg-zinc-900 border border-zinc-700 text-zinc-200 px-3 py-1 rounded min-w-[3rem]">${currentQty}</span>`}
+        </td>
+        ${isSup ? `<td class="py-2.5 pl-2">${isCustom ? `<button onclick="deleteCustomPart('${category}','${pId}')" class="text-zinc-600 hover:text-red-400 transition text-xs" title="Remove from catalog"><i class="fa-solid fa-trash"></i></button>` : ""}</td>` : ""}
+      </tr>`;
+    });
+
+    html += `</tbody></table></div></div>`;
   });
 
   html += `</div></div>`;
   area.innerHTML = html;
 }
 
-function savePartsInventory(locKey) {
+function openAddPartModal(){
+  document.getElementById("new-part-mfg").value="";
+  document.getElementById("new-part-num").value="";
+  document.getElementById("new-part-type").value="";
+  document.getElementById("new-part-range").value="";
+  document.getElementById("new-part-category").value="Sensors";
+  document.getElementById("new-part-category-custom").value="";
+  document.getElementById("new-part-category-custom").classList.add("hidden");
+  // Populate category dropdown with hardcoded + any existing custom categories
+  const sel=document.getElementById("new-part-category");
+  const existingCats=new Set([...Object.keys(partsCatalog),...Object.keys(customPartsCatalog)]);
+  sel.innerHTML=[...existingCats].map(c=>`<option value="${c}">${c}</option>`).join("")+`<option value="__new__">+ New Category...</option>`;
+  document.getElementById("add-part-modal").classList.remove("hidden");
+}
+function closeAddPartModal(){document.getElementById("add-part-modal").classList.add("hidden");}
+function handleCategoryChange(){
+  const sel=document.getElementById("new-part-category");
+  const custom=document.getElementById("new-part-category-custom");
+  if(sel.value==="__new__"){custom.classList.remove("hidden");custom.focus();}
+  else{custom.classList.add("hidden");}
+}
+function submitNewPart(){
+  const catSel=document.getElementById("new-part-category").value;
+  const catCustom=document.getElementById("new-part-category-custom").value.trim();
+  const cat=catSel==="__new__"?catCustom:catSel;
+  const mfg=document.getElementById("new-part-mfg").value.trim();
+  const part=document.getElementById("new-part-num").value.trim()||"N/A";
+  const type=document.getElementById("new-part-type").value.trim();
+  const range=document.getElementById("new-part-range").value.trim();
+  if(!cat){alert("Please enter a category name.");return;}
+  if(!mfg){alert("Manufacturer is required.");return;}
+  const newItem={mfg,part,type,range};
+  // Check pId uniqueness across hardcoded + existing custom items
+  const newPId=getPartId(newItem);
+  let collision=false;
+  Object.values(partsCatalog).forEach(list=>list.forEach(p=>{if(getPartId(p)===newPId)collision=true;}));
+  Object.values(customPartsCatalog).forEach(list=>list.forEach(p=>{if(getPartId(p)===newPId)collision=true;}));
+  if(collision){alert("A catalog item with this Part # (or manufacturer name, if no part number) already exists.");return;}
+  if(!customPartsCatalog[cat])customPartsCatalog[cat]=[];
+  customPartsCatalog[cat].push(newItem);
+  saveToDatabase();
+  closeAddPartModal();
+  renderPartsInventory();
+}
+function deleteCustomPart(category,pId){
+  if(!customPartsCatalog[category])return;
+  customPartsCatalog[category]=customPartsCatalog[category].filter(p=>getPartId(p)!==pId);
+  if(customPartsCatalog[category].length===0)delete customPartsCatalog[category];
+  saveToDatabase();
+  renderPartsInventory();
+}
+function adjustPartQty(btn,delta){
+  const row=btn.closest("tr");
+  const input=row.querySelector(".parts-qty-input");
+  if(!input)return;
+  const newVal=Math.max(0,(parseInt(input.value)||0)+delta);
+  input.value=newVal;
+  // Flash the input briefly to confirm
+  input.classList.add("border-cyan-500");
+  setTimeout(()=>input.classList.remove("border-cyan-500"),400);
+}
+function savePartsInventory(locKey){
   if(!partsInventory[locKey]) partsInventory[locKey] = {};
   const inputs = document.querySelectorAll(".parts-qty-input");
   inputs.forEach(input => {
