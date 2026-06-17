@@ -1719,7 +1719,7 @@ function closeBottleDetail(){
 function exportInventory(){
   const rawList=getCurrentList()||[];
   const isOffice=currentTab===2;
-  const locLabel=isOffice?"Office Stock":currentTab===1?`${currentLocation} — Cart`:`${currentLocation} — Truck`;
+  const locLabel=isOffice?"Office Stock":currentTab===1?`${currentLocation} — Cart Inventory`:`${currentLocation} — Gas Inventory`;
   // Tally by gas type
   const tally={};
   rawList.forEach(b=>{
@@ -1769,7 +1769,7 @@ function exportInventory(){
     .large{color:#16a34a;font-weight:900;}
     @media print{body{padding:0;}}
   </style></head><body>
-  <h1>${locLabel} — Gas Inventory Report</h1>
+  <h1>${locLabel}</h1>
   <p class="sub">Generated: ${now} &nbsp;·&nbsp; ${rawList.length} total cylinders</p>
   <table>
     <thead><tr><th>Gas Type</th><th>Regular</th><th>Large</th><th>Total</th><th>Avg PSI</th><th>Low PSI</th><th>High PSI</th></tr></thead>
@@ -2322,7 +2322,7 @@ function exportFleetInventory(){
 
   const printHtml=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Full Fleet Inventory</title>
   <style>${sharedStyle}</style></head><body>
-  <h1>Parker HVAC — Full Fleet Gas Inventory</h1>
+  <h1>Ino-Tek — Full Fleet Gas Inventory</h1>
   <p class="sub">Generated: ${now} &nbsp;·&nbsp; ${grandTotal} total cylinders across all locations</p>
   ${locationSections}
   <script>window.onload=()=>{window.print();}<\/script>
