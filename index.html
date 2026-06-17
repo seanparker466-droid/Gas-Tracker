@@ -559,6 +559,10 @@ body.theme-company-colors .bottle-card svg stop[stop-color="#d4d4d8"]{stop-color
         <button onclick="resetTechPassword()" class="bg-zinc-700 hover:bg-zinc-600 text-white font-black px-4 rounded-lg transition text-sm whitespace-nowrap">Reset</button>
       </div>
     </div>
+    <div class="mt-3 pt-3 border-t border-zinc-800">
+      <button onclick="importDefaultCatalog()" class="w-full bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 hover:border-cyan-700 text-cyan-400 font-black text-xs px-4 py-2.5 rounded-lg transition flex items-center justify-center gap-2"><i class="fa-solid fa-download"></i> Import Default Parts Catalog into Firebase</button>
+      <p class="text-xs text-zinc-600 mt-1.5 text-center">Safe to run — won't overwrite items you've already added.</p>
+    </div>
   </div>
 </div>
 
@@ -826,7 +830,22 @@ async function reassignVehicle(username,vehicleName){
   if(currentUser&&currentUser.username===username)currentUser.vehicle=vehicleName;
   openAccountsModal();
 }
-function closeAccountsModal(){document.getElementById("accounts-modal").classList.add("hidden");}
+function importDefaultCatalog(){
+  if(!confirm("This will add all 65 default catalog items (Sensors, Filters, Lights, Miscellaneous) to Firebase, keeping any custom items you've already added. Continue?"))return;
+  let added=0;
+  Object.keys(partsCatalog).forEach(cat=>{
+    if(!customPartsCatalog[cat])customPartsCatalog[cat]=[];
+    partsCatalog[cat].forEach(p=>{
+      const pId=getPartId(p);
+      const already=customPartsCatalog[cat].some(x=>getPartId(x)===pId);
+      if(!already){customPartsCatalog[cat].push({mfg:p.mfg,part:p.part||"N/A",type:p.type||"",range:p.range||""});added++;}
+    });
+  });
+  db.ref("gasTrackerData/customPartsCatalog").set(customPartsCatalog,()=>{
+    alert(`Done! ${added} default items added to the catalog. ${added===0?"All items were already present.":""}`);
+    renderPartsInventory();
+  });
+}
 async function resetTechPassword(){
   const u=document.getElementById("reset-user-select").value,p=document.getElementById("reset-new-pass").value;
   if(p.length<6){alert("Password must be at least 6 characters.");return;}
@@ -1090,6 +1109,18 @@ function initAppData(){
       inventory=data.inventory||{};cart=data.cart||{};
       partsInventory=migratePartsInventoryKeys(data.partsInventory||{});
       customPartsCatalog=data.customPartsCatalog||{};
+      // One-time migration: seed Firebase catalog from hardcoded partsCatalog if not yet done
+      if(!data.customPartsCatalog||Object.keys(data.customPartsCatalog).length===0){
+        Object.keys(partsCatalog).forEach(cat=>{
+          if(!customPartsCatalog[cat])customPartsCatalog[cat]=[];
+          partsCatalog[cat].forEach(p=>{
+            const pId=getPartId(p);
+            const already=customPartsCatalog[cat].some(x=>getPartId(x)===pId);
+            if(!already)customPartsCatalog[cat].push({mfg:p.mfg,part:p.part||"N/A",type:p.type||"",range:p.range||""});
+          });
+        });
+        db.ref("gasTrackerData/customPartsCatalog").set(customPartsCatalog);
+      }
       // Only load thresholds on first load — never let listener echo overwrite them
       if(!_threshLoaded){vehicleThresholds=fbDecodeObj(data.vehicleThresholds||{});reorderThresholds=fbDecodeObj(data.reorderThresholds||{});_threshLoaded=true;console.log("LOAD from Firebase - vehicleThresholds:",JSON.stringify(vehicleThresholds),"reorderThresholds:",JSON.stringify(reorderThresholds));}else{console.log("LISTENER fired (echo) - thresholds NOT overwritten");}
       vehicles.forEach(v=>{inventory[v]=san(inventory[v]);cart[v]=san(cart[v]);});
@@ -1119,9 +1150,8 @@ function fbDecodeObj(obj){if(!obj)return{};const out={};Object.keys(obj).forEach
 function migratePartsInventoryKeys(pInvAll){
   let changed=false;
   const validPIds=new Set();
-  Object.values(partsCatalog).forEach(list=>list.forEach(p=>{
-    validPIds.add(getPartId(p));
-  }));
+  Object.values(partsCatalog).forEach(list=>list.forEach(p=>validPIds.add(getPartId(p))));
+  Object.values(customPartsCatalog).forEach(list=>list.forEach(p=>validPIds.add(getPartId(p))));
   const out={};
   Object.keys(pInvAll).forEach(locKey=>{
     const locInv=pInvAll[locKey]||{};
@@ -1738,8 +1768,8 @@ function exportInventory(){
   let partsHtml = `<h2 style="font-size:16px;font-weight:900;margin:30px 0 10px;">Parts & Filters Inventory</h2><table>
     <thead><tr><th>Category</th><th>Manufacturer</th><th>Part #</th><th>Type/Range</th><th>Qty</th></tr></thead><tbody>`;
   let hasParts = false;
-  Object.keys(partsCatalog).forEach(cat => {
-      partsCatalog[cat].forEach(p => {
+  Object.keys(customPartsCatalog).forEach(cat => {
+      customPartsCatalog[cat].forEach(p => {
           const pId = getPartId(p);
           const qty = pInv[pId] || 0;
           if(qty <= 0) return;
@@ -2336,13 +2366,8 @@ function exportPartsInventory(locKey){
   const locLabel=locKey==="Office"?"Office / Shop Stock":`${locKey} Parts`;
   const pInv=partsInventory[locKey]||{};
 
-  // Merge hardcoded + custom catalog
-  const mergedCat={};
-  Object.keys(partsCatalog).forEach(cat=>{mergedCat[cat]=[...partsCatalog[cat]];});
-  Object.keys(customPartsCatalog).forEach(cat=>{
-    if(!mergedCat[cat])mergedCat[cat]=[];
-    customPartsCatalog[cat].forEach(p=>mergedCat[cat].push(p));
-  });
+  // Use customPartsCatalog as the single catalog source
+  const mergedCat=customPartsCatalog;
 
   let totalQty=0;
   const catSections=Object.keys(mergedCat).map(cat=>{
@@ -2405,8 +2430,8 @@ function exportCSV(){
   const addPartsRows = (locKey, locName) => {
     const pInv = partsInventory[locKey] || {};
     const partsRows = [];
-    Object.keys(partsCatalog).forEach(cat => {
-        partsCatalog[cat].forEach(p => {
+    Object.keys(customPartsCatalog).forEach(cat => {
+        customPartsCatalog[cat].forEach(p => {
             const pId = getPartId(p);
             const qty = pInv[pId] || 0;
             if(qty <= 0) return;
@@ -2506,13 +2531,8 @@ function renderPartsInventory() {
   const isSup = isSupervisor();
   const locLabel = locKey === "Office" ? "Office / Shop Stock" : locKey + " Inventory";
 
-  // Merge hardcoded + custom catalog per category
-  const mergedCatalog = {};
-  Object.keys(partsCatalog).forEach(cat => { mergedCatalog[cat] = [...partsCatalog[cat]]; });
-  Object.keys(customPartsCatalog).forEach(cat => {
-    if(!mergedCatalog[cat]) mergedCatalog[cat] = [];
-    customPartsCatalog[cat].forEach(p => mergedCatalog[cat].push({...p, _custom: true}));
-  });
+  // Merge hardcoded + custom catalog per category — now customPartsCatalog IS the catalog
+  const mergedCatalog = customPartsCatalog;
 
   let html = `<div class="dash-panel border border-zinc-800 rounded-xl p-5 shadow-xl">
     <div class="flex items-center justify-between mb-4 border-b border-zinc-900 pb-3">
@@ -2542,9 +2562,8 @@ function renderPartsInventory() {
     mergedCatalog[category].forEach(p => {
       const pId = getPartId(p);
       const currentQty = pInv[pId] || 0;
-      const isCustom = !!p._custom;
       html += `<tr class="border-b border-zinc-900/40 hover:bg-zinc-800/20 transition">
-        <td class="py-2.5 pr-3 font-bold text-zinc-300">${p.mfg}${isCustom ? ` <span class="text-cyan-600 text-xs font-black">★</span>` : ""}</td>
+        <td class="py-2.5 pr-3 font-bold text-zinc-300">${p.mfg}</td>
         <td class="py-2.5 pr-3 font-mono text-xs text-zinc-400">${p.part && p.part !== "N/A" ? p.part : "—"}</td>
         <td class="py-2.5 pr-3 font-mono text-xs text-zinc-500">${[p.range, p.type].filter(Boolean).join(" ")}</td>
         <td class="py-2.5 text-right">
@@ -2556,7 +2575,7 @@ function renderPartsInventory() {
                </div>`
             : `<span class="inline-flex items-center justify-center font-mono font-black text-sm bg-zinc-900 border border-zinc-700 text-zinc-200 px-3 py-1 rounded min-w-[3rem]">${currentQty}</span>`}
         </td>
-        ${isSup ? `<td class="py-2.5 pl-2">${isCustom ? `<button onclick="deleteCustomPart('${category}','${pId}')" class="text-zinc-600 hover:text-red-400 transition text-xs" title="Remove from catalog"><i class="fa-solid fa-trash"></i></button>` : ""}</td>` : ""}
+        ${isSup ? `<td class="py-2.5 pl-2"><button onclick="deleteCustomPart('${category}','${pId}')" class="text-zinc-600 hover:text-red-400 transition text-xs" title="Remove from catalog"><i class="fa-solid fa-trash"></i></button></td>` : ""}
       </tr>`;
     });
 
@@ -2577,7 +2596,7 @@ function openAddPartModal(){
   document.getElementById("new-part-category-custom").classList.add("hidden");
   // Populate category dropdown with hardcoded + any existing custom categories
   const sel=document.getElementById("new-part-category");
-  const existingCats=new Set([...Object.keys(partsCatalog),...Object.keys(customPartsCatalog)]);
+  const existingCats=new Set([...Object.keys(customPartsCatalog)]);
   sel.innerHTML=[...existingCats].map(c=>`<option value="${c}">${c}</option>`).join("")+`<option value="__new__">+ New Category...</option>`;
   document.getElementById("add-part-modal").classList.remove("hidden");
 }
@@ -2599,10 +2618,9 @@ function submitNewPart(){
   if(!cat){alert("Please enter a category name.");return;}
   if(!mfg){alert("Manufacturer is required.");return;}
   const newItem={mfg,part,type,range};
-  // Check pId uniqueness across hardcoded + existing custom items
+  // Check pId uniqueness across catalog
   const newPId=getPartId(newItem);
   let collision=false;
-  Object.values(partsCatalog).forEach(list=>list.forEach(p=>{if(getPartId(p)===newPId)collision=true;}));
   Object.values(customPartsCatalog).forEach(list=>list.forEach(p=>{if(getPartId(p)===newPId)collision=true;}));
   if(collision){alert("A catalog item with this Part # (or manufacturer name, if no part number) already exists.");return;}
   if(!customPartsCatalog[cat])customPartsCatalog[cat]=[];
