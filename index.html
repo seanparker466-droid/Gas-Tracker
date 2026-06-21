@@ -76,6 +76,30 @@
     /* Alert/warning panels */
     body.light .bg-red-950\/50{background-color:rgba(254,226,226,0.5)!important;}
     body.light .bg-amber-950\/30{background-color:rgba(255,243,199,0.4)!important;}
+    /* ===== PSI +/- buttons — dedicated red/green, theme-proof, light+dark ===== */
+    .psi-down{background:rgba(127,29,29,.22);border-color:rgba(153,27,27,.45);color:#f87171;}
+    .psi-down-strong{background:rgba(127,29,29,.40);border-color:rgba(153,27,27,.60);color:#fca5a5;}
+    .psi-up{background:rgba(6,78,59,.22);border-color:rgba(6,95,70,.45);color:#34d399;}
+    .psi-up-strong{background:rgba(6,78,59,.40);border-color:rgba(6,95,70,.60);color:#6ee7b7;}
+    .psi-down:hover,.psi-down-strong:hover{border-color:#dc2626;}
+    .psi-up:hover,.psi-up-strong:hover{border-color:#10b981;}
+    .psi-down:active,.psi-down-strong:active{background:rgba(127,29,29,.55);}
+    .psi-up:active,.psi-up-strong:active{background:rgba(6,78,59,.55);}
+    body.light .psi-down{background:#fef2f2;border-color:#fca5a5;color:#dc2626;}
+    body.light .psi-down-strong{background:#fee2e2;border-color:#f87171;color:#b91c1c;}
+    body.light .psi-up{background:#f0fdf4;border-color:#86efac;color:#16a34a;}
+    body.light .psi-up-strong{background:#dcfce7;border-color:#4ade80;color:#15803d;}
+    body.light .psi-down:hover,body.light .psi-down-strong:hover{border-color:#dc2626;}
+    body.light .psi-up:hover,body.light .psi-up-strong:hover{border-color:#16a34a;}
+    /* ===== Move-to-Cart / Return action buttons — theme-proof ===== */
+    .act-cart{background:rgba(6,78,59,.35);border-color:rgba(6,95,70,.6);color:#6ee7b7;}
+    .act-cart:hover{border-color:#10b981;background:rgba(6,78,59,.5);}
+    .act-return{background:rgba(120,53,15,.35);border-color:rgba(146,64,14,.6);color:#fcd34d;}
+    .act-return:hover{border-color:#f59e0b;background:rgba(120,53,15,.5);}
+    body.light .act-cart{background:#dcfce7;border-color:#4ade80;color:#15803d;}
+    body.light .act-cart:hover{border-color:#16a34a;background:#bbf7d0;}
+    body.light .act-return{background:#fef3c7;border-color:#fcd34d;color:#b45309;}
+    body.light .act-return:hover{border-color:#f59e0b;background:#fde68a;}
 /* ============ THEME: crimson-forge (dark, red bg + vivid red accent) ============ */
 body.theme-crimson-forge{background-color:#1a0e0c!important;color:#f7e4de!important;}
 body.theme-crimson-forge header{background-color:#2a1512!important;border-color:#3d1d18!important;}
@@ -1658,22 +1682,26 @@ function renderBottleGrid(){
             <path d="M 26,52 L 26,198" stroke="white" stroke-width="3" stroke-linecap="round" opacity="0.2"/>
             <path d="M 55,28 Q 15,30 15,62 L 15,202 Q 15,214 30,214 L 80,214 Q 95,214 95,202 L 95,62 Q 95,30 55,28 Z" fill="none" stroke="#2a2a2e" stroke-width="2"/>
           </svg>`}
-          ${isOfficeViewOnly()
-            ?`<button disabled class="no-zoom-btn absolute bottom-1 left-1/2 -translate-x-1/2 bg-zinc-950 border border-zinc-800 text-center font-mono text-sm px-3 py-1 rounded-lg shadow-md min-w-[90px] cursor-default">
-                <span class="block font-black text-white leading-tight">${b.currentPSI}<span class="text-xs text-zinc-400 ml-0.5">PSI</span></span>
-                <span class="text-[11px] text-zinc-700">view only</span>
-              </button>`
-            :`<button onclick="openPSIModal(${i})" class="no-zoom-btn absolute bottom-1 left-1/2 -translate-x-1/2 bg-zinc-950 border border-zinc-700 hover:border-emerald-600 text-center font-mono text-sm px-3 py-1 rounded-lg shadow-md min-w-[90px] transition group">
-                <span class="block font-black text-white leading-tight group-hover:text-emerald-400 transition">${b.currentPSI}<span class="text-xs text-zinc-400 ml-0.5">PSI</span></span>
-                <span class="text-[11px] text-zinc-600 group-hover:text-emerald-700 transition">tap to edit</span>
-              </button>`}
         </div>
       </div>
-      ${isOfficeViewOnly()?"":`<div class="grid grid-cols-4 gap-1.5 mb-2">
-        <button onclick="updatePSI(${i},-10)" class="no-zoom-btn bg-zinc-900 border border-zinc-800 hover:border-zinc-600 rounded-md text-zinc-300 font-black text-xs h-9 flex items-center justify-center transition select-none">-10</button>
-        <button onclick="updatePSI(${i},10)"  class="no-zoom-btn bg-zinc-900 border border-zinc-800 hover:border-zinc-600 rounded-md text-zinc-300 font-black text-xs h-9 flex items-center justify-center transition select-none">+10</button>
-        <button onclick="updatePSI(${i},50)"  class="no-zoom-btn bg-zinc-900 border border-zinc-800 hover:border-zinc-600 rounded-md text-zinc-300 font-black text-xs h-9 flex items-center justify-center transition select-none">+50</button>
-        <button onclick="updatePSI(${i},-50)" class="no-zoom-btn bg-zinc-900 border border-zinc-800 hover:border-zinc-600 rounded-md text-zinc-300 font-black text-xs h-9 flex items-center justify-center transition select-none">-50</button>
+      ${isOfficeViewOnly()
+        ?`<div class="flex items-center justify-center gap-2 mb-3 bg-zinc-950 border border-zinc-800 rounded-lg py-2">
+            <span class="text-3xl font-black font-mono leading-none ${b.currentPSI<150?'text-red-500':b.currentPSI<300?'text-amber-500':'text-white'}">${b.currentPSI}</span>
+            <span class="text-sm font-bold text-zinc-500 self-end mb-0.5">PSI · view only</span>
+          </div>`
+        :`<button onclick="openPSIModal(${i})" class="no-zoom-btn w-full flex items-center justify-center gap-2 mb-3 bg-zinc-950 border border-zinc-700 hover:border-emerald-600 active:bg-zinc-900 rounded-lg py-2 transition group" style="min-height:48px;">
+            <span class="text-3xl font-black font-mono leading-none ${b.currentPSI<150?'text-red-500':b.currentPSI<300?'text-amber-500':'text-white group-hover:text-emerald-400'} transition">${b.currentPSI}</span>
+            <span class="text-sm font-bold text-zinc-500 self-end mb-0.5 group-hover:text-emerald-700 transition">PSI · tap to edit</span>
+          </button>`}
+      ${isOfficeViewOnly()?"":`<div class="grid grid-cols-4 gap-2 mb-2">
+        <button onclick="updatePSI(${i},-50)" class="no-zoom-btn psi-down-strong border rounded-lg font-black text-base flex items-center justify-center transition select-none" style="min-height:46px;">−50</button>
+        <button onclick="updatePSI(${i},-10)" class="no-zoom-btn psi-down border rounded-lg font-black text-base flex items-center justify-center transition select-none" style="min-height:46px;">−10</button>
+        <button onclick="updatePSI(${i},10)"  class="no-zoom-btn psi-up border rounded-lg font-black text-base flex items-center justify-center transition select-none" style="min-height:46px;">+10</button>
+        <button onclick="updatePSI(${i},50)"  class="no-zoom-btn psi-up-strong border rounded-lg font-black text-base flex items-center justify-center transition select-none" style="min-height:46px;">+50</button>
+      </div>
+      <div class="grid grid-cols-2 gap-2 mb-2">
+        <button onclick="setPSI(${i},0)" class="no-zoom-btn bg-zinc-900 border border-zinc-800 hover:border-zinc-600 rounded-lg text-zinc-300 font-black text-xs flex items-center justify-center gap-1.5 transition select-none" style="min-height:36px;"><i class="fa-solid fa-gauge-simple-low text-xs"></i> Empty / 0</button>
+        <button onclick="openPSIModal(${i})" class="no-zoom-btn bg-zinc-900 border border-zinc-800 hover:border-zinc-600 rounded-lg text-zinc-300 font-black text-xs flex items-center justify-center gap-1.5 transition select-none" style="min-height:36px;"><i class="fa-solid fa-pen text-xs"></i> Set exact…</button>
       </div>`}
       <div class="font-sans text-xs font-bold space-y-1.5">
         <div class="grid grid-cols-2 gap-x-3 border-b border-zinc-900 pb-1.5">
@@ -1693,10 +1721,10 @@ function renderBottleGrid(){
           ?`<button onclick="pullToMyTruck(${i})" class="bg-zinc-900 border border-zinc-700 hover:border-emerald-700 hover:bg-emerald-950/20 text-emerald-400 rounded-lg font-black col-span-2 h-10 flex items-center justify-center gap-1.5 transition"><i class="fa-solid fa-arrow-right-long"></i> Pull to My Vehicle</button>`
           :isOfficeViewOnly()
           ?`<span class="col-span-2 text-center text-zinc-600 text-xs font-bold py-2">View only — add new bottles below</span>`
-          :`${currentTab===0?`<button onclick="moveToCart(${i})" class="bg-zinc-900 border border-zinc-800 hover:border-emerald-800 hover:bg-emerald-950/20 text-emerald-400 rounded-lg font-black col-span-2 h-10 flex items-center justify-center gap-1.5 transition"><i class="fa-solid fa-arrow-right-long"></i> Move to Cart</button>`:""}
-        ${currentTab===1?`<button onclick="returnToInventory(${i})" class="bg-zinc-900 border border-zinc-800 hover:border-amber-800 hover:bg-amber-950/20 text-amber-400 rounded-lg font-black col-span-2 h-10 flex items-center justify-center gap-1.5 transition"><i class="fa-solid fa-arrow-left-long"></i> Return to Truck</button>`:""}
-        <button onclick="openMoveModal(${i})" class="bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-300 rounded-lg font-bold flex items-center justify-center gap-1 h-10 transition"><i class="fa-solid fa-right-left text-xs"></i> Route</button>
-        <button onclick="openRetireModal(${i})" class="bg-zinc-900 border border-zinc-800 hover:border-zinc-600 text-zinc-400 hover:text-white rounded-lg flex items-center justify-center gap-1.5 h-10 transition"><i class="fa-solid fa-box-archive text-xs"></i> Retire</button>
+          :`${currentTab===0?`<button onclick="moveToCart(${i})" class="act-cart border rounded-lg font-black col-span-2 flex items-center justify-center gap-2 transition text-sm" style="min-height:46px;"><i class="fa-solid fa-cart-plus"></i> Move to Cart</button>`:""}
+        ${currentTab===1?`<button onclick="returnToInventory(${i})" class="act-return border rounded-lg font-black col-span-2 flex items-center justify-center gap-2 transition text-sm" style="min-height:46px;"><i class="fa-solid fa-arrow-left-long"></i> Return to Truck</button>`:""}
+        <button onclick="openMoveModal(${i})" class="bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-300 rounded-lg font-bold flex items-center justify-center gap-1 transition" style="min-height:44px;"><i class="fa-solid fa-right-left text-xs"></i> Route</button>
+        <button onclick="openRetireModal(${i})" class="bg-zinc-900 border border-zinc-800 hover:border-zinc-600 text-zinc-400 hover:text-white rounded-lg flex items-center justify-center gap-1.5 transition" style="min-height:44px;"><i class="fa-solid fa-box-archive text-xs"></i> Retire</button>
         ${canAddBottles()?`<button onclick="openAssetModal(${i})" class="col-span-2 bg-zinc-900 border border-zinc-800 hover:border-zinc-600 text-zinc-300 rounded-lg flex items-center justify-center gap-1.5 h-9 transition text-xs"><i class="fa-solid fa-tag text-xs"></i> Assign Asset #</button>`:""}
         ${isSupervisor()?`<button onclick="removeBottle(${i})" class="col-span-2 bg-zinc-900 border border-zinc-800 hover:border-red-900 hover:bg-red-950/20 text-red-500 rounded-lg flex items-center justify-center gap-1.5 h-9 transition text-xs"><i class="fa-solid fa-trash-can"></i> Delete Permanently</button>`:""}`}
       </div>
@@ -1764,22 +1792,26 @@ function openBottleDetail(i){
       ${b.capacity==="Large"?`<div class="absolute top-2 right-2"><span class="text-xs font-black uppercase tracking-widest text-emerald-400 bg-emerald-950/60 border border-emerald-800/60 px-1.5 py-0.5 rounded">LARGE</span></div>`:""}
       <div class="relative flex items-center justify-center">
         ${svgHtml}
-        ${isOfficeViewOnly()
-          ?`<button disabled class="no-zoom-btn absolute bottom-1 left-1/2 -translate-x-1/2 bg-zinc-950 border border-zinc-800 text-center font-mono text-sm px-3 py-1 rounded-lg shadow-md min-w-[90px] cursor-default">
-              <span class="block font-black text-white leading-tight">${b.currentPSI}<span class="text-xs text-zinc-400 ml-0.5">PSI</span></span>
-              <span class="text-xs text-zinc-700">view only</span>
-            </button>`
-          :`<button onclick="closeBottleDetail();openPSIModal(${i})" class="no-zoom-btn absolute bottom-1 left-1/2 -translate-x-1/2 bg-zinc-950 border border-zinc-700 hover:border-emerald-600 text-center font-mono text-sm px-3 py-1 rounded-lg shadow-md min-w-[90px] transition group">
-              <span class="block font-black text-white leading-tight group-hover:text-emerald-400 transition">${b.currentPSI}<span class="text-xs text-zinc-400 ml-0.5">PSI</span></span>
-              <span class="text-xs text-zinc-600 group-hover:text-emerald-700 transition">tap to edit</span>
-            </button>`}
       </div>
     </div>
-    ${isOfficeViewOnly()?"":`<div class="grid grid-cols-4 gap-1.5 mb-2">
-      <button onclick="updatePSI(${i},-10);closeBottleDetail();openBottleDetail(${i})" class="no-zoom-btn bg-zinc-900 border border-zinc-800 hover:border-zinc-600 rounded-md text-zinc-300 font-black text-xs h-9 flex items-center justify-center transition select-none">-10</button>
-      <button onclick="updatePSI(${i},10);closeBottleDetail();openBottleDetail(${i})"  class="no-zoom-btn bg-zinc-900 border border-zinc-800 hover:border-zinc-600 rounded-md text-zinc-300 font-black text-xs h-9 flex items-center justify-center transition select-none">+10</button>
-      <button onclick="updatePSI(${i},50);closeBottleDetail();openBottleDetail(${i})"  class="no-zoom-btn bg-zinc-900 border border-zinc-800 hover:border-zinc-600 rounded-md text-zinc-300 font-black text-xs h-9 flex items-center justify-center transition select-none">+50</button>
-      <button onclick="updatePSI(${i},-50);closeBottleDetail();openBottleDetail(${i})" class="no-zoom-btn bg-zinc-900 border border-zinc-800 hover:border-zinc-600 rounded-md text-zinc-300 font-black text-xs h-9 flex items-center justify-center transition select-none">-50</button>
+    ${isOfficeViewOnly()
+      ?`<div class="flex items-center justify-center gap-2 mb-3 bg-zinc-950 border border-zinc-800 rounded-lg py-2">
+          <span class="text-3xl font-black font-mono leading-none ${b.currentPSI<150?'text-red-500':b.currentPSI<300?'text-amber-500':'text-white'}">${b.currentPSI}</span>
+          <span class="text-sm font-bold text-zinc-500 self-end mb-0.5">PSI · view only</span>
+        </div>`
+      :`<button onclick="closeBottleDetail();openPSIModal(${i})" class="no-zoom-btn w-full flex items-center justify-center gap-2 mb-3 bg-zinc-950 border border-zinc-700 hover:border-emerald-600 active:bg-zinc-900 rounded-lg py-2 transition group" style="min-height:48px;">
+          <span class="text-3xl font-black font-mono leading-none ${b.currentPSI<150?'text-red-500':b.currentPSI<300?'text-amber-500':'text-white group-hover:text-emerald-400'} transition">${b.currentPSI}</span>
+          <span class="text-sm font-bold text-zinc-500 self-end mb-0.5 group-hover:text-emerald-700 transition">PSI · tap to edit</span>
+        </button>`}
+    ${isOfficeViewOnly()?"":`<div class="grid grid-cols-4 gap-2 mb-2">
+      <button onclick="updatePSI(${i},-50);closeBottleDetail();openBottleDetail(${i})" class="no-zoom-btn psi-down-strong border rounded-lg font-black text-base flex items-center justify-center transition select-none" style="min-height:46px;">−50</button>
+      <button onclick="updatePSI(${i},-10);closeBottleDetail();openBottleDetail(${i})" class="no-zoom-btn psi-down border rounded-lg font-black text-base flex items-center justify-center transition select-none" style="min-height:46px;">−10</button>
+      <button onclick="updatePSI(${i},10);closeBottleDetail();openBottleDetail(${i})"  class="no-zoom-btn psi-up border rounded-lg font-black text-base flex items-center justify-center transition select-none" style="min-height:46px;">+10</button>
+      <button onclick="updatePSI(${i},50);closeBottleDetail();openBottleDetail(${i})"  class="no-zoom-btn psi-up-strong border rounded-lg font-black text-base flex items-center justify-center transition select-none" style="min-height:46px;">+50</button>
+    </div>
+    <div class="grid grid-cols-2 gap-2 mb-3">
+      <button onclick="setPSI(${i},0);closeBottleDetail();openBottleDetail(${i})" class="no-zoom-btn bg-zinc-900 border border-zinc-800 hover:border-zinc-600 rounded-lg text-zinc-300 font-black text-xs flex items-center justify-center gap-1.5 transition select-none" style="min-height:36px;"><i class="fa-solid fa-gauge-simple-low text-xs"></i> Empty / 0</button>
+      <button onclick="closeBottleDetail();openPSIModal(${i})" class="no-zoom-btn bg-zinc-900 border border-zinc-800 hover:border-zinc-600 rounded-lg text-zinc-300 font-black text-xs flex items-center justify-center gap-1.5 transition select-none" style="min-height:36px;"><i class="fa-solid fa-pen text-xs"></i> Set exact…</button>
     </div>`}
     <div class="font-sans text-xs font-bold space-y-1.5 mb-3">
       <div class="grid grid-cols-2 gap-x-3 border-b border-zinc-900 pb-1.5">
@@ -1799,10 +1831,10 @@ function openBottleDetail(i){
         ?`<button onclick="closeBottleDetail();pullToMyTruck(${i})" class="bg-zinc-900 border border-zinc-700 hover:border-emerald-700 hover:bg-emerald-950/20 text-emerald-400 rounded-lg font-black col-span-2 h-10 flex items-center justify-center gap-1.5 transition"><i class="fa-solid fa-arrow-right-long"></i> Pull to My Vehicle</button>`
         :isOfficeViewOnly()
         ?`<span class="col-span-2 text-center text-zinc-600 text-xs font-bold py-2">View only — add new bottles below</span>`
-        :`${currentTab===0?`<button onclick="closeBottleDetail();moveToCart(${i})" class="bg-zinc-900 border border-zinc-800 hover:border-emerald-800 hover:bg-emerald-950/20 text-emerald-400 rounded-lg font-black col-span-2 h-10 flex items-center justify-center gap-1.5 transition"><i class="fa-solid fa-arrow-right-long"></i> Move to Cart</button>`:""}
-        ${currentTab===1?`<button onclick="closeBottleDetail();returnToInventory(${i})" class="bg-zinc-900 border border-zinc-800 hover:border-amber-800 hover:bg-amber-950/20 text-amber-400 rounded-lg font-black col-span-2 h-10 flex items-center justify-center gap-1.5 transition"><i class="fa-solid fa-arrow-left-long"></i> Return to Truck</button>`:""}
-        <button onclick="closeBottleDetail();openMoveModal(${i})" class="bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-300 rounded-lg font-bold flex items-center justify-center gap-1 h-10 transition"><i class="fa-solid fa-right-left text-xs"></i> Route</button>
-        <button onclick="closeBottleDetail();openRetireModal(${i})" class="bg-zinc-900 border border-zinc-800 hover:border-zinc-600 text-zinc-400 hover:text-white rounded-lg flex items-center justify-center gap-1.5 h-10 transition"><i class="fa-solid fa-box-archive text-xs"></i> Retire</button>
+        :`${currentTab===0?`<button onclick="closeBottleDetail();moveToCart(${i})" class="act-cart border rounded-lg font-black col-span-2 flex items-center justify-center gap-2 transition text-sm" style="min-height:46px;"><i class="fa-solid fa-cart-plus"></i> Move to Cart</button>`:""}
+        ${currentTab===1?`<button onclick="closeBottleDetail();returnToInventory(${i})" class="act-return border rounded-lg font-black col-span-2 flex items-center justify-center gap-2 transition text-sm" style="min-height:46px;"><i class="fa-solid fa-arrow-left-long"></i> Return to Truck</button>`:""}
+        <button onclick="closeBottleDetail();openMoveModal(${i})" class="bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-300 rounded-lg font-bold flex items-center justify-center gap-1 transition" style="min-height:44px;"><i class="fa-solid fa-right-left text-xs"></i> Route</button>
+        <button onclick="closeBottleDetail();openRetireModal(${i})" class="bg-zinc-900 border border-zinc-800 hover:border-zinc-600 text-zinc-400 hover:text-white rounded-lg flex items-center justify-center gap-1.5 transition" style="min-height:44px;"><i class="fa-solid fa-box-archive text-xs"></i> Retire</button>
         ${canAddBottles()?`<button onclick="closeBottleDetail();openAssetModal(${i})" class="col-span-2 bg-zinc-900 border border-zinc-800 hover:border-zinc-600 text-zinc-300 rounded-lg flex items-center justify-center gap-1.5 h-9 transition text-xs"><i class="fa-solid fa-tag text-xs"></i> Assign Asset #</button>`:""}
         ${isSupervisor()?`<button onclick="closeBottleDetail();removeBottle(${i})" class="col-span-2 bg-zinc-900 border border-zinc-800 hover:border-red-900 hover:bg-red-950/20 text-red-500 rounded-lg flex items-center justify-center gap-1.5 h-9 transition text-xs"><i class="fa-solid fa-trash-can"></i> Delete Permanently</button>`:""}`}
     </div>`;
@@ -1914,12 +1946,82 @@ function renderHistory(){
     const entry=gasCatalog[g.type]||{},color=entry.color||"#71717a",pct=Math.round((g.deploys/maxD)*100),medal=rank===0?"🥇":rank===1?"🥈":rank===2?"🥉":"";
     return`<div class="flex items-center gap-3 py-2 border-b border-zinc-900/60"><span class="text-xs font-black text-zinc-500 w-5 text-right shrink-0">${medal||`#${rank+1}`}</span><span class="w-3 h-3 rounded-full shrink-0" style="background-color:${color}"></span><span class="text-xs font-black uppercase text-zinc-200 truncate flex-1">${g.type}</span><div class="flex-1 bg-zinc-900 rounded-full h-2 overflow-hidden"><div class="bar-fill h-2 rounded-full" style="width:${pct}%;background-color:${color}"></div></div><span class="text-xs font-mono font-black text-white shrink-0 w-16 text-right">${g.deploys} deploy${g.deploys!==1?"s":""}</span><span class="text-xs font-mono text-zinc-500 shrink-0 w-16 text-right">${g.returns} return${g.returns!==1?"s":""}</span></div>`;
   }).join("");
-  const actionIcon=a=>{if(a==="Deployed")return`<span class="text-emerald-400 font-black"><i class="fa-solid fa-arrow-right mr-1"></i>Deployed</span>`;if(a==="Returned")return`<span class="text-amber-400 font-black"><i class="fa-solid fa-arrow-left mr-1"></i>Returned</span>`;if(a==="Retired")return`<span class="text-zinc-400 font-black"><i class="fa-solid fa-box-archive mr-1"></i>Retired</span>`;if(a==="Restored")return`<span class="text-blue-400 font-black"><i class="fa-solid fa-rotate-left mr-1"></i>Restored</span>`;if(a==="Added")return`<span class="text-green-400 font-black"><i class="fa-solid fa-plus mr-1"></i>Added</span>`;if(a==="Moved")return`<span class="text-purple-400 font-black"><i class="fa-solid fa-right-left mr-1"></i>Moved</span>`;if(a==="Checked Out")return`<span class="text-purple-400 font-black"><i class="fa-solid fa-user-check mr-1"></i>Checked Out</span>`;if(a==="Returned from Checkout")return`<span class="text-emerald-400 font-black"><i class="fa-solid fa-check-double mr-1"></i>Returned</span>`;return`<span class="text-zinc-400">${a}</span>`;};
-  const rows=activityLog.map(e=>{const entry=gasCatalog[e.gasType]||{},color=entry.color||"#71717a";return`<tr class="border-b border-zinc-900 hover:bg-zinc-900/20 text-xs font-bold"><td class="p-3 font-mono text-zinc-500 whitespace-nowrap">${formatDateTime(e.ts)}</td><td class="p-3">${actionIcon(e.action)}</td><td class="p-3 font-black uppercase tracking-tight" style="color:${color}">${e.gasType}</td><td class="p-3 text-zinc-400">${e.capacity||"—"}</td><td class="p-3 text-zinc-500 font-mono">${e.from||"—"}</td><td class="p-3 text-zinc-500 font-mono">${e.to||"—"}</td><td class="p-3 text-zinc-600 font-mono">${e.user||"—"}</td></tr>`;}).join("");
+  const actionIcon=a=>{if(a==="Deployed")return`<span class="text-emerald-400 font-black"><i class="fa-solid fa-arrow-right mr-1"></i>Deployed</span>`;if(a==="Returned")return`<span class="text-amber-400 font-black"><i class="fa-solid fa-arrow-left mr-1"></i>Returned</span>`;if(a==="Retired")return`<span class="text-zinc-400 font-black"><i class="fa-solid fa-box-archive mr-1"></i>Retired</span>`;if(a==="Restored")return`<span class="text-blue-400 font-black"><i class="fa-solid fa-rotate-left mr-1"></i>Restored</span>`;if(a==="Added")return`<span class="text-green-400 font-black"><i class="fa-solid fa-plus mr-1"></i>Added</span>`;if(a==="Moved")return`<span class="text-purple-400 font-black"><i class="fa-solid fa-right-left mr-1"></i>Moved</span>`;if(a==="Checked Out")return`<span class="text-purple-400 font-black"><i class="fa-solid fa-user-check mr-1"></i>Checked Out</span>`;if(a==="Returned from Checkout")return`<span class="text-emerald-400 font-black"><i class="fa-solid fa-check-double mr-1"></i>Returned</span>`;if(a==="PSI Updated")return`<span class="text-cyan-400 font-black"><i class="fa-solid fa-gauge-high mr-1"></i>PSI Updated</span>`;return`<span class="text-zinc-400">${a}</span>`;};
+  const allActions=["All","PSI Updated","Deployed","Returned","Added","Moved","Retired","Restored","Checked Out","Returned from Checkout"];
+  const allUsers=["All",...new Set(activityLog.map(e=>e.user).filter(Boolean))];
+  const actionFilterBtns=allActions.map(a=>{
+    const count=a==="All"?activityLog.length:activityLog.filter(e=>e.action===a).length;
+    const colors={
+      "PSI Updated":"text-cyan-400 border-cyan-800/60 bg-cyan-950/30 data-active:border-cyan-500 data-active:bg-cyan-950/60",
+      "Deployed":"text-emerald-400 border-emerald-800/60 bg-emerald-950/30",
+      "Returned":"text-amber-400 border-amber-800/60 bg-amber-950/30",
+      "Added":"text-green-400 border-green-800/60 bg-green-950/30",
+      "Moved":"text-purple-400 border-purple-800/60 bg-purple-950/30",
+      "Retired":"text-zinc-400 border-zinc-700 bg-zinc-900",
+      "Restored":"text-blue-400 border-blue-800/60 bg-blue-950/30",
+      "Checked Out":"text-purple-400 border-purple-800/60 bg-purple-950/30",
+      "Returned from Checkout":"text-emerald-400 border-emerald-800/60 bg-emerald-950/30",
+      "All":"text-zinc-300 border-zinc-700 bg-zinc-900",
+    };
+    const cls=colors[a]||"text-zinc-400 border-zinc-700 bg-zinc-900";
+    return`<button onclick="filterHistoryLog()" data-action="${a}" class="log-filter-btn shrink-0 border rounded-lg px-3 py-1.5 text-xs font-black transition whitespace-nowrap ${cls}">${a} <span class="font-mono opacity-60">${count}</span></button>`;
+  }).join("");
+  const userOpts=allUsers.map(u=>`<option value="${u}">${u}</option>`).join("");
+  const rows=activityLog.map(e=>{const entry=gasCatalog[e.gasType]||{},color=entry.color||"#71717a";return`<tr class="log-row border-b border-zinc-900 hover:bg-zinc-900/20 text-xs font-bold" data-action="${e.action}" data-user="${e.user||""}"><td class="p-3 font-mono text-zinc-500 whitespace-nowrap">${formatDateTime(e.ts)}</td><td class="p-3">${actionIcon(e.action)}</td><td class="p-3 font-black uppercase tracking-tight" style="color:${color}">${e.gasType}</td><td class="p-3 text-zinc-400">${e.capacity||"—"}</td><td class="p-3 text-zinc-500 font-mono">${e.from||"—"}</td><td class="p-3 text-zinc-500 font-mono">${e.to||"—"}</td><td class="p-3 text-zinc-600 font-mono">${e.user||"—"}</td></tr>`;}).join("");
   area.innerHTML=`<div class="flex flex-col gap-4">
     <div class="dash-panel border border-zinc-800 rounded-xl p-5"><h3 class="text-sm font-black uppercase text-zinc-400 tracking-wider mb-1 flex items-center gap-2"><i class="fa-solid fa-fire text-orange-400"></i> Most Deployed Gases <span class="text-zinc-600 font-normal normal-case text-xs ml-1">(${activityLog.filter(e=>e.action==="Deployed").length} total deploys)</span></h3><p class="text-xs text-zinc-600 font-bold mb-4">Top 15 by times moved to a job site cart</p>${topHtml}</div>
-    <div class="dash-panel border border-zinc-800 rounded-xl p-5 shadow-xl"><div class="flex items-center justify-between mb-4 border-b border-zinc-900 pb-3"><h3 class="text-sm font-black uppercase tracking-wider text-zinc-100 flex items-center gap-2"><i class="fa-solid fa-clock-rotate-left text-zinc-500"></i> Activity Log <span class="bg-zinc-800 text-zinc-300 text-xs px-2 py-0.5 rounded-full font-mono">${activityLog.length}</span></h3><button onclick="if(confirm('Clear all history?')){activityLog=[];saveToDatabase();}" class="text-xs font-black text-zinc-600 hover:text-red-400 transition uppercase tracking-wider"><i class="fa-solid fa-trash mr-1"></i>Clear Log</button></div><div class="overflow-x-auto custom-scrollbar"><table class="w-full text-left border-collapse"><thead><tr class="border-b border-zinc-800 text-xs uppercase text-zinc-500 font-black tracking-wider"><th class="p-3">Timestamp</th><th class="p-3">Action</th><th class="p-3">Gas Type</th><th class="p-3">Size</th><th class="p-3">From</th><th class="p-3">To</th><th class="p-3">By</th></tr></thead><tbody>${rows}</tbody></table></div></div>
+    <div class="dash-panel border border-zinc-800 rounded-xl p-5 shadow-xl">
+      <div class="flex items-center justify-between mb-3 border-b border-zinc-900 pb-3">
+        <h3 class="text-sm font-black uppercase tracking-wider text-zinc-100 flex items-center gap-2"><i class="fa-solid fa-clock-rotate-left text-zinc-500"></i> Activity Log <span class="bg-zinc-800 text-zinc-300 text-xs px-2 py-0.5 rounded-full font-mono" id="log-visible-count">${activityLog.length}</span></h3>
+        <button onclick="if(confirm('Clear all history?')){activityLog=[];saveToDatabase();}" class="text-xs font-black text-zinc-600 hover:text-red-400 transition uppercase tracking-wider"><i class="fa-solid fa-trash mr-1"></i>Clear Log</button>
+      </div>
+      <div class="flex flex-wrap gap-2 mb-3 items-center">
+        <div class="flex gap-2 overflow-x-auto custom-scrollbar pb-1 flex-1">${actionFilterBtns}</div>
+        <select id="log-user-filter" onchange="filterHistoryLog()" class="bg-zinc-900 border border-zinc-700 rounded-lg px-3 text-zinc-300 font-black text-xs shrink-0" style="min-height:34px;">${userOpts}</select>
+      </div>
+      <div class="overflow-x-auto custom-scrollbar"><table class="w-full text-left border-collapse"><thead><tr class="border-b border-zinc-800 text-xs uppercase text-zinc-500 font-black tracking-wider"><th class="p-3">Timestamp</th><th class="p-3">Action</th><th class="p-3">Gas Type</th><th class="p-3">Size</th><th class="p-3">From</th><th class="p-3">To</th><th class="p-3">By</th></tr></thead><tbody id="log-tbody">${rows}</tbody></table>
+      <p id="log-empty-msg" class="hidden text-center text-zinc-600 font-black text-sm py-6">No entries match this filter.</p></div>
+    </div>
   </div>`;
+  filterHistoryLog();
+}
+function filterHistoryLog(){
+  const btns=document.querySelectorAll(".log-filter-btn");
+  const clicked=event&&event.target&&event.target.closest(".log-filter-btn");
+  if(clicked){
+    // Toggle active: clicking the already-active btn resets to All
+    const wasActive=clicked.style.outline==="2px solid";
+    btns.forEach(b=>{b.style.outline="";b.style.opacity="0.55";});
+    if(!wasActive||clicked.dataset.action!=="All"){
+      clicked.style.outline="2px solid";clicked.style.opacity="1";
+    } else {
+      // reset to All
+      const allBtn=document.querySelector('.log-filter-btn[data-action="All"]');
+      if(allBtn){allBtn.style.outline="2px solid";allBtn.style.opacity="1";}
+    }
+  }
+  const activeBtn=document.querySelector('.log-filter-btn[style*="2px solid"]');
+  const activeAction=activeBtn?activeBtn.dataset.action:"All";
+  const activeUser=(document.getElementById("log-user-filter")||{}).value||"All";
+  const rows=document.querySelectorAll("#log-tbody .log-row");
+  let visible=0;
+  rows.forEach(r=>{
+    const matchAction=activeAction==="All"||r.dataset.action===activeAction;
+    const matchUser=activeUser==="All"||r.dataset.user===activeUser;
+    const show=matchAction&&matchUser;
+    r.style.display=show?"":"none";
+    if(show)visible++;
+  });
+  const countEl=document.getElementById("log-visible-count");
+  if(countEl)countEl.textContent=visible;
+  const emptyMsg=document.getElementById("log-empty-msg");
+  if(emptyMsg)emptyMsg.classList.toggle("hidden",visible>0);
+  // Init active state on first call (no click event)
+  if(!clicked){
+    const allBtn=document.querySelector('.log-filter-btn[data-action="All"]');
+    if(allBtn){allBtn.style.outline="2px solid";allBtn.style.opacity="1";}
+    btns.forEach(b=>{if(b!==allBtn)b.style.opacity="0.55";});
+  }
 }
 
 // ── OVERVIEW ──────────────────────────────────────────────
@@ -2141,7 +2243,38 @@ function pullToMyTruck(i){
   saveToDatabase();
 }
 
-function updatePSI(i,change){if(isOfficeViewOnly())return;const l=getCurrentList();if(l[i]){l[i].currentPSI=Math.max(0,Math.min(l[i].maxPSI,l[i].currentPSI+change));saveToDatabase();}}
+// ── PSI: targeted write path + debounced net-change logging ──
+// Returns the Firebase path to the current list, e.g. "inventory/Van 17" or "officeStock"
+function currentListPath(){
+  if(currentTab===2)return"officeStock";
+  if(currentTab===1)return`cart/${currentLocation}`;
+  return`inventory/${currentLocation}`;
+}
+// Pending PSI-log state, keyed so taps on the SAME bottle collapse into one entry
+let _psiLogTimers={};
+function queuePSILog(bottle,startPSI,locLabel){
+  const key=`${locLabel}|${bottle.type}|${bottle.assetNum||""}|${bottle.sageNum||""}`;
+  // Remember the ORIGINAL starting PSI across rapid taps; don't overwrite once set
+  if(!_psiLogTimers[key]){_psiLogTimers[key]={start:startPSI};}
+  // Snapshot current values now (listener may swap the array reference before the timer fires)
+  _psiLogTimers[key].latest=bottle.currentPSI;
+  _psiLogTimers[key].snap={type:bottle.type,capacity:bottle.capacity,partNum:bottle.partNum,sageNum:bottle.sageNum,assetNum:bottle.assetNum};
+  clearTimeout(_psiLogTimers[key].t);
+  _psiLogTimers[key].t=setTimeout(()=>{
+    const rec=_psiLogTimers[key],from=rec.start,to=rec.latest;
+    delete _psiLogTimers[key];
+    if(from===to)return; // no net change, skip
+    logEvent("PSI Updated",rec.snap,`${from} PSI`,`${to} PSI`);
+    saveToDatabase(); // persist the new log entry (full write, but only once per editing session)
+  },2500);
+}
+// Targeted write — updates only this one bottle's PSI in Firebase (fix #1: no full-tree clobber)
+function savePSI(i){
+  const path=currentListPath(),l=getCurrentList();
+  if(l[i])db.ref(`gasTrackerData/${path}/${i}/currentPSI`).set(l[i].currentPSI).catch(()=>saveToDatabase());
+}
+function updatePSI(i,change){if(isOfficeViewOnly())return;const l=getCurrentList();if(l[i]){const before=l[i].currentPSI;l[i].currentPSI=Math.max(0,Math.min(l[i].maxPSI,l[i].currentPSI+change));savePSI(i);queuePSILog(l[i],before,currentLocationLabel());}}
+function setPSI(i,value){if(isOfficeViewOnly())return;const l=getCurrentList();if(l[i]){const before=l[i].currentPSI;l[i].currentPSI=Math.max(0,Math.min(l[i].maxPSI,value));savePSI(i);queuePSILog(l[i],before,currentLocationLabel());}}
 
 function moveToCart(i){
   const from=currentLocationLabel(),bottle=inventory[currentLocation].splice(i,1)[0];
@@ -2182,7 +2315,7 @@ function removeBottle(i){
 // PSI Modal
 function openPSIModal(i){if(isOfficeViewOnly())return;psiTargetIndex=i;const l=getCurrentList();document.getElementById("psi-custom-input").value=l[i]?l[i].currentPSI:"";document.getElementById("psi-modal").classList.remove("hidden");setTimeout(()=>document.getElementById("psi-custom-input").focus(),50);}
 function quickSetPSI(v){document.getElementById("psi-custom-input").value=v;}
-function confirmPSI(){if(isOfficeViewOnly())return;const v=parseInt(document.getElementById("psi-custom-input").value);if(isNaN(v)){alert("Please enter a valid PSI.");return;}const l=getCurrentList();if(l[psiTargetIndex]){l[psiTargetIndex].currentPSI=Math.max(0,Math.min(l[psiTargetIndex].maxPSI,v));saveToDatabase();}closePSIModal();}
+function confirmPSI(){if(isOfficeViewOnly())return;const v=parseInt(document.getElementById("psi-custom-input").value);if(isNaN(v)){alert("Please enter a valid PSI.");return;}const l=getCurrentList();if(l[psiTargetIndex]){const before=l[psiTargetIndex].currentPSI;l[psiTargetIndex].currentPSI=Math.max(0,Math.min(l[psiTargetIndex].maxPSI,v));savePSI(psiTargetIndex);queuePSILog(l[psiTargetIndex],before,currentLocationLabel());}closePSIModal();}
 function closePSIModal(){document.getElementById("psi-modal").classList.add("hidden");psiTargetIndex=null;}
 
 // Asset Modal
