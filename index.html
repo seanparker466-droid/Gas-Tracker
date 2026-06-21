@@ -859,6 +859,14 @@ const BUILTIN_ACCOUNTS={
   mike:  {displayName:"Mike Bird",     role:"tech",      vehicle:"Van 22"},
   james: {displayName:"James Peace",   role:"tech",      vehicle:"Van 18"},
 };
+// Maps app username → Firebase email (update domain to match what you created)
+const USER_EMAILS={
+  sean:  "sean.parker@ino-tek.com",
+  office:"office@ino-tek.com",
+  austin:"austin.parker@ino-tek.com",
+  mike:  "mike.bird@ino-tek.com",
+  james: "james.peace@ino-tek.com",
+};
 let currentUser=null,appUsers={},vehicleThresholds={};
 let _bottleView="card"; // "card" | "list" | "icon"
 
@@ -880,17 +888,20 @@ async function attemptLogin(){
   const u=document.getElementById("login-user").value.trim().toLowerCase(),p=document.getElementById("login-pass").value,errEl=document.getElementById("login-error");
   errEl.classList.add("hidden");
   if(!BUILTIN_ACCOUNTS[u]){errEl.textContent="Unknown username.";errEl.classList.remove("hidden");return;}
-  if(!appUsers[u]||!appUsers[u].hash){errEl.textContent="Account not set up yet. Contact Sean.";errEl.classList.remove("hidden");return;}
-  const hash=await sha256(p);
-  if(hash!==appUsers[u].hash){errEl.textContent="Incorrect password.";errEl.classList.remove("hidden");return;}
-  loginAs(u);
+  if(!USER_EMAILS[u]){errEl.textContent="Account not configured. Contact Sean.";errEl.classList.remove("hidden");return;}
+  try{
+    await auth.signInWithEmailAndPassword(USER_EMAILS[u],p);
+    loginAs(u);
+  }catch(err){
+    errEl.textContent=err.code==="auth/wrong-password"||err.code==="auth/invalid-credential"?"Incorrect password.":err.code==="auth/too-many-requests"?"Too many attempts. Try again later.":"Login failed. Contact Sean.";
+    errEl.classList.remove("hidden");
+  }
 }
 
 function loginAs(username){
   currentUser={username,...BUILTIN_ACCOUNTS[username]};
   if(appUsers[username]&&appUsers[username].vehicle)currentUser.vehicle=appUsers[username].vehicle;
   localStorage.setItem("gbt-session",username);
-  auth.signInAnonymously().catch(()=>{});
   applyUserUI();showApp();initAppData();
 }
 function logout(){currentUser=null;localStorage.removeItem("gbt-session");auth.signOut().catch(()=>{});location.reload();}
@@ -1168,11 +1179,17 @@ let activeReportFilter="all";
 let inventory={},cart={},officeStock=[],retiredStock=[],activityLog=[],reorderThresholds={},partsInventory={},customPartsCatalog={};
 
 // ── BOOT ──────────────────────────────────────────────────
-auth.signInAnonymously().catch(err=>console.warn("Anon sign-in failed:",err)).finally(()=>{
+// Load appUsers first (public read allowed), then check for a saved session
+auth.onAuthStateChanged(()=>{
   db.ref("appUsers").once("value",snap=>{
     appUsers=snap.val()||{};
-    if(!appUsers.sean||!appUsers.sean.hash){showSetupScreen();}
-    else{const saved=localStorage.getItem("gbt-session");if(saved&&BUILTIN_ACCOUNTS[saved]&&appUsers[saved])loginAs(saved);else showLoginScreen();}
+    const saved=localStorage.getItem("gbt-session");
+    if(saved&&BUILTIN_ACCOUNTS[saved]&&auth.currentUser){
+      loginAs(saved);
+    } else {
+      localStorage.removeItem("gbt-session");
+      showLoginScreen();
+    }
   });
 });
 document.getElementById("login-pass").addEventListener("keydown",e=>{if(e.key==="Enter")attemptLogin();});
