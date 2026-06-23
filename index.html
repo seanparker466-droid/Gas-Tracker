@@ -85,6 +85,12 @@
     .psi-up:hover,.psi-up-strong:hover{border-color:#10b981!important;}
     .psi-down:active,.psi-down-strong:active{background:rgba(127,29,29,.55)!important;}
     .psi-up:active,.psi-up-strong:active{background:rgba(6,78,59,.55)!important;}
+    .act-cart{background:rgba(6,78,59,.40)!important;border-color:rgba(6,95,70,.65)!important;color:#6ee7b7!important;}
+    .act-cart:hover{border-color:#10b981!important;background:rgba(6,78,59,.55)!important;}
+    .act-cart:active{background:rgba(6,78,59,.70)!important;}
+    .act-return{background:rgba(120,53,15,.38)!important;border-color:rgba(146,64,14,.60)!important;color:#fcd34d!important;}
+    .act-return:hover{border-color:#d97706!important;background:rgba(120,53,15,.55)!important;}
+    .act-return:active{background:rgba(120,53,15,.70)!important;}
     body.light #app .psi-down,body.light #app .psi-down-strong,body.light #app .psi-up,body.light #app .psi-up-strong,body.light #app .act-cart,body.light #app .act-return,
     body.theme-sky-frost #app .psi-down,body.theme-sky-frost #app .psi-down-strong,body.theme-sky-frost #app .psi-up,body.theme-sky-frost #app .psi-up-strong,body.theme-sky-frost #app .act-cart,body.theme-sky-frost #app .act-return,
     body.theme-sandstone #app .psi-down,body.theme-sandstone #app .psi-down-strong,body.theme-sandstone #app .psi-up,body.theme-sandstone #app .psi-up-strong,body.theme-sandstone #app .act-cart,body.theme-sandstone #app .act-return,
@@ -1836,11 +1842,11 @@ function openBottleDetail(i){
       <button onclick="updatePSI(${i},10);closeBottleDetail();openBottleDetail(${i})"  class="no-zoom-btn psi-up rounded-lg font-black text-base flex items-center justify-center transition select-none" style="min-height:46px;border-width:1.5px;border-style:solid;">+10</button>
       <button onclick="updatePSI(${i},50);closeBottleDetail();openBottleDetail(${i})"  class="no-zoom-btn psi-up-strong rounded-lg font-black text-base flex items-center justify-center transition select-none" style="min-height:46px;border-width:1.5px;border-style:solid;">+50</button>
     </div>
-    <div class="grid grid-cols-2 gap-2 mb-3">
+    <div class="grid grid-cols-2 gap-2 mb-2">
       <button onclick="setPSI(${i},0);closeBottleDetail();openBottleDetail(${i})" class="no-zoom-btn bg-zinc-900 border border-zinc-800 hover:border-zinc-600 rounded-lg text-zinc-300 font-black text-xs flex items-center justify-center gap-1.5 transition select-none" style="min-height:36px;"><i class="fa-solid fa-gauge-simple-low text-xs"></i> Empty / 0</button>
       <button onclick="closeBottleDetail();openPSIModal(${i})" class="no-zoom-btn bg-zinc-900 border border-zinc-800 hover:border-zinc-600 rounded-lg text-zinc-300 font-black text-xs flex items-center justify-center gap-1.5 transition select-none" style="min-height:36px;"><i class="fa-solid fa-pen text-xs"></i> Set exact…</button>
     </div>`}
-    <div class="font-sans text-xs font-bold space-y-1.5 mb-3">
+    <div class="font-sans text-xs font-bold space-y-1.5">
       <div class="grid grid-cols-2 gap-x-3 border-b border-zinc-900 pb-1.5">
         <span class="text-zinc-400"><i class="fa-solid fa-barcode mr-1 text-zinc-600"></i>P/N: <span class="text-white font-mono">${partNum}</span></span>
         <span class="text-zinc-400"><i class="fa-solid fa-hashtag mr-1 text-zinc-600"></i>Sage: <span class="text-white font-mono">${sageNum}</span></span>
@@ -1853,7 +1859,7 @@ function openBottleDetail(i){
         <span class="${b.currentPSI<300?"text-amber-400":"text-zinc-500"} text-xs">${b.currentPSI}/${b.maxPSI} PSI</span>${warningBadge}
       </div>
     </div>
-    <div class="grid grid-cols-2 gap-2 text-xs font-black">
+    <div class="grid grid-cols-2 gap-2 mt-3 text-xs font-black">
       ${isPullOnly
         ?`<button onclick="closeBottleDetail();pullToMyTruck(${i})" class="bg-zinc-900 border border-zinc-700 hover:border-emerald-700 hover:bg-emerald-950/20 text-emerald-400 rounded-lg font-black col-span-2 h-10 flex items-center justify-center gap-1.5 transition"><i class="fa-solid fa-arrow-right-long"></i> Pull to My Vehicle</button>`
         :isOfficeViewOnly()
