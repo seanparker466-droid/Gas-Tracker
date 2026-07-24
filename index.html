@@ -1205,7 +1205,7 @@ let dataListenerActive=false;
 function initAppData(){
   if(dataListenerActive)return;dataListenerActive=true;
   if(!isSupervisor()&&currentUser.vehicle)currentLocation=currentUser.vehicle;
-  populateGasSelect();setDefaultDate();updateSystemCanvas();
+  populateGasSelect();setDefaultDate();initAudits();updateSystemCanvas();
   db.ref("gasTrackerData").on("value",snap=>{
     const data=snap.val();
     if(data){
@@ -1380,6 +1380,14 @@ function renderLocationTabs(){
   document.getElementById("location-tabs").innerHTML=html;
 }
 
+function auditTabBadge(){
+  const n=(typeof pendingAuditCount==="function")?pendingAuditCount():0;
+  const mine=(audits&&audits.active)?audits.active[fbEncodeKey(currentLocation)]:null;
+  if(mine&&mine.status==="in_progress")return ' <span class="ml-1 bg-indigo-600 text-white text-xs px-1.5 py-0.5 rounded-full">\u2022</span>';
+  if(n>0&&isSupervisor())return ` <span class="ml-1 bg-amber-500 text-zinc-950 text-xs px-1.5 py-0.5 rounded-full font-black">${n}</span>`;
+  if(mine&&mine.status==="pending")return ' <span class="ml-1 bg-amber-500 text-zinc-950 text-xs px-1.5 py-0.5 rounded-full font-black">1</span>';
+  return "";
+}
 function renderMainTabs(){
   const isSup=isSupervisor(),isOff=isOfficeRole();
   const isOfficeLoc=currentLocation==="Office Stock";
@@ -1393,7 +1401,8 @@ function renderMainTabs(){
       :`<button onclick="setTab(0)" class="px-4 py-2 rounded-md transition ${currentTab===0?"bg-red-600 text-white":"text-zinc-400 hover:text-white"}">Truck Stock</button>
         <button onclick="setTab(1)" class="px-4 py-2 rounded-md transition ${currentTab===1?"bg-red-600 text-white":"text-zinc-400 hover:text-white"}">In Use (Cart)</button>
         <button onclick="setTab(6)" class="px-4 py-2 rounded-md transition ${currentTab===6?"bg-red-600 text-white":"text-zinc-400 hover:text-white"}"><i class="fa-solid fa-list-check mr-1 text-emerald-400"></i>Summary</button>
-        <button onclick="setTab(9)" class="px-4 py-2 rounded-md transition ${currentTab===9?"bg-red-600 text-white":"text-zinc-400 hover:text-white"}"><i class="fa-solid fa-toolbox mr-1 text-cyan-400"></i>Parts</button>`
+        <button onclick="setTab(9)" class="px-4 py-2 rounded-md transition ${currentTab===9?"bg-red-600 text-white":"text-zinc-400 hover:text-white"}"><i class="fa-solid fa-toolbox mr-1 text-cyan-400"></i>Parts</button>
+        <button onclick="setTab(10)" class="px-4 py-2 rounded-md transition ${currentTab===10?"bg-red-600 text-white":"text-zinc-400 hover:text-white"}"><i class="fa-solid fa-clipboard-check mr-1 text-indigo-400"></i>Count${auditTabBadge()}</button>`
     }
     <button onclick="setTab(3)" class="px-4 py-2 rounded-md transition ${currentTab===3?"bg-red-600 text-white":"text-zinc-400 hover:text-white"}"><i class="fa-solid fa-chart-pie mr-1 text-amber-400"></i>Overview</button>
     <button onclick="setTab(8)" class="px-4 py-2 rounded-md transition ${currentTab===8?"bg-red-600 text-white":"text-zinc-400 hover:text-white"}"><i class="fa-solid fa-user-check mr-1 text-purple-400"></i>Check Out</button>
@@ -3056,9 +3065,981 @@ function savePartsInventory(locKey){
   if(btn){const orig=btn.innerHTML;btn.innerHTML=`<i class="fa-solid fa-check"></i> Saved!`;btn.classList.add("bg-emerald-600");btn.classList.remove("bg-cyan-600");setTimeout(()=>{btn.innerHTML=orig;btn.classList.remove("bg-emerald-600");btn.classList.add("bg-cyan-600");},1500);}
 }
 
+
+// ══ INVENTORY COUNT (AUDIT) ═══════════════════════════════
+// Stored under a separate Firebase root ("gasAudits") so the full-object
+// set() in saveToDatabase() can never clobber an in-progress count.
+let audits={active:{},history:{}};
+let _auditSession=null;          // local working copy while counting
+let _auditStartMode="group";
+let _auditScope={truck:true,cart:true,parts:true};
+let _auditPartsShowAll=false;
+let _auditReviewOnly=false;
+
+function initAudits(){
+  db.ref("gasAudits").on("value",snap=>{
+    const d=snap.val()||{};
+    audits={active:d.active||{},history:d.history||{}};
+    // Don't stomp on a count that's actively being entered on this device.
+    if(!_auditSession&&currentTab===10)renderAuditTab();
+    if(currentUser)renderMainTabs();
+  });
+}
+function auditKey(v){return fbEncodeKey(v);}
+function getActiveAudit(v){const s=audits.active?audits.active[auditKey(v)]:null;return s?normalizeAudit(s):null;}
+function normalizeAudit(s){
+  s.items=(s.items||[]).map(it=>{
+    it.psi=it.psi||(it.kind==="group"?[]:it.psi);
+    if(it.kind==="group"){
+      it.expPSI=it.expPSI||[];it.expAssets=it.expAssets||[];it.srcIdx=it.srcIdx||[];
+      it.psi=it.psi||[];it.dates=it.dates||[];it.tags=it.tags||[];
+    }
+    return it;
+  });
+  s.parts=s.parts||[];s.found=s.found||[];s.decisions=s.decisions||{};
+  return s;
+}
+function pendingAuditCount(){
+  return Object.values(audits.active||{}).filter(s=>s.status==="pending").length;
+}
+function canRunAudit(v){return isSupervisor()||currentUser.vehicle===v;}
+function canCommitAudit(){return isSupervisor();}
+
+function saveAuditSession(){
+  if(!_auditSession)return;
+  const clean=JSON.parse(JSON.stringify(_auditSession));
+  db.ref("gasAudits/active/"+auditKey(_auditSession.vehicle)).set(clean);
+}
+
+// ── Queue construction ────────────────────────────────────
+function buildAuditQueue(vehicle,mode,scope){
+  const items=[],sources=[];
+  if(scope.truck)sources.push({listType:"truck",list:inventory[vehicle]||[]});
+  if(scope.cart)sources.push({listType:"cart",list:cart[vehicle]||[]});
+  sources.forEach(src=>{
+    if(mode==="bottle"){
+      src.list.forEach((b,i)=>items.push({
+        kind:"bottle",listType:src.listType,srcIdx:i,
+        type:b.type,capacity:b.capacity||"Regular",expDate:b.expDate||"",
+        expPSI:b.currentPSI||0,maxPSI:b.maxPSI||1000,assetNum:b.assetNum||"",
+        done:0,present:-1,psi:-1,date:"",note:""
+      }));
+    }else{
+      const map={};
+      src.list.forEach((b,i)=>{
+        const k=`${b.type}~~${b.capacity||"Regular"}~~${b.expDate||""}`;
+        if(!map[k])map[k]={kind:"group",listType:src.listType,type:b.type,
+          capacity:b.capacity||"Regular",expDate:b.expDate||"",maxPSI:b.maxPSI||1000,
+          expected:0,expPSI:[],expAssets:[],srcIdx:[],
+          done:0,actual:-1,psi:[],dates:[],tags:[],note:""};
+        const g=map[k];
+        g.expected++;g.expPSI.push(b.currentPSI||0);g.srcIdx.push(i);
+        if(b.assetNum)g.expAssets.push(String(b.assetNum));
+      });
+      Object.values(map).forEach(g=>items.push(g));
+    }
+  });
+  items.sort((a,b)=>{
+    if(a.listType!==b.listType)return a.listType==="truck"?-1:1;
+    if(a.type!==b.type)return a.type.localeCompare(b.type);
+    const ad=a.expDate||"9999-99-99",bd=b.expDate||"9999-99-99";
+    if(ad!==bd)return ad.localeCompare(bd);
+    return String(a.assetNum||"").localeCompare(String(b.assetNum||""));
+  });
+  return items;
+}
+function buildAuditParts(vehicle){
+  const pInv=partsInventory[vehicle]||{},out=[];
+  Object.keys(customPartsCatalog).forEach(cat=>{
+    (customPartsCatalog[cat]||[]).forEach(p=>{
+      const pId=getPartId(p);
+      out.push({pId,cat,mfg:p.mfg||"",part:p.part||"",range:p.range||"",ptype:p.type||"",
+        expected:pInv[pId]||0,actual:-1,done:0});
+    });
+  });
+  return out;
+}
+function auditCats(s){
+  if(!s.scope.parts)return[];
+  return [...new Set((s.parts||[]).map(p=>p.cat))];
+}
+function auditTotalSteps(s){return s.items.length+auditCats(s).length;}
+
+// ── Lifecycle ─────────────────────────────────────────────
+function setAuditMode(m){_auditStartMode=m;renderAuditTab();}
+function toggleAuditScope(k){_auditScope[k]=!_auditScope[k];renderAuditTab();}
+
+function startAudit(){
+  const v=currentLocation;
+  if(!canRunAudit(v))return;
+  if(!_auditScope.truck&&!_auditScope.cart&&!_auditScope.parts){alert("Select at least one thing to count.");return;}
+  const existing=getActiveAudit(v);
+  if(existing&&existing.status==="pending"){alert("A count for "+v+" is already waiting on supervisor review. It has to be reviewed or discarded before a new one can start.");return;}
+  const scope={truck:!!_auditScope.truck,cart:!!_auditScope.cart,parts:!!_auditScope.parts};
+  _auditSession={
+    id:auditKey(v)+"-"+Date.now(),
+    vehicle:v,mode:_auditStartMode,scope,
+    status:"in_progress",
+    startedBy:currentUser?currentUser.displayName:"",
+    startedByUser:currentUser?currentUser.username:"",
+    startedAt:Date.now(),submittedAt:0,reviewedBy:"",committedAt:0,
+    idx:0,notes:"",
+    items:buildAuditQueue(v,_auditStartMode,scope),
+    parts:scope.parts?buildAuditParts(v):[],
+    found:[],decisions:{}
+  };
+  saveAuditSession();renderAuditTab();
+}
+function resumeAudit(){
+  const s=getActiveAudit(currentLocation);
+  if(!s)return;
+  _auditSession=s;renderAuditTab();
+}
+function cancelAudit(){
+  if(!_auditSession)return;
+  if(!confirm("Discard this count? Everything entered so far will be lost."))return;
+  db.ref("gasAudits/active/"+auditKey(_auditSession.vehicle)).remove();
+  _auditSession=null;renderAuditTab();
+}
+function auditGoto(i){
+  if(!_auditSession)return;
+  const max=auditTotalSteps(_auditSession);
+  _auditSession.idx=Math.max(0,Math.min(max,i));
+  saveAuditSession();renderAuditTab();
+}
+function auditNext(){auditGoto((_auditSession?_auditSession.idx:0)+1);}
+function auditBack(){auditGoto((_auditSession?_auditSession.idx:0)-1);}
+function auditSkip(){
+  if(!_auditSession)return;
+  const it=_auditSession.items[_auditSession.idx];
+  if(it)it.done=0;
+  auditNext();
+}
+
+// ── Counting UI ───────────────────────────────────────────
+function auditSetActual(delta,abs){
+  const it=_auditSession.items[_auditSession.idx];if(!it||it.kind!=="group")return;
+  let n=it.actual<0?it.expected:it.actual;
+  n=(abs!==undefined&&abs!==null)?abs:n+delta;
+  n=Math.max(0,Math.min(99,n));
+  it.actual=n;
+  while(it.psi.length<n){it.psi.push(it.expPSI[it.psi.length]!==undefined?it.expPSI[it.psi.length]:0);}
+  while(it.dates.length<n){it.dates.push(it.expDate);}
+  while(it.tags.length<n){it.tags.push(it.expAssets[it.tags.length]||"");}
+  it.psi.length=n;it.dates.length=n;it.tags.length=n;
+  renderAuditTab();
+}
+function auditSetRow(i,field,val){
+  const it=_auditSession.items[_auditSession.idx];if(!it)return;
+  if(it.kind==="group"){
+    if(field==="psi")it.psi[i]=Math.max(0,Math.min(4500,parseInt(val)||0));
+    if(field==="date")it.dates[i]=val;
+    if(field==="tag")it.tags[i]=val;
+  }else{
+    if(field==="psi")it.psi=Math.max(0,Math.min(4500,parseInt(val)||0));
+    if(field==="date")it.date=val;
+  }
+}
+function auditBumpPsi(i,delta){
+  const it=_auditSession.items[_auditSession.idx];if(!it)return;
+  if(it.kind==="group"){
+    it.psi[i]=Math.max(0,Math.min(4500,(it.psi[i]||0)+delta));
+    const el=document.getElementById("aud-psi-"+i);if(el)el.value=it.psi[i];
+  }else{
+    const base=it.psi<0?it.expPSI:it.psi;
+    it.psi=Math.max(0,Math.min(4500,base+delta));
+    const el=document.getElementById("aud-psi-0");if(el)el.value=it.psi;
+  }
+  saveAuditSession();
+}
+function auditSetPresent(v){
+  const it=_auditSession.items[_auditSession.idx];if(!it||it.kind!=="bottle")return;
+  it.present=v;
+  if(v===1){if(it.psi<0)it.psi=it.expPSI;if(!it.date)it.date=it.expDate;}
+  renderAuditTab();
+}
+function auditReadRowsFromDom(){
+  if(!_auditSession)return;
+  const it=_auditSession.items[_auditSession.idx];if(!it)return;
+  if(it.kind==="group"){
+    for(let i=0;i<(it.actual<0?0:it.actual);i++){
+      const p=document.getElementById("aud-psi-"+i),d=document.getElementById("aud-date-"+i),t=document.getElementById("aud-tag-"+i);
+      if(p)it.psi[i]=Math.max(0,Math.min(4500,parseInt(p.value)||0));
+      if(d)it.dates[i]=d.value;
+      if(t)it.tags[i]=t.value;
+    }
+  }else{
+    const p=document.getElementById("aud-psi-0"),d=document.getElementById("aud-date-0");
+    if(p)it.psi=Math.max(0,Math.min(4500,parseInt(p.value)||0));
+    if(d)it.date=d.value;
+  }
+}
+function auditConfirmItem(){
+  if(!_auditSession)return;
+  const it=_auditSession.items[_auditSession.idx];if(!it)return;
+  auditReadRowsFromDom();
+  if(it.kind==="group"){
+    if(it.actual<0)it.actual=it.expected;
+  }else{
+    if(it.present<0){alert("Mark the bottle Found or Not Here first.");return;}
+  }
+  it.done=1;
+  auditNext();
+}
+function auditPartsSetQty(pId,val,delta){
+  const p=(_auditSession.parts||[]).find(x=>x.pId===pId);if(!p)return;
+  let n=(delta!==undefined&&delta!==null)?((p.actual<0?p.expected:p.actual)+delta):(parseInt(val)||0);
+  p.actual=Math.max(0,Math.min(999,n));p.done=1;
+  const el=document.getElementById("aud-part-"+pId);if(el)el.value=p.actual;
+  saveAuditSession();
+}
+function auditConfirmCat(){
+  if(!_auditSession)return;
+  const cats=auditCats(_auditSession),ci=_auditSession.idx-_auditSession.items.length;
+  const cat=cats[ci];
+  (_auditSession.parts||[]).filter(p=>p.cat===cat).forEach(p=>{
+    const el=document.getElementById("aud-part-"+p.pId);
+    if(el){p.actual=Math.max(0,Math.min(999,parseInt(el.value)||0));p.done=1;}
+    else if(p.actual<0){p.actual=p.expected;p.done=1;}
+  });
+  auditNext();
+}
+function toggleAuditPartsShowAll(){
+  auditConfirmCatSilent();
+  _auditPartsShowAll=!_auditPartsShowAll;renderAuditTab();
+}
+function auditConfirmCatSilent(){
+  if(!_auditSession)return;
+  const cats=auditCats(_auditSession),ci=_auditSession.idx-_auditSession.items.length;
+  const cat=cats[ci];if(!cat)return;
+  (_auditSession.parts||[]).filter(p=>p.cat===cat).forEach(p=>{
+    const el=document.getElementById("aud-part-"+p.pId);
+    if(el){p.actual=Math.max(0,Math.min(999,parseInt(el.value)||0));p.done=1;}
+  });
+}
+
+// ── Found-extra bottle ────────────────────────────────────
+function auditAddFound(){
+  if(!_auditSession)return;
+  auditReadRowsFromDom();auditConfirmCatSilent();
+  _auditSession.found.push({type:gasTypes[0]||"UNKNOWN GAS",capacity:"Regular",
+    expDate:new Date(Date.now()+31536000000).toISOString().split("T")[0],
+    currentPSI:1000,maxPSI:1000,assetNum:"",listType:"truck"});
+  saveAuditSession();renderAuditTab();
+}
+function auditSetFound(i,field,val){
+  const f=_auditSession.found[i];if(!f)return;
+  if(field==="currentPSI"||field==="maxPSI")f[field]=Math.max(0,Math.min(4500,parseInt(val)||0));
+  else f[field]=val;
+  if(field==="type"){const e=gasCatalog[val]||{};f.partNum=e.partNum||"";f.sageNum=e.sageNum||"";}
+  saveAuditSession();
+}
+function auditRemoveFound(i){_auditSession.found.splice(i,1);saveAuditSession();renderAuditTab();}
+
+// ── Variance computation ──────────────────────────────────
+function computeAuditVariances(s){
+  const V=[];
+  let n=0;
+  const add=o=>{o.id="v"+(n++);V.push(o);return o;};
+  (s.items||[]).forEach((it,qi)=>{
+    if(!it.done){add({kind:"skipped",qi,it,label:auditItemLabel(it),detail:"Never counted — left as-is"});return;}
+    if(it.kind==="bottle"){
+      if(it.present===0){add({kind:"missing",qi,it,count:1,label:auditItemLabel(it),detail:"Not found on the vehicle"});return;}
+      if(it.psi>=0&&it.psi!==it.expPSI)add({kind:"psi",qi,it,label:auditItemLabel(it),pairs:[{from:it.expPSI,to:it.psi,tag:it.assetNum}],detail:`${it.expPSI} → ${it.psi} PSI`});
+      if(it.date&&it.date!==it.expDate)add({kind:"date",qi,it,label:auditItemLabel(it),changes:[{from:it.expDate,to:it.date,tag:it.assetNum}],detail:`${formatDate(it.expDate)} → ${formatDate(it.date)}`});
+    }else{
+      const act=it.actual<0?it.expected:it.actual;
+      // Date corrections first — a corrected date is one bottle moving, not a loss.
+      const dch=[];
+      for(let i=0;i<act;i++){
+        const d=it.dates[i]||it.expDate;
+        if(d&&d!==it.expDate)dch.push({from:it.expDate,to:d,tag:it.tags[i]||"",psi:it.psi[i]});
+      }
+      if(dch.length)add({kind:"date",qi,it,label:auditItemLabel(it),changes:dch,
+        detail:dch.map(c=>`${formatDate(c.from)} → ${formatDate(c.to)}`).join(", ")});
+      let mv=null;
+      if(act<it.expected){mv={kind:"missing",qi,it,count:it.expected-act,label:auditItemLabel(it),
+        detail:`Expected ${it.expected}, counted ${act}`};add(mv);}
+      if(act>it.expected)add({kind:"extra",qi,it,count:act-it.expected,label:auditItemLabel(it),
+        detail:`Expected ${it.expected}, counted ${act}`});
+      // PSI pairing. Readings can't be tied to specific untagged bottles, so pair
+      // each reading with its nearest expected value, closest match claimed first.
+      // Straight top-N sorting mispairs badly when one bottle is missing: it would
+      // report a phantom change on a bottle that never moved.
+      const pool=it.expPSI.map((v,i)=>({v,used:false}));
+      const obs=it.psi.slice(0,act).map(x=>x||0).map(v=>({v,used:false}));
+      const pairs=[];
+      const nMatch=Math.min(obs.length,pool.length);
+      for(let k=0;k<nMatch;k++){
+        let best=null;
+        obs.forEach(o=>{if(o.used)return;pool.forEach(e=>{if(e.used)return;
+          const dist=Math.abs(o.v-e.v);
+          if(!best||dist<best.dist)best={dist,o,e};});});
+        if(!best)break;
+        best.o.used=true;best.e.used=true;
+        if(best.o.v!==best.e.v)pairs.push({from:best.e.v,to:best.o.v});
+      }
+      const unmatched=pool.filter(e=>!e.used).map(e=>e.v);
+      if(pairs.length)add({kind:"psi",qi,it,label:auditItemLabel(it),pairs,
+        detail:pairs.map(p=>`${p.from} → ${p.to}`).join(", ")});
+      // Asset tags that were never ticked off
+      const seen=new Set((it.tags||[]).filter(Boolean).map(String));
+      const lost=(it.expAssets||[]).filter(a=>!seen.has(String(a)));
+      if(mv){mv.psiCandidates=unmatched;mv.lostTags=lost;
+        if(lost.length)mv.detail+=` · tag${lost.length>1?"s":""} ${lost.map(t=>"#"+t).join(", ")} not seen`;}
+      else if(lost.length&&act>=it.expected)add({kind:"tag",qi,it,tags:lost,label:auditItemLabel(it),
+        detail:`Tag${lost.length>1?"s":""} ${lost.map(t=>"#"+t).join(", ")} not seen, but count matched`});
+    }
+  });
+  (s.found||[]).forEach((f,fi)=>{
+    add({kind:"found",fi,f,label:`${f.type} · ${f.capacity} · EXP ${formatDate(f.expDate)}`,
+      detail:`Found on ${f.listType==="cart"?"cart":"truck"}, not in the app`});
+  });
+  (s.parts||[]).forEach((p,pi)=>{
+    if(!p.done||p.actual<0)return;
+    if(p.actual!==p.expected)add({kind:"part",pi,p,label:`${p.mfg}${p.part&&p.part!=="N/A"?" · "+p.part:""}`,
+      detail:`${p.cat} — expected ${p.expected}, counted ${p.actual}`});
+  });
+  // Pair a found bottle against a same-type shortfall: almost always one bottle
+  // whose expiry drifted, not a loss plus a gain.
+  V.filter(v=>v.kind==="found").forEach(fv=>{
+    const m=V.find(v=>v.kind==="missing"&&!v._paired&&v.it&&v.it.type===fv.f.type&&
+      (v.it.capacity||"")===(fv.f.capacity||"")&&v.it.expDate!==fv.f.expDate);
+    if(m){m._paired=fv.id;fv._paired=m.id;fv.suggest="retag";
+      fv.suggestText=`Looks like the same bottle with a different expiry — ${formatDate(m.it.expDate)} → ${formatDate(fv.f.expDate)}`;}
+  });
+  return V;
+}
+function auditItemLabel(it){
+  const loc=it.listType==="cart"?"CART":"TRUCK";
+  const tag=it.kind==="bottle"&&it.assetNum?` · #${it.assetNum}`:"";
+  return `<span class="text-[10px] font-black px-1.5 py-0.5 rounded ${it.listType==="cart"?"bg-amber-950/60 text-amber-400 border border-amber-900/50":"bg-zinc-800 text-zinc-400 border border-zinc-700"}">${loc}</span> ${it.type} · ${it.capacity} · EXP ${formatDate(it.expDate)}${tag}`;
+}
+
+// ── Submit / commit ───────────────────────────────────────
+function submitAudit(){
+  if(!_auditSession)return;
+  auditReadRowsFromDom();auditConfirmCatSilent();
+  const undone=(_auditSession.items||[]).filter(i=>!i.done).length;
+  if(undone>0&&!confirm(`${undone} item${undone>1?"s were":" was"} skipped and won't be changed. Submit anyway?`))return;
+  _auditSession.status="pending";
+  _auditSession.submittedAt=Date.now();
+  const V=computeAuditVariances(_auditSession);
+  _auditSession.decisions={};
+  V.forEach(v=>{_auditSession.decisions[v.id]=v.kind==="skipped"?"ignore":"apply";});
+  saveAuditSession();
+  _auditSession=null;
+  renderAuditTab();
+}
+function openAuditReview(v){
+  const s=getActiveAudit(v);
+  if(!s||s.status!=="pending")return;
+  _auditSession=s;_auditReviewOnly=true;renderAuditTab();
+}
+function setAuditDecision(id,val){
+  if(!_auditSession)return;
+  _auditSession.decisions[id]=val;
+  saveAuditSession();renderAuditTab();
+}
+function setAllAuditDecisions(val){
+  if(!_auditSession)return;
+  computeAuditVariances(_auditSession).forEach(v=>{if(v.kind!=="skipped")_auditSession.decisions[v.id]=val;});
+  saveAuditSession();renderAuditTab();
+}
+
+// Locate a live bottle matching criteria, skipping already-claimed indices.
+// Claimed bottles are tracked by object reference, not index — a splice during
+// the retire pass would otherwise shift every index out from under us.
+function auditFindLive(list,crit,used){
+  const free=b=>!used.has(b);
+  const base=b=>free(b)&&b.type===crit.type&&(b.capacity||"")===(crit.capacity||"");
+  let hit;
+  if(crit.assetNum){
+    hit=list.find(b=>free(b)&&String(b.assetNum||"")===String(crit.assetNum));
+    if(hit)return hit;
+  }
+  if(crit.psi!==undefined&&crit.psi!==null){
+    hit=list.find(b=>base(b)&&(b.expDate||"")===(crit.expDate||"")&&b.currentPSI===crit.psi);
+    if(hit)return hit;
+    hit=list.find(b=>base(b)&&b.currentPSI===crit.psi);
+    if(hit)return hit;
+  }
+  hit=list.find(b=>base(b)&&(b.expDate||"")===(crit.expDate||""));
+  if(hit)return hit;
+  return list.find(b=>base(b))||null;
+}
+function auditLiveList(s,listType){
+  if(listType==="cart"){if(!cart[s.vehicle])cart[s.vehicle]=[];return cart[s.vehicle];}
+  if(!inventory[s.vehicle])inventory[s.vehicle]=[];return inventory[s.vehicle];
+}
+
+function commitAudit(){
+  if(!_auditSession||!canCommitAudit())return;
+  const s=_auditSession;
+  const V=computeAuditVariances(s);
+  const applied=V.filter(v=>s.decisions[v.id]==="apply");
+  if(applied.length===0&&!confirm("Nothing is marked to apply. Close this count out anyway?"))return;
+  if(!confirm(`Apply ${applied.length} change${applied.length===1?"":"s"} to ${s.vehicle} and close this count?`))return;
+
+  const usedT=new Set(),usedC=new Set();
+  const usedFor=lt=>lt==="cart"?usedC:usedT;
+  const tally={psi:0,date:0,missing:0,extra:0,parts:0};
+  const isApplied=id=>id&&s.decisions[id]==="apply";
+
+  // Date corrections run first, so a bottle whose expiry simply drifted is
+  // recognised as present rather than retired as missing.
+  applied.filter(v=>v.kind==="date").forEach(v=>{
+    const list=auditLiveList(s,v.it.listType),used=usedFor(v.it.listType);
+    (v.changes||[]).forEach(c=>{
+      const b=auditFindLive(list,{type:v.it.type,capacity:v.it.capacity,expDate:c.from,assetNum:c.tag,psi:c.psi},used);
+      if(b){b.expDate=c.to;used.add(b);tally.date++;}
+    });
+  });
+  applied.filter(v=>v.kind==="psi").forEach(v=>{
+    const list=auditLiveList(s,v.it.listType),used=usedFor(v.it.listType);
+    (v.pairs||[]).forEach(p=>{
+      const b=auditFindLive(list,{type:v.it.type,capacity:v.it.capacity,expDate:v.it.expDate,assetNum:p.tag,psi:p.from},used);
+      if(b){b.currentPSI=p.to;used.add(b);tally.psi++;}
+    });
+  });
+  applied.filter(v=>v.kind==="missing").forEach(v=>{
+    // Paired with an approved "found" of the same gas — that's one bottle whose
+    // expiry drifted, not a loss and a gain. Re-date it instead of retiring it.
+    const pf=V.find(x=>x.id===v._paired&&x.kind==="found");
+    if(pf&&isApplied(pf.id)){
+      const list=auditLiveList(s,v.it.listType),used=usedFor(v.it.listType);
+      // The reading that went unpaired during the count is this bottle's — use it
+      // to land the correction on the right record instead of the first match.
+      const hint=(v.psiCandidates||[])[0];
+      const b=auditFindLive(list,{type:v.it.type,capacity:v.it.capacity,expDate:v.it.expDate,psi:hint},used);
+      if(b){b.expDate=pf.f.expDate;if(pf.f.currentPSI)b.currentPSI=pf.f.currentPSI;used.add(b);tally.date++;return;}
+    }
+    const list=auditLiveList(s,v.it.listType),used=usedFor(v.it.listType);
+    const cands=(v.psiCandidates||[]).slice(),tags=(v.lostTags||[]).slice();
+    for(let k=0;k<v.count;k++){
+      const b=auditFindLive(list,{type:v.it.type,capacity:v.it.capacity,expDate:v.it.expDate,
+        assetNum:tags.shift(),psi:cands.length?cands.shift():undefined},used);
+      if(!b)break;
+      const at=list.indexOf(b);
+      if(at<0)break;
+      list.splice(at,1);
+      b.retiredAt=Date.now();
+      b.retiredFrom=`${s.vehicle} (${v.it.listType==="cart"?"On Cart":"Truck"})`;
+      b.user=currentUser?currentUser.displayName:"";
+      b.retireReason="Not found during inventory count";
+      retiredStock.push(b);used.add(b);tally.missing++;
+    }
+  });
+  applied.filter(v=>v.kind==="extra").forEach(v=>{
+    const list=auditLiveList(s,v.it.listType);
+    const e=gasCatalog[v.it.type]||{};
+    for(let k=0;k<v.count;k++){
+      const psi=v.it.psi[v.it.expected+k];
+      list.push({type:v.it.type,partNum:e.partNum||"",sageNum:e.sageNum||"",
+        capacity:v.it.capacity,expDate:v.it.dates[v.it.expected+k]||v.it.expDate,
+        currentPSI:psi!==undefined?psi:0,maxPSI:v.it.maxPSI||1000,assetNum:""});
+      tally.extra++;
+    }
+  });
+  applied.filter(v=>v.kind==="found").forEach(v=>{
+    // Already handled as a re-date on the paired shortfall — don't add a duplicate.
+    if(v._paired&&isApplied(v._paired))return;
+    const f=v.f,e=gasCatalog[f.type]||{};
+    auditLiveList(s,f.listType).push({type:f.type,partNum:e.partNum||"",sageNum:e.sageNum||"",
+      capacity:f.capacity,expDate:f.expDate,currentPSI:f.currentPSI||0,
+      maxPSI:f.maxPSI||1000,assetNum:f.assetNum||""});
+    tally.extra++;
+  });
+  applied.filter(v=>v.kind==="part").forEach(v=>{
+    if(!partsInventory[s.vehicle])partsInventory[s.vehicle]={};
+    if(v.p.actual>0)partsInventory[s.vehicle][v.p.pId]=v.p.actual;
+    else delete partsInventory[s.vehicle][v.p.pId];
+    tally.parts++;
+  });
+
+  // One summary entry — a row per bottle would blow through the 500-entry cap.
+  const bits=[];
+  if(tally.psi)bits.push(`${tally.psi} PSI`);
+  if(tally.date)bits.push(`${tally.date} expiry`);
+  if(tally.missing)bits.push(`${tally.missing} missing`);
+  if(tally.extra)bits.push(`${tally.extra} added`);
+  if(tally.parts)bits.push(`${tally.parts} parts`);
+  activityLog.unshift({ts:Date.now(),action:"Audited",gasType:"INVENTORY COUNT",
+    capacity:bits.join(", ")||"no changes",partNum:"",sageNum:"",
+    from:s.vehicle,to:`counted by ${s.startedBy}`,
+    user:currentUser?currentUser.displayName:""});
+  if(activityLog.length>500)activityLog=activityLog.slice(0,500);
+
+  s.status="committed";s.committedAt=Date.now();
+  s.reviewedBy=currentUser?currentUser.displayName:"";
+  s.applied=tally;
+  const clean=JSON.parse(JSON.stringify(s));
+  db.ref("gasAudits/history/"+s.id).set(clean);
+  db.ref("gasAudits/active/"+auditKey(s.vehicle)).remove();
+  saveToDatabase();
+  exportAuditSummary(clean,"APPROVED");
+  _auditSession=null;_auditReviewOnly=false;
+  renderAuditTab();
+}
+function rejectAudit(){
+  if(!_auditSession||!canCommitAudit())return;
+  if(!confirm("Send this count back? It will be discarded and the tech will need to run it again."))return;
+  db.ref("gasAudits/active/"+auditKey(_auditSession.vehicle)).remove();
+  _auditSession=null;_auditReviewOnly=false;renderAuditTab();
+}
+function closeAuditReview(){_auditSession=null;_auditReviewOnly=false;renderAuditTab();}
+
+// ── Printable summary ─────────────────────────────────────
+function exportAuditSummary(s,stamp){
+  const now=new Date().toLocaleString();
+  const V=computeAuditVariances(s);
+  const gasRows=[];
+  const push=(lt,list)=>list.forEach(b=>gasRows.push({loc:lt,...b}));
+  if(s.scope.truck)push("Truck",inventory[s.vehicle]||[]);
+  if(s.scope.cart)push("Cart",cart[s.vehicle]||[]);
+  gasRows.sort((a,b)=>a.loc.localeCompare(b.loc)||a.type.localeCompare(b.type)||String(a.expDate).localeCompare(String(b.expDate)));
+
+  const gasTable=gasRows.length?`<table>
+    <thead><tr><th>Loc</th><th>Gas Type</th><th>Size</th><th>Asset #</th><th>Expires</th><th style="text-align:right">PSI</th></tr></thead>
+    <tbody>${gasRows.map(b=>`<tr>
+      <td>${b.loc}</td><td><strong>${b.type}</strong></td><td>${b.capacity||"—"}</td>
+      <td style="font-family:monospace">${b.assetNum?"#"+b.assetNum:"—"}</td>
+      <td style="font-family:monospace${checkExpired(b.expDate)?";color:#b91c1c;font-weight:900":""}">${formatDate(b.expDate)}${checkExpired(b.expDate)?" EXPIRED":""}</td>
+      <td style="text-align:right"><strong>${b.currentPSI}</strong></td></tr>`).join("")}
+    <tr class="total-row"><td colspan="5">TOTAL CYLINDERS</td><td style="text-align:right">${gasRows.length}</td></tr></tbody></table>`
+    :`<p class="none">No cylinders recorded.</p>`;
+
+  let partsTable="";
+  if(s.scope.parts){
+    const pInv=partsInventory[s.vehicle]||{};
+    let tot=0;
+    const secs=Object.keys(customPartsCatalog).map(cat=>{
+      const rows=(customPartsCatalog[cat]||[]).map(p=>{
+        const q=pInv[getPartId(p)]||0;if(q<=0)return"";
+        tot+=q;
+        return`<tr><td><strong>${p.mfg}</strong></td><td style="font-family:monospace;font-size:11px">${p.part&&p.part!=="N/A"?p.part:"—"}</td><td style="font-size:11px;color:#555">${[p.range,p.type].filter(Boolean).join(" ")||"—"}</td><td style="text-align:right"><strong>${q}</strong></td></tr>`;
+      }).join("");
+      if(!rows)return"";
+      return`<h3>${cat}</h3><table><thead><tr><th>Manufacturer</th><th>Part #</th><th>Type / Range</th><th style="text-align:right">Qty</th></tr></thead><tbody>${rows}</tbody></table>`;
+    }).join("");
+    partsTable=`<h2>Parts &amp; Filters <span class="cnt">${tot} items</span></h2>${secs||`<p class="none">No parts in stock.</p>`}`;
+  }
+
+  const vRows=V.filter(v=>v.kind!=="skipped");
+  const varTable=vRows.length?`<table>
+    <thead><tr><th>Type</th><th>Item</th><th>Detail</th><th>Decision</th></tr></thead>
+    <tbody>${vRows.map(v=>{
+      const d=s.decisions&&s.decisions[v.id]||"apply";
+      const lbl=String(v.label).replace(/<[^>]*>/g,"").trim();
+      return`<tr><td><strong style="text-transform:uppercase;font-size:10px">${v.kind}</strong></td><td>${lbl}</td><td style="font-size:11px;color:#555">${v.detail}</td><td style="font-weight:900;color:${d==="apply"?"#15803d":"#a1a1aa"}">${d==="apply"?"APPLIED":"IGNORED"}</td></tr>`;
+    }).join("")}</tbody></table>`:`<p class="none">No discrepancies — everything matched.</p>`;
+
+  const skipped=V.filter(v=>v.kind==="skipped").length;
+  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${s.vehicle} — Inventory Count</title><style>
+  body{font-family:system-ui,sans-serif;padding:24px;color:#111;background:#fff;font-size:13px;}
+  h1{font-size:19px;font-weight:900;margin:0 0 4px;}
+  h2{font-size:13px;font-weight:900;margin:24px 0 6px;padding-bottom:4px;border-bottom:2px solid #18181b;text-transform:uppercase;letter-spacing:.05em;}
+  h3{font-size:11px;font-weight:900;margin:16px 0 4px;text-transform:uppercase;color:#52525b;letter-spacing:.05em;}
+  .cnt{font-weight:600;font-size:11px;color:#666;text-transform:none;letter-spacing:0;}
+  p.sub{color:#555;margin:0 0 4px;font-size:12px;}
+  .stamp{display:inline-block;border:3px solid ${stamp==="APPROVED"?"#15803d":"#b45309"};color:${stamp==="APPROVED"?"#15803d":"#b45309"};font-weight:900;font-size:15px;padding:5px 14px;border-radius:6px;letter-spacing:.1em;margin:10px 0 14px;transform:rotate(-1.5deg);}
+  table{width:100%;border-collapse:collapse;margin-bottom:6px;}
+  th{background:#f4f4f5;font-weight:900;text-transform:uppercase;font-size:10px;letter-spacing:.05em;padding:7px 10px;border-bottom:2px solid #18181b;text-align:left;}
+  td{padding:6px 10px;border-bottom:1px solid #d4d4d8;font-weight:600;font-size:12px;}
+  .total-row td{border-top:2px solid #18181b;border-bottom:none;font-weight:900;background:#fafafa;}
+  p.none{color:#777;font-style:italic;margin:8px 0 0;}
+  .sign{margin-top:34px;display:flex;gap:40px;}
+  .sign div{flex:1;border-top:1.5px solid #18181b;padding-top:5px;font-size:10px;font-weight:900;text-transform:uppercase;color:#52525b;letter-spacing:.05em;}
+  @media print{body{padding:0;} h2{page-break-after:avoid;} table{page-break-inside:auto;} tr{page-break-inside:avoid;}}
+  </style></head><body>
+  <h1>${s.vehicle} — Inventory Count</h1>
+  <div class="stamp">${stamp}</div>
+  <p class="sub">Counted by <strong>${s.startedBy}</strong> · started ${new Date(s.startedAt).toLocaleString()}${s.submittedAt?` · submitted ${new Date(s.submittedAt).toLocaleString()}`:""}</p>
+  <p class="sub">${s.reviewedBy?`Reviewed by <strong>${s.reviewedBy}</strong> · `:""}Mode: ${s.mode==="group"?"By gas type":"Bottle by bottle"} · Printed ${now}${skipped?` · ${skipped} item(s) skipped`:""}</p>
+  <h2>Discrepancies <span class="cnt">${vRows.length} found</span></h2>
+  ${varTable}
+  <h2>Cylinder Inventory <span class="cnt">${gasRows.length} cylinders</span></h2>
+  ${gasTable}
+  ${partsTable}
+  <div class="sign"><div>Technician Signature / Date</div><div>Supervisor Signature / Date</div></div>
+  <script>window.onload=()=>{window.print();}<\/script>
+  </body></html>`;
+  const w=window.open("","_blank","width=900,height=700");
+  if(!w){alert("Pop-up blocked — allow pop-ups for this site to print the count sheet.");return;}
+  w.document.write(html);w.document.close();
+}
+function printCurrentAudit(){
+  if(!_auditSession)return;
+  auditReadRowsFromDom();auditConfirmCatSilent();
+  exportAuditSummary(JSON.parse(JSON.stringify(_auditSession)),_auditSession.status==="pending"?"PENDING REVIEW":"IN PROGRESS");
+}
+
+// ── Rendering ─────────────────────────────────────────────
+function renderAuditTab(){
+  const area=document.getElementById("content-area");
+  if(!area)return;
+  const v=currentLocation;
+  if(_auditSession&&_auditSession.status==="pending"){area.innerHTML=auditReviewHtml(_auditSession);return;}
+  if(_auditSession&&_auditSession.status==="in_progress"){area.innerHTML=auditCountHtml(_auditSession);auditFocusFirst();return;}
+  area.innerHTML=auditHomeHtml(v);
+}
+function auditFocusFirst(){
+  const el=document.querySelector("#content-area input[data-autofocus]");
+  if(el)setTimeout(()=>{el.focus();el.select&&el.select();},60);
+}
+function auditPanel(inner){return`<div class="dash-panel border border-zinc-800 rounded-xl p-5 shadow-xl">${inner}</div>`;}
+
+function auditHomeHtml(v){
+  const s=getActiveAudit(v);
+  const allowed=canRunAudit(v);
+  const hist=Object.values(audits.history||{}).filter(h=>h.vehicle===v).sort((a,b)=>b.committedAt-a.committedAt);
+  const last=hist[0];
+  const pendingOthers=Object.values(audits.active||{}).filter(x=>x.status==="pending");
+
+  let head=`<div class="flex items-center justify-between mb-4 border-b border-zinc-900 pb-3">
+    <h3 class="text-sm font-black uppercase tracking-wider text-indigo-400 flex items-center gap-2"><i class="fa-solid fa-clipboard-check"></i> ${v} — Inventory Count</h3>
+    <span class="text-xs font-bold text-zinc-600">${last?`Last count ${formatDateTime(last.committedAt)} by ${last.startedBy}`:"Never counted"}</span>
+  </div>`;
+
+  // Supervisor: pending review queue
+  let queue="";
+  if(canCommitAudit()&&pendingOthers.length){
+    queue=`<div class="mb-5 rounded-xl border border-amber-900/50 bg-amber-950/20 p-4">
+      <h4 class="text-xs font-black uppercase tracking-wider text-amber-400 mb-3 flex items-center gap-2"><i class="fa-solid fa-inbox"></i> Waiting on your review (${pendingOthers.length})</h4>
+      <div class="flex flex-col gap-2">${pendingOthers.map(p=>`
+        <button onclick="switchLocation('${p.vehicle}');openAuditReview('${p.vehicle}')" class="flex items-center justify-between gap-3 w-full text-left bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-amber-700 rounded-lg px-4 py-3 transition">
+          <span class="font-black text-sm text-zinc-100">${p.vehicle}</span>
+          <span class="text-xs font-bold text-zinc-500">${p.startedBy} · ${formatDateTime(p.submittedAt)}</span>
+          <span class="text-xs font-black text-amber-400 whitespace-nowrap">Review <i class="fa-solid fa-arrow-right ml-1"></i></span>
+        </button>`).join("")}</div></div>`;
+  }
+
+  if(s&&s.status==="pending"){
+    const mine=s.startedByUser===(currentUser&&currentUser.username);
+    return auditPanel(head+queue+`<div class="text-center py-10">
+      <div class="w-14 h-14 rounded-full bg-amber-950/40 border border-amber-900/60 flex items-center justify-center mx-auto mb-4 text-amber-400 text-xl"><i class="fa-solid fa-hourglass-half"></i></div>
+      <p class="text-zinc-100 font-black text-base mb-1">Count submitted — waiting on supervisor review</p>
+      <p class="text-zinc-500 font-bold text-sm mb-5">Counted by ${s.startedBy} · ${formatDateTime(s.submittedAt)}</p>
+      <div class="flex items-center justify-center gap-2 flex-wrap">
+        <button onclick="openAuditReview('${v}')" class="bg-zinc-900 border border-zinc-700 hover:border-zinc-500 text-zinc-200 font-black text-sm px-5 h-12 rounded-lg transition"><i class="fa-solid fa-eye mr-2"></i>${canCommitAudit()?"Review & Approve":"View Results"}</button>
+        ${canCommitAudit()?`<button onclick="openAuditReview('${v}')" class="bg-emerald-600 hover:bg-emerald-500 text-zinc-950 font-black text-sm px-5 h-12 rounded-lg transition"><i class="fa-solid fa-check-double mr-2"></i>Approve</button>`:""}
+      </div>
+      ${mine||canCommitAudit()?`<p class="text-xs text-zinc-600 font-bold mt-5">A new count can't be started for ${v} until this one is reviewed.</p>`:""}
+    </div>`);
+  }
+
+  if(s&&s.status==="in_progress"){
+    const total=auditTotalSteps(s),doneN=(s.items||[]).filter(i=>i.done).length;
+    return auditPanel(head+queue+`<div class="text-center py-10">
+      <div class="w-14 h-14 rounded-full bg-indigo-950/40 border border-indigo-900/60 flex items-center justify-center mx-auto mb-4 text-indigo-400 text-xl"><i class="fa-solid fa-play"></i></div>
+      <p class="text-zinc-100 font-black text-base mb-1">Count already in progress</p>
+      <p class="text-zinc-500 font-bold text-sm mb-5">Started by ${s.startedBy} · ${formatDateTime(s.startedAt)} · ${doneN} of ${s.items.length} bottle groups done</p>
+      <div class="flex items-center justify-center gap-2 flex-wrap">
+        ${allowed?`<button onclick="resumeAudit()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-black text-sm px-6 h-12 rounded-lg transition"><i class="fa-solid fa-rotate-right mr-2"></i>Resume Count</button>`:`<span class="text-xs text-zinc-500 font-bold">Only ${s.startedBy} or a supervisor can continue this.</span>`}
+        ${allowed?`<button onclick="resumeAudit();setTimeout(cancelAudit,50)" class="bg-zinc-900 border border-zinc-800 hover:border-red-900 text-red-500 font-black text-sm px-5 h-12 rounded-lg transition">Discard</button>`:""}
+      </div></div>`);
+  }
+
+  if(!allowed)return auditPanel(head+queue+`<div class="text-center py-14 text-zinc-500 font-bold text-sm"><i class="fa-solid fa-lock mb-3 block text-2xl text-zinc-700"></i>Only ${v}'s tech or a supervisor can run a count here.</div>`);
+
+  const truckN=(inventory[v]||[]).length,cartN=(cart[v]||[]).length;
+  const partN=Object.keys(partsInventory[v]||{}).length;
+  const mBtn=(m,icon,title,sub)=>`<button onclick="setAuditMode('${m}')" class="flex-1 min-w-[220px] text-left rounded-xl border-2 p-4 transition ${_auditStartMode===m?"border-indigo-500 bg-indigo-950/30":"border-zinc-800 bg-zinc-900/40 hover:border-zinc-700"}">
+    <div class="flex items-center gap-2 mb-1"><i class="fa-solid ${icon} ${_auditStartMode===m?"text-indigo-400":"text-zinc-500"}"></i><span class="font-black text-sm ${_auditStartMode===m?"text-white":"text-zinc-300"}">${title}</span>${_auditStartMode===m?`<i class="fa-solid fa-circle-check text-indigo-400 ml-auto"></i>`:""}</div>
+    <p class="text-xs font-bold text-zinc-500 leading-snug">${sub}</p></button>`;
+  const sBtn=(k,icon,label,n)=>`<button onclick="toggleAuditScope('${k}')" class="flex items-center gap-2 px-4 h-11 rounded-lg border-2 font-black text-sm transition ${_auditScope[k]?"border-emerald-600 bg-emerald-950/30 text-emerald-300":"border-zinc-800 bg-zinc-900/40 text-zinc-500"}">
+    <i class="fa-solid ${_auditScope[k]?"fa-square-check":"fa-square"} ${_auditScope[k]?"text-emerald-400":"text-zinc-600"}"></i><i class="fa-solid ${icon}"></i> ${label} <span class="text-xs font-mono opacity-70">${n}</span></button>`;
+
+  return auditPanel(head+queue+`
+    <p class="text-xs text-zinc-500 font-bold mb-4 leading-relaxed">Walk the vehicle and count what's actually there. Nothing changes in the app until a supervisor approves the results, and you can stop and pick back up any time.</p>
+    <h4 class="text-xs font-black uppercase tracking-wider text-zinc-400 mb-2">1 · Count style</h4>
+    <div class="flex gap-3 flex-wrap mb-5">
+      ${mBtn("group","fa-layer-group","By gas type","One card per gas + size + expiry. Fastest — count a whole rack at once.")}
+      ${mBtn("bottle","fa-bottle-droplet","Bottle by bottle","One card per cylinder. Slower, but nothing can slip past.")}
+    </div>
+    <h4 class="text-xs font-black uppercase tracking-wider text-zinc-400 mb-2">2 · What to count</h4>
+    <div class="flex gap-2 flex-wrap mb-6">
+      ${sBtn("truck","fa-truck","Truck stock",truckN)}
+      ${sBtn("cart","fa-cart-flatbed","In use (cart)",cartN)}
+      ${sBtn("parts","fa-toolbox","Parts &amp; filters",partN)}
+    </div>
+    <button onclick="startAudit()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-black text-base h-14 rounded-xl transition shadow-lg flex items-center justify-center gap-2"><i class="fa-solid fa-play"></i> Start Count</button>
+    ${hist.length?`<div class="mt-6 pt-4 border-t border-zinc-900">
+      <h4 class="text-xs font-black uppercase tracking-wider text-zinc-500 mb-2">Past counts</h4>
+      <div class="flex flex-col gap-1.5">${hist.slice(0,6).map(h=>`
+        <div class="flex items-center justify-between gap-3 text-xs font-bold bg-zinc-900/50 border border-zinc-900 rounded-lg px-3 py-2">
+          <span class="text-zinc-300 font-mono">${formatDateTime(h.committedAt)}</span>
+          <span class="text-zinc-500">${h.startedBy}</span>
+          <span class="text-zinc-600 hidden sm:inline">${h.applied?Object.entries(h.applied).filter(([,n])=>n).map(([k,n])=>`${n} ${k}`).join(" · ")||"no changes":""}</span>
+          <button onclick="reprintAudit('${h.id}')" class="text-indigo-400 hover:text-indigo-300 font-black whitespace-nowrap"><i class="fa-solid fa-print mr-1"></i>Print</button>
+        </div>`).join("")}</div></div>`:""}`);
+}
+function reprintAudit(id){
+  const h=(audits.history||{})[id];
+  if(h)exportAuditSummary(normalizeAudit(JSON.parse(JSON.stringify(h))),"APPROVED");
+}
+
+function auditCountHtml(s){
+  const total=auditTotalSteps(s),idx=s.idx;
+  const doneN=(s.items||[]).filter(i=>i.done).length;
+  const pct=total?Math.round((Math.min(idx,total)/total)*100):100;
+  const bar=`<div class="mb-4">
+    <div class="flex items-center justify-between mb-2 gap-3 flex-wrap">
+      <h3 class="text-sm font-black uppercase tracking-wider text-indigo-400 flex items-center gap-2"><i class="fa-solid fa-clipboard-check"></i> ${s.vehicle} — Counting</h3>
+      <div class="flex items-center gap-2">
+        <button onclick="printCurrentAudit()" class="bg-zinc-900 border border-zinc-800 hover:border-zinc-600 text-zinc-400 hover:text-white font-black text-xs px-3 h-9 rounded-lg transition"><i class="fa-solid fa-print mr-1"></i>Print draft</button>
+        <button onclick="auditPause()" class="bg-zinc-900 border border-zinc-800 hover:border-zinc-600 text-zinc-300 font-black text-xs px-3 h-9 rounded-lg transition"><i class="fa-solid fa-pause mr-1"></i>Pause</button>
+        <button onclick="cancelAudit()" class="bg-zinc-900 border border-zinc-800 hover:border-red-900 text-red-500 font-black text-xs px-3 h-9 rounded-lg transition"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+    </div>
+    <div class="h-2.5 rounded-full bg-zinc-900 border border-zinc-800 overflow-hidden"><div class="h-full bg-indigo-500 transition-all" style="width:${pct}%"></div></div>
+    <p class="text-xs font-bold text-zinc-500 mt-1.5">Step ${Math.min(idx+1,total+1)} of ${total+1} · ${doneN} of ${s.items.length} bottle group${s.items.length===1?"":"s"} counted${s.found.length?` · ${s.found.length} extra found`:""}</p>
+  </div>`;
+
+  if(idx>=total)return auditPanel(bar+auditWrapUpHtml(s));
+  if(idx<s.items.length)return auditPanel(bar+auditItemCardHtml(s,s.items[idx]));
+  return auditPanel(bar+auditPartsCardHtml(s));
+}
+function auditPause(){_auditSession&&(auditReadRowsFromDom(),auditConfirmCatSilent(),saveAuditSession());_auditSession=null;renderAuditTab();}
+
+function auditDateField(id,val,expected){
+  const match=val===expected;
+  return`<div class="flex items-center gap-1.5">
+    <input id="${id}" type="date" value="${val||""}" onchange="auditFlagDate(this,'${expected||""}')" class="bg-zinc-950 border-2 ${match?"border-zinc-800":"border-amber-600"} rounded-lg h-11 px-2 text-sm font-bold text-zinc-100 w-[150px]">
+    <span class="text-[10px] font-black uppercase ${match?"text-zinc-600":"text-amber-400"}" data-datechip>${match?"matches":"changed"}</span>
+  </div>`;
+}
+function auditFlagDate(el,expected){
+  const chip=el.parentElement.querySelector("[data-datechip]");
+  const match=el.value===expected;
+  el.classList.toggle("border-amber-600",!match);
+  el.classList.toggle("border-zinc-800",match);
+  if(chip){chip.textContent=match?"matches":"changed";
+    chip.className=`text-[10px] font-black uppercase ${match?"text-zinc-600":"text-amber-400"}`;}
+  if(_auditSession)saveAuditSession();
+}
+
+function auditItemCardHtml(s,it){
+  const e=gasCatalog[it.type]||{},color=e.color||"#71717a";
+  const locChip=`<span class="text-[10px] font-black px-2 py-0.5 rounded ${it.listType==="cart"?"bg-amber-950/60 text-amber-400 border border-amber-900/50":"bg-zinc-800 text-zinc-400 border border-zinc-700"}">${it.listType==="cart"?"ON CART":"TRUCK"}</span>`;
+  const expWarn=checkExpired(it.expDate)?`<div class="mb-3 rounded-lg border border-red-900/60 bg-red-950/30 px-3 py-2 text-xs font-black text-red-400"><i class="fa-solid fa-triangle-exclamation mr-1.5"></i>EXPIRED — pull this bottle while you have it in hand.</div>`
+    :["exp30","exp60"].includes(getExpStatus(it.expDate))?`<div class="mb-3 rounded-lg border border-amber-900/50 bg-amber-950/20 px-3 py-2 text-xs font-black text-amber-400"><i class="fa-solid fa-clock mr-1.5"></i>Expires in ${daysUntilExp(it.expDate)} days.</div>`:"";
+
+  const header=`<div class="mb-3">
+    <div class="flex items-center gap-2 flex-wrap mb-1">${locChip}
+      <span class="font-black text-xl uppercase tracking-tight" style="color:${color}">${it.type}</span>
+      <span class="text-sm font-black text-zinc-400">${it.capacity}</span>
+      ${it.kind==="bottle"&&it.assetNum?`<span class="bg-blue-600 border border-blue-400 text-white text-sm px-3 py-0.5 rounded-full font-black font-mono">#${it.assetNum}</span>`:""}
+    </div>
+    <div class="flex items-center gap-2 flex-wrap">${expBadge(it.expDate)}
+      ${it.kind==="group"?`<span class="text-xs font-black text-zinc-500">App expects <span class="text-zinc-100 text-base">${it.expected}</span></span>`
+        :`<span class="text-xs font-black text-zinc-500">Last known <span class="text-zinc-100 text-base">${it.expPSI}</span> PSI</span>`}
+    </div></div>`;
+
+  const nav=`<div class="grid grid-cols-3 gap-2 mt-5">
+    <button onclick="auditBack()" class="bg-zinc-900 border border-zinc-800 hover:border-zinc-600 text-zinc-300 font-black text-sm h-14 rounded-xl transition ${s.idx===0?"opacity-40 pointer-events-none":""}"><i class="fa-solid fa-arrow-left mr-1.5"></i>Back</button>
+    <button onclick="auditSkip()" class="bg-zinc-900 border border-zinc-800 hover:border-amber-800 text-zinc-400 hover:text-amber-400 font-black text-sm h-14 rounded-xl transition">Skip</button>
+    <button onclick="auditConfirmItem()" class="bg-emerald-600 hover:bg-emerald-500 text-zinc-950 font-black text-sm h-14 rounded-xl transition shadow-lg"><i class="fa-solid fa-check mr-1.5"></i>Confirm</button>
+  </div>
+  <button onclick="auditAddFound()" class="w-full mt-2 bg-zinc-900 border border-dashed border-zinc-700 hover:border-cyan-700 text-zinc-400 hover:text-cyan-400 font-black text-xs h-11 rounded-xl transition"><i class="fa-solid fa-plus mr-1.5"></i>Found a bottle that isn't on the list</button>
+  ${s.found.length?auditFoundListHtml(s):""}`;
+
+  if(it.kind==="bottle"){
+    const yes=it.present===1,no=it.present===0;
+    const body=`<div class="grid grid-cols-2 gap-3 mb-4">
+      <button onclick="auditSetPresent(1)" class="h-16 rounded-xl border-2 font-black text-base transition ${yes?"border-emerald-500 bg-emerald-950/40 text-emerald-300":"border-zinc-800 bg-zinc-900/40 text-zinc-400 hover:border-zinc-600"}"><i class="fa-solid fa-check mr-2"></i>Found it</button>
+      <button onclick="auditSetPresent(0)" class="h-16 rounded-xl border-2 font-black text-base transition ${no?"border-red-500 bg-red-950/40 text-red-300":"border-zinc-800 bg-zinc-900/40 text-zinc-400 hover:border-zinc-600"}"><i class="fa-solid fa-xmark mr-2"></i>Not here</button>
+    </div>
+    ${yes?`<div class="rounded-xl border border-zinc-800 bg-zinc-950/60 p-4">
+      <div class="flex items-center gap-2 flex-wrap mb-3">
+        <span class="text-xs font-black uppercase text-zinc-500 w-20">PSI now</span>
+        <button onclick="auditBumpPsi(0,-100)" class="w-[46px] h-[46px] rounded-lg bg-red-950/40 border border-red-900/60 text-red-400 font-black text-lg">−</button>
+        <input id="aud-psi-0" data-autofocus type="number" inputmode="numeric" value="${it.psi<0?it.expPSI:it.psi}" onchange="auditSetRow(0,'psi',this.value);saveAuditSession()" class="bg-zinc-950 border-2 border-zinc-800 rounded-lg h-[46px] w-28 text-center text-2xl font-black text-zinc-100">
+        <button onclick="auditBumpPsi(0,100)" class="w-[46px] h-[46px] rounded-lg bg-emerald-950/40 border border-emerald-900/60 text-emerald-400 font-black text-lg">+</button>
+        <span class="text-xs font-bold text-zinc-600">/ ${it.maxPSI}</span>
+      </div>
+      <div class="flex items-center gap-2 flex-wrap">
+        <span class="text-xs font-black uppercase text-zinc-500 w-20">Exp on label</span>
+        ${auditDateField("aud-date-0",it.date||it.expDate,it.expDate)}
+      </div></div>`:""}`;
+    return header+expWarn+body+nav;
+  }
+
+  const act=it.actual<0?it.expected:it.actual;
+  const tagOpts=(sel,i)=>`<option value="">— no tag —</option>`+(it.expAssets||[]).map(a=>`<option value="${a}" ${String(sel)===String(a)?"selected":""}>#${a}</option>`).join("");
+  const rows=[];
+  for(let i=0;i<act;i++){
+    const psi=it.psi[i]!==undefined?it.psi[i]:(it.expPSI[i]!==undefined?it.expPSI[i]:0);
+    const dt=it.dates[i]!==undefined?it.dates[i]:it.expDate;
+    rows.push(`<div class="flex items-center gap-2 flex-wrap py-2.5 ${i?"border-t border-zinc-900":""}">
+      <span class="text-xs font-black text-zinc-600 w-6">${i+1}</span>
+      ${(it.expAssets||[]).length?`<select id="aud-tag-${i}" onchange="auditSetRow(${i},'tag',this.value);saveAuditSession()" class="bg-zinc-950 border-2 border-zinc-800 rounded-lg h-11 px-2 text-sm font-black text-zinc-100 w-[112px]">${tagOpts(it.tags[i]||"",i)}</select>`:""}
+      <button onclick="auditBumpPsi(${i},-100)" class="w-[46px] h-[46px] rounded-lg bg-red-950/40 border border-red-900/60 text-red-400 font-black text-lg shrink-0">−</button>
+      <input id="aud-psi-${i}" ${i===0?"data-autofocus":""} type="number" inputmode="numeric" value="${psi}" onchange="auditSetRow(${i},'psi',this.value);saveAuditSession()" class="bg-zinc-950 border-2 border-zinc-800 rounded-lg h-[46px] w-24 text-center text-xl font-black text-zinc-100">
+      <button onclick="auditBumpPsi(${i},100)" class="w-[46px] h-[46px] rounded-lg bg-emerald-950/40 border border-emerald-900/60 text-emerald-400 font-black text-lg shrink-0">+</button>
+      ${auditDateField("aud-date-"+i,dt,it.expDate)}
+    </div>`);
+  }
+  const diff=act-it.expected;
+  const body=`<div class="rounded-xl border-2 ${diff===0?"border-zinc-800":"border-amber-700"} bg-zinc-950/60 p-4 mb-3">
+    <p class="text-xs font-black uppercase text-zinc-500 mb-2">How many are actually here?</p>
+    <div class="flex items-center gap-3 flex-wrap">
+      <button onclick="auditSetActual(-1)" class="w-16 h-16 rounded-xl bg-red-950/40 border-2 border-red-900/60 text-red-400 font-black text-2xl">−</button>
+      <div class="w-24 h-16 rounded-xl bg-zinc-900 border-2 border-zinc-700 flex items-center justify-center text-4xl font-black text-zinc-100">${act}</div>
+      <button onclick="auditSetActual(1)" class="w-16 h-16 rounded-xl bg-emerald-950/40 border-2 border-emerald-900/60 text-emerald-400 font-black text-2xl">+</button>
+      <div class="flex flex-col gap-1">
+        <button onclick="auditSetActual(0,${it.expected})" class="text-xs font-black px-3 h-8 rounded-lg bg-zinc-900 border border-zinc-800 hover:border-zinc-600 text-zinc-300">Matches (${it.expected})</button>
+        <button onclick="auditSetActual(0,0)" class="text-xs font-black px-3 h-8 rounded-lg bg-zinc-900 border border-zinc-800 hover:border-red-900 text-zinc-400 hover:text-red-400">None here</button>
+      </div>
+      ${diff!==0?`<span class="text-sm font-black ${diff>0?"text-cyan-400":"text-red-400"}">${diff>0?"+"+diff+" extra":diff+" short"}</span>`:`<span class="text-sm font-black text-emerald-400"><i class="fa-solid fa-check mr-1"></i>Matches</span>`}
+    </div></div>
+    ${act>0?`<div class="rounded-xl border border-zinc-800 bg-zinc-950/60 px-4 py-1">
+      <p class="text-xs font-black uppercase text-zinc-500 pt-3 pb-1">Reading for each bottle <span class="normal-case font-bold text-zinc-600">— gauge PSI and the expiry printed on the label</span></p>
+      ${rows.join("")}</div>`:""}`;
+  return header+expWarn+body+nav;
+}
+
+function auditFoundListHtml(s){
+  return`<div class="mt-3 rounded-xl border border-cyan-900/50 bg-cyan-950/10 p-3">
+    <p class="text-xs font-black uppercase text-cyan-400 mb-2"><i class="fa-solid fa-circle-plus mr-1.5"></i>Found, not in the app (${s.found.length})</p>
+    ${s.found.map((f,i)=>`<div class="flex items-center gap-2 flex-wrap py-2 ${i?"border-t border-zinc-900":""}">
+      <select onchange="auditSetFound(${i},'type',this.value)" class="bg-zinc-950 border-2 border-zinc-800 rounded-lg h-11 px-2 text-xs font-black text-zinc-100 max-w-[190px]">${gasTypes.map(t=>`<option value="${t}" ${f.type===t?"selected":""}>${t}</option>`).join("")}</select>
+      <select onchange="auditSetFound(${i},'capacity',this.value)" class="bg-zinc-950 border-2 border-zinc-800 rounded-lg h-11 px-2 text-xs font-black text-zinc-100"><option value="Regular" ${f.capacity==="Regular"?"selected":""}>Regular</option><option value="Large" ${f.capacity==="Large"?"selected":""}>Large</option></select>
+      <select onchange="auditSetFound(${i},'listType',this.value)" class="bg-zinc-950 border-2 border-zinc-800 rounded-lg h-11 px-2 text-xs font-black text-zinc-100"><option value="truck" ${f.listType==="truck"?"selected":""}>Truck</option><option value="cart" ${f.listType==="cart"?"selected":""}>Cart</option></select>
+      <input type="number" inputmode="numeric" value="${f.currentPSI}" onchange="auditSetFound(${i},'currentPSI',this.value)" class="bg-zinc-950 border-2 border-zinc-800 rounded-lg h-11 w-20 text-center text-base font-black text-zinc-100" placeholder="PSI">
+      <input type="date" value="${f.expDate}" onchange="auditSetFound(${i},'expDate',this.value)" class="bg-zinc-950 border-2 border-zinc-800 rounded-lg h-11 px-2 text-sm font-bold text-zinc-100 w-[150px]">
+      <button onclick="auditRemoveFound(${i})" class="w-11 h-11 rounded-lg bg-zinc-900 border border-zinc-800 hover:border-red-900 text-red-500 shrink-0"><i class="fa-solid fa-trash-can"></i></button>
+    </div>`).join("")}</div>`;
+}
+
+function auditPartsCardHtml(s){
+  const cats=auditCats(s),ci=s.idx-s.items.length,cat=cats[ci];
+  const all=(s.parts||[]).filter(p=>p.cat===cat);
+  const shown=_auditPartsShowAll?all:all.filter(p=>p.expected>0||p.actual>0);
+  const rows=shown.length?shown.map((p,i)=>{
+    const val=p.actual<0?p.expected:p.actual;
+    const diff=val-p.expected;
+    return`<div class="flex items-center gap-2 flex-wrap py-2.5 ${i?"border-t border-zinc-900":""}">
+      <div class="flex-1 min-w-[160px]">
+        <p class="font-black text-sm text-zinc-100 leading-tight">${p.mfg}</p>
+        <p class="text-xs font-mono text-zinc-500">${p.part&&p.part!=="N/A"?p.part:"—"}${p.range||p.ptype?` · ${[p.range,p.ptype].filter(Boolean).join(" ")}`:""}</p>
+      </div>
+      <span class="text-xs font-black text-zinc-600 whitespace-nowrap">app: ${p.expected}</span>
+      <button onclick="auditPartsSetQty('${p.pId}',null,-1)" class="w-[46px] h-[46px] rounded-lg bg-red-950/40 border border-red-900/60 text-red-400 font-black text-lg shrink-0">−</button>
+      <input id="aud-part-${p.pId}" type="number" inputmode="numeric" value="${val}" onchange="auditPartsSetQty('${p.pId}',this.value)" class="bg-zinc-950 border-2 ${diff===0?"border-zinc-800":"border-amber-600"} rounded-lg h-[46px] w-20 text-center text-xl font-black text-zinc-100">
+      <button onclick="auditPartsSetQty('${p.pId}',null,1)" class="w-[46px] h-[46px] rounded-lg bg-emerald-950/40 border border-emerald-900/60 text-emerald-400 font-black text-lg shrink-0">+</button>
+    </div>`;
+  }).join(""):`<p class="text-sm font-bold text-zinc-500 py-6 text-center">Nothing from this category is stocked. Use “Show full catalog” if you've picked something up.</p>`;
+
+  return`<div class="mb-3 flex items-center gap-2 flex-wrap">
+    <span class="text-[10px] font-black px-2 py-0.5 rounded bg-cyan-950/60 text-cyan-400 border border-cyan-900/50">PARTS ${ci+1}/${cats.length}</span>
+    <span class="font-black text-xl text-zinc-100">${cat}</span>
+    <button onclick="toggleAuditPartsShowAll()" class="ml-auto text-xs font-black px-3 h-9 rounded-lg bg-zinc-900 border border-zinc-800 hover:border-zinc-600 text-zinc-300">${_auditPartsShowAll?"Show stocked only":"Show full catalog"}</button>
+  </div>
+  <div class="rounded-xl border border-zinc-800 bg-zinc-950/60 px-4 py-1">${rows}</div>
+  <div class="grid grid-cols-3 gap-2 mt-5">
+    <button onclick="auditBack()" class="bg-zinc-900 border border-zinc-800 hover:border-zinc-600 text-zinc-300 font-black text-sm h-14 rounded-xl transition"><i class="fa-solid fa-arrow-left mr-1.5"></i>Back</button>
+    <button onclick="auditNext()" class="bg-zinc-900 border border-zinc-800 hover:border-amber-800 text-zinc-400 hover:text-amber-400 font-black text-sm h-14 rounded-xl transition">Skip</button>
+    <button onclick="auditConfirmCat()" class="bg-emerald-600 hover:bg-emerald-500 text-zinc-950 font-black text-sm h-14 rounded-xl transition shadow-lg"><i class="fa-solid fa-check mr-1.5"></i>Confirm</button>
+  </div>`;
+}
+
+function auditWrapUpHtml(s){
+  const V=computeAuditVariances(s);
+  const changes=V.filter(v=>v.kind!=="skipped");
+  const skipped=V.filter(v=>v.kind==="skipped");
+  const box=(n,label,cls,icon)=>`<div class="rounded-xl border ${cls} p-4 text-center">
+    <i class="fa-solid ${icon} text-lg mb-1 block"></i>
+    <p class="text-2xl font-black leading-none mb-1">${n}</p>
+    <p class="text-[10px] font-black uppercase tracking-wider opacity-70">${label}</p></div>`;
+  const c=k=>changes.filter(v=>v.kind===k).length;
+  return`<h3 class="text-lg font-black text-zinc-100 mb-1">Ready to submit</h3>
+  <p class="text-xs font-bold text-zinc-500 mb-4">Nothing has changed in the app yet. A supervisor reviews these before anything is applied.</p>
+  <div class="grid grid-cols-2 md:grid-cols-5 gap-2 mb-5">
+    ${box(c("missing"),"Missing","border-red-900/60 bg-red-950/20 text-red-400","fa-circle-minus")}
+    ${box(c("extra")+c("found"),"Extra","border-cyan-900/60 bg-cyan-950/20 text-cyan-400","fa-circle-plus")}
+    ${box(c("psi"),"PSI changes","border-amber-900/60 bg-amber-950/20 text-amber-400","fa-gauge-high")}
+    ${box(c("date"),"Expiry fixes","border-indigo-900/60 bg-indigo-950/20 text-indigo-400","fa-calendar-check")}
+    ${box(c("part"),"Parts","border-zinc-700 bg-zinc-900/40 text-zinc-300","fa-toolbox")}
+  </div>
+  ${skipped.length?`<div class="mb-4 rounded-xl border border-amber-900/50 bg-amber-950/20 p-3">
+    <p class="text-xs font-black uppercase text-amber-400 mb-2"><i class="fa-solid fa-forward mr-1.5"></i>${skipped.length} item${skipped.length>1?"s":""} skipped — these stay as-is</p>
+    <div class="flex flex-col gap-1">${skipped.slice(0,8).map(v=>`<button onclick="auditGoto(${v.qi})" class="text-left text-xs font-bold text-zinc-400 hover:text-white">${v.label} <span class="text-indigo-400 ml-1">go →</span></button>`).join("")}${skipped.length>8?`<span class="text-xs font-bold text-zinc-600">+ ${skipped.length-8} more</span>`:""}</div></div>`:""}
+  <textarea onchange="_auditSession.notes=this.value;saveAuditSession()" placeholder="Notes for the supervisor (optional)" class="w-full bg-zinc-950 border-2 border-zinc-800 rounded-xl p-3 text-sm font-bold text-zinc-100 mb-4" rows="2">${s.notes||""}</textarea>
+  <div class="grid grid-cols-2 gap-2">
+    <button onclick="auditBack()" class="bg-zinc-900 border border-zinc-800 hover:border-zinc-600 text-zinc-300 font-black text-sm h-14 rounded-xl transition"><i class="fa-solid fa-arrow-left mr-1.5"></i>Back</button>
+    <button onclick="submitAudit()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-black text-sm h-14 rounded-xl transition shadow-lg"><i class="fa-solid fa-paper-plane mr-1.5"></i>Submit for review</button>
+  </div>`;
+}
+
+function auditReviewHtml(s){
+  const V=computeAuditVariances(s);
+  const changes=V.filter(v=>v.kind!=="skipped");
+  const canC=canCommitAudit();
+  const kindMeta={
+    missing:{t:"Missing",c:"text-red-400",b:"border-red-900/50",i:"fa-circle-minus"},
+    extra:{t:"Extra",c:"text-cyan-400",b:"border-cyan-900/50",i:"fa-circle-plus"},
+    found:{t:"Found",c:"text-cyan-400",b:"border-cyan-900/50",i:"fa-magnifying-glass-plus"},
+    psi:{t:"PSI",c:"text-amber-400",b:"border-amber-900/50",i:"fa-gauge-high"},
+    date:{t:"Expiry",c:"text-indigo-400",b:"border-indigo-900/50",i:"fa-calendar-check"},
+    tag:{t:"Asset tag",c:"text-blue-400",b:"border-blue-900/50",i:"fa-tag"},
+    part:{t:"Parts",c:"text-zinc-300",b:"border-zinc-700",i:"fa-toolbox"}
+  };
+  // Flag rows whose baseline moved since the count was submitted.
+  const stale=v=>{
+    if(!v.it||v.kind==="found"||v.kind==="part")return false;
+    const list=v.it.listType==="cart"?(cart[s.vehicle]||[]):(inventory[s.vehicle]||[]);
+    const n=list.filter(b=>b.type===v.it.type&&(b.capacity||"")===(v.it.capacity||"")&&(b.expDate||"")===(v.it.expDate||"")).length;
+    return n!==v.it.expected;
+  };
+  const rows=changes.length?changes.map(v=>{
+    const m=kindMeta[v.kind]||kindMeta.part;
+    const d=s.decisions[v.id]||"apply";
+    const st=stale(v);
+    return`<div class="rounded-xl border ${m.b} bg-zinc-950/40 p-3 flex items-start gap-3 flex-wrap">
+      <div class="flex items-center gap-2 min-w-[92px]"><i class="fa-solid ${m.i} ${m.c}"></i><span class="text-xs font-black uppercase ${m.c}">${m.t}</span></div>
+      <div class="flex-1 min-w-[210px]">
+        <p class="text-sm font-black text-zinc-100 leading-tight">${v.label}</p>
+        <p class="text-xs font-bold text-zinc-500 mt-0.5">${v.detail}</p>
+        ${v.suggestText?`<p class="text-xs font-black text-indigo-400 mt-1"><i class="fa-solid fa-lightbulb mr-1"></i>${v.suggestText}</p>`:""}
+        ${st?`<p class="text-xs font-black text-amber-400 mt-1"><i class="fa-solid fa-triangle-exclamation mr-1"></i>This changed on the vehicle since the count was submitted — check before applying.</p>`:""}
+      </div>
+      ${canC?`<div class="flex gap-1.5">
+        <button onclick="setAuditDecision('${v.id}','apply')" class="px-4 h-11 rounded-lg font-black text-xs border-2 transition ${d==="apply"?"border-emerald-500 bg-emerald-950/40 text-emerald-300":"border-zinc-800 bg-zinc-900 text-zinc-500"}"><i class="fa-solid fa-check mr-1"></i>Apply</button>
+        <button onclick="setAuditDecision('${v.id}','ignore')" class="px-4 h-11 rounded-lg font-black text-xs border-2 transition ${d==="ignore"?"border-zinc-500 bg-zinc-800 text-zinc-200":"border-zinc-800 bg-zinc-900 text-zinc-500"}">Ignore</button>
+      </div>`:`<span class="text-xs font-black ${d==="apply"?"text-emerald-400":"text-zinc-500"}">${d==="apply"?"Will apply":"Ignored"}</span>`}
+    </div>`;
+  }).join(""):`<div class="rounded-xl border border-emerald-900/50 bg-emerald-950/20 p-6 text-center">
+    <i class="fa-solid fa-circle-check text-emerald-400 text-2xl mb-2 block"></i>
+    <p class="font-black text-sm text-emerald-300">Everything matched — no discrepancies.</p></div>`;
+
+  const applyN=changes.filter(v=>(s.decisions[v.id]||"apply")==="apply").length;
+  return auditPanel(`<div class="flex items-center justify-between mb-1 gap-3 flex-wrap">
+    <h3 class="text-sm font-black uppercase tracking-wider text-amber-400 flex items-center gap-2"><i class="fa-solid fa-clipboard-check"></i> ${s.vehicle} — Count Review</h3>
+    <button onclick="closeAuditReview()" class="bg-zinc-900 border border-zinc-800 hover:border-zinc-600 text-zinc-300 font-black text-xs px-3 h-9 rounded-lg transition"><i class="fa-solid fa-xmark mr-1"></i>Close</button>
+  </div>
+  <p class="text-xs font-bold text-zinc-500 mb-1">Counted by <span class="text-zinc-300">${s.startedBy}</span> · submitted ${formatDateTime(s.submittedAt)} · ${s.mode==="group"?"by gas type":"bottle by bottle"}</p>
+  ${s.notes?`<p class="text-xs font-bold text-zinc-400 bg-zinc-900/60 border border-zinc-800 rounded-lg p-2.5 mb-3"><i class="fa-solid fa-note-sticky text-zinc-600 mr-1.5"></i>${s.notes}</p>`:""}
+  <div class="flex items-center justify-between gap-2 flex-wrap mb-3 mt-3 border-t border-zinc-900 pt-3">
+    <span class="text-xs font-black uppercase text-zinc-400">${changes.length} discrepanc${changes.length===1?"y":"ies"} · ${applyN} set to apply</span>
+    ${canC&&changes.length?`<div class="flex gap-1.5">
+      <button onclick="setAllAuditDecisions('apply')" class="text-xs font-black px-3 h-9 rounded-lg bg-zinc-900 border border-zinc-800 hover:border-emerald-700 text-emerald-400">Apply all</button>
+      <button onclick="setAllAuditDecisions('ignore')" class="text-xs font-black px-3 h-9 rounded-lg bg-zinc-900 border border-zinc-800 hover:border-zinc-600 text-zinc-400">Ignore all</button>
+    </div>`:""}
+  </div>
+  <div class="flex flex-col gap-2 mb-5">${rows}</div>
+  <div class="grid ${canC?"grid-cols-3":"grid-cols-1"} gap-2">
+    <button onclick="exportAuditSummary(_auditSession,'PENDING REVIEW')" class="bg-zinc-900 border border-zinc-800 hover:border-zinc-600 text-zinc-300 font-black text-sm h-14 rounded-xl transition"><i class="fa-solid fa-print mr-1.5"></i>Print</button>
+    ${canC?`<button onclick="rejectAudit()" class="bg-zinc-900 border border-zinc-800 hover:border-red-900 text-red-500 font-black text-sm h-14 rounded-xl transition"><i class="fa-solid fa-rotate-left mr-1.5"></i>Send back</button>
+    <button onclick="commitAudit()" class="bg-emerald-600 hover:bg-emerald-500 text-zinc-950 font-black text-sm h-14 rounded-xl transition shadow-lg"><i class="fa-solid fa-check-double mr-1.5"></i>Approve &amp; apply</button>`:""}
+  </div>
+  ${!canC?`<p class="text-xs font-bold text-zinc-600 text-center mt-3">A supervisor has to approve before any of this is applied.</p>`:""}`);
+}
+
 // Navigation
 function setTab(tab){
   if(tab!==2&&tab!==7&&tab!==9)_bottleSearch="";
+  if(currentTab===10&&tab!==10){_auditSession=null;_auditReviewOnly=false;}
   currentTab=tab;
   updateSystemCanvas();
 }
@@ -3069,6 +4050,14 @@ function switchLocation(v){
   
   // Keep parts tab active if navigating between vehicles while on parts view
   if(currentTab===9) {
+      updateSystemCanvas();
+      return;
+  }
+
+  // Count tab follows the selected vehicle; drop any open session first
+  if(currentTab===10) {
+      _auditSession=null;_auditReviewOnly=false;
+      if(v==="Office Stock"){currentTab=0;}
       updateSystemCanvas();
       return;
   }
@@ -3103,6 +4092,7 @@ function updateSystemCanvas(){
   else if(currentTab===7)renderOfficeStockSummary();
   else if(currentTab===8)renderCheckOutTab();
   else if(currentTab===9)renderPartsInventory();
+  else if(currentTab===10)renderAuditTab();
   else renderBottles();
 }
 </script>
