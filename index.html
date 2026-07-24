@@ -71,6 +71,38 @@
     body.light .bottle-card svg stop[stop-color="#52525b"]{stop-color:#b8b8c0!important;}
     body.light .bottle-card svg stop[stop-color="#27272a"]{stop-color:#c0c0c8!important;}
     body.light .bottle-card svg stop[stop-color="#d4d4d8"]{stop-color:#ffffff!important;}
+    /* ===== Count / audit screens — light theme readability ===== */
+    /* Active light theme can be any of four body classes. Cover them all. */
+    body.light .audit-scope, body.theme-sky-frost .audit-scope,
+    body.theme-sandstone .audit-scope, body.theme-company-colors .audit-scope{color:#18181b;}
+    /* Tinted panel backgrounds the base zinc remap doesn't reach → light tints */
+    :is(body.light,body.theme-sky-frost,body.theme-sandstone,body.theme-company-colors) .audit-scope [class*="bg-indigo-950"]{background-color:#eef2ff!important;border-color:#c7d2fe!important;}
+    :is(body.light,body.theme-sky-frost,body.theme-sandstone,body.theme-company-colors) .audit-scope [class*="bg-emerald-950"]{background-color:#ecfdf5!important;border-color:#a7f3d0!important;}
+    :is(body.light,body.theme-sky-frost,body.theme-sandstone,body.theme-company-colors) .audit-scope [class*="bg-red-950"]{background-color:#fef2f2!important;border-color:#fecaca!important;}
+    :is(body.light,body.theme-sky-frost,body.theme-sandstone,body.theme-company-colors) .audit-scope [class*="bg-amber-950"]{background-color:#fffbeb!important;border-color:#fde68a!important;}
+    :is(body.light,body.theme-sky-frost,body.theme-sandstone,body.theme-company-colors) .audit-scope [class*="bg-cyan-950"]{background-color:#ecfeff!important;border-color:#a5f3fc!important;}
+    :is(body.light,body.theme-sky-frost,body.theme-sandstone,body.theme-company-colors) .audit-scope [class*="bg-blue-950"]{background-color:#eff6ff!important;border-color:#bfdbfe!important;}
+    :is(body.light,body.theme-sky-frost,body.theme-sandstone,body.theme-company-colors) .audit-scope [class*="bg-zinc-950"],
+    :is(body.light,body.theme-sky-frost,body.theme-sandstone,body.theme-company-colors) .audit-scope [class*="bg-zinc-900"]{background-color:#f4f4f5!important;}
+    /* Text tones: keep the colored accents readable on light, force greys dark */
+    :is(body.light,body.theme-sky-frost,body.theme-sandstone,body.theme-company-colors) .audit-scope .text-zinc-100,:is(body.light,body.theme-sky-frost,body.theme-sandstone,body.theme-company-colors) .audit-scope .text-zinc-200,
+    :is(body.light,body.theme-sky-frost,body.theme-sandstone,body.theme-company-colors) .audit-scope .text-zinc-300,:is(body.light,body.theme-sky-frost,body.theme-sandstone,body.theme-company-colors) .audit-scope .text-white{color:#18181b!important;}
+    :is(body.light,body.theme-sky-frost,body.theme-sandstone,body.theme-company-colors) .audit-scope .text-zinc-400{color:#52525b!important;}
+    :is(body.light,body.theme-sky-frost,body.theme-sandstone,body.theme-company-colors) .audit-scope .text-zinc-500,:is(body.light,body.theme-sky-frost,body.theme-sandstone,body.theme-company-colors) .audit-scope .text-zinc-600{color:#71717a!important;}
+    :is(body.light,body.theme-sky-frost,body.theme-sandstone,body.theme-company-colors) .audit-scope .text-indigo-400,:is(body.light,body.theme-sky-frost,body.theme-sandstone,body.theme-company-colors) .audit-scope .text-indigo-300{color:#4338ca!important;}
+    :is(body.light,body.theme-sky-frost,body.theme-sandstone,body.theme-company-colors) .audit-scope .text-emerald-400,:is(body.light,body.theme-sky-frost,body.theme-sandstone,body.theme-company-colors) .audit-scope .text-emerald-300{color:#047857!important;}
+    :is(body.light,body.theme-sky-frost,body.theme-sandstone,body.theme-company-colors) .audit-scope .text-amber-400{color:#b45309!important;}
+    :is(body.light,body.theme-sky-frost,body.theme-sandstone,body.theme-company-colors) .audit-scope .text-red-400,:is(body.light,body.theme-sky-frost,body.theme-sandstone,body.theme-company-colors) .audit-scope .text-red-300,
+    :is(body.light,body.theme-sky-frost,body.theme-sandstone,body.theme-company-colors) .audit-scope .text-red-500{color:#dc2626!important;}
+    :is(body.light,body.theme-sky-frost,body.theme-sandstone,body.theme-company-colors) .audit-scope .text-cyan-400{color:#0e7490!important;}
+    :is(body.light,body.theme-sky-frost,body.theme-sandstone,body.theme-company-colors) .audit-scope .text-blue-400{color:#1d4ed8!important;}
+    /* Inputs/selects on the count cards */
+    :is(body.light,body.theme-sky-frost,body.theme-sandstone,body.theme-company-colors) .audit-scope input,:is(body.light,body.theme-sky-frost,body.theme-sandstone,body.theme-company-colors) .audit-scope select,
+    :is(body.light,body.theme-sky-frost,body.theme-sandstone,body.theme-company-colors) .audit-scope textarea{background-color:#fff!important;color:#18181b!important;border-color:#a1a1aa!important;}
+    /* Solid action buttons keep white text — undo the grey-text remap on those */
+    :is(body.light,body.theme-sky-frost,body.theme-sandstone,body.theme-company-colors) .audit-scope .bg-indigo-600,:is(body.light,body.theme-sky-frost,body.theme-sandstone,body.theme-company-colors) .audit-scope .bg-indigo-600 *{color:#fff!important;}
+    /* Progress-bar track */
+    :is(body.light,body.theme-sky-frost,body.theme-sandstone,body.theme-company-colors) .audit-scope .bg-zinc-900.border{background-color:#e4e4e7!important;}
     /* Vehicle Summary / Office Stock tab cards */
     body.light .rounded-xl.border{border-color:#d4d4d8!important;}
     /* Alert/warning panels */
@@ -3679,9 +3711,9 @@ function renderAuditTab(){
   const area=document.getElementById("content-area");
   if(!area)return;
   const v=currentLocation;
-  if(_auditSession&&_auditSession.status==="pending"){area.innerHTML=auditReviewHtml(_auditSession);return;}
-  if(_auditSession&&_auditSession.status==="in_progress"){area.innerHTML=auditCountHtml(_auditSession);auditFocusFirst();return;}
-  area.innerHTML=auditHomeHtml(v);
+  if(_auditSession&&_auditSession.status==="pending"){area.innerHTML=`<div class="audit-scope">${auditReviewHtml(_auditSession)}</div>`;return;}
+  if(_auditSession&&_auditSession.status==="in_progress"){area.innerHTML=`<div class="audit-scope">${auditCountHtml(_auditSession)}</div>`;auditFocusFirst();return;}
+  area.innerHTML=`<div class="audit-scope">${auditHomeHtml(v)}</div>`;
 }
 function auditFocusFirst(){
   const el=document.querySelector("#content-area input[data-autofocus]");
