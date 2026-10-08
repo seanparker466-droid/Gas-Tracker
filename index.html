@@ -624,7 +624,7 @@ body.theme-company-colors .bottle-card svg stop[stop-color="#d4d4d8"]{stop-color
     </div>
     <div class="overflow-y-auto custom-scrollbar flex-1 px-6 py-3" id="accounts-list"></div>
     <div class="px-6 pb-3 pt-3 border-t border-zinc-800 shrink-0">
-      <p class="text-xs font-black text-zinc-500 uppercase tracking-wider mb-3">Reset a Tech Password</p>
+      <p class="text-xs font-black text-zinc-500 uppercase tracking-wider mb-3">Reset a Tech Password <span class="normal-case font-bold text-zinc-600">(app record only — sign-in passwords are set in Firebase Console → Authentication)</span></p>
       <div class="flex gap-2">
         <select id="reset-user-select" class="bg-zinc-950 border border-zinc-700 rounded-lg px-3 text-white font-bold text-sm flex-1"></select>
         <input id="reset-new-pass" type="password" placeholder="new password" class="bg-zinc-950 border border-zinc-700 rounded-lg px-3 text-white font-bold text-sm flex-1">
@@ -1009,6 +1009,8 @@ function openAccountsModal(){
   }).join("");
   document.getElementById("accounts-modal").classList.remove("hidden");
 }
+function closeAccountsModal(){document.getElementById("accounts-modal").classList.add("hidden");}
+document.addEventListener("keydown",e=>{if(e.key==="Escape"){const m=document.getElementById("accounts-modal");if(m&&!m.classList.contains("hidden"))closeAccountsModal();}});
 async function reassignVehicle(username,vehicleName){
   await db.ref(`appUsers/${username}/vehicle`).set(vehicleName);
   appUsers[username]=appUsers[username]||{};appUsers[username].vehicle=vehicleName;
@@ -1037,7 +1039,9 @@ async function resetTechPassword(){
   const hash=await sha256(p);
   await db.ref(`appUsers/${u}`).set({hash});appUsers[u]={hash};
   document.getElementById("reset-new-pass").value="";
-  alert(`Password for ${BUILTIN_ACCOUNTS[u].displayName} has been reset.`);openAccountsModal();
+  alert(`Saved the app record for ${BUILTIN_ACCOUNTS[u].displayName}.
+
+Note: this does NOT change the sign-in password. To change what they type at login, edit their user in Firebase Console → Authentication → Users.`);openAccountsModal();
 }
 
 // ── THEME ─────────────────────────────────────────────────
