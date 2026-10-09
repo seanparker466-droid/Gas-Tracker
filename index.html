@@ -1037,7 +1037,7 @@ async function resetTechPassword(){
   const u=document.getElementById("reset-user-select").value,p=document.getElementById("reset-new-pass").value;
   if(p.length<6){alert("Password must be at least 6 characters.");return;}
   const hash=await sha256(p);
-  await db.ref(`appUsers/${u}`).set({hash});appUsers[u]={hash};
+  await db.ref(`appUsers/${u}/hash`).set(hash);appUsers[u]=appUsers[u]||{};appUsers[u].hash=hash;
   document.getElementById("reset-new-pass").value="";
   alert(`Saved the app record for ${BUILTIN_ACCOUNTS[u].displayName}.
 
@@ -1451,7 +1451,8 @@ function setAddMode(mode){document.getElementById("single-add-panel").classList.
 // ── TABS & NAV ────────────────────────────────────────────
 function renderLocationTabs(){
   const vis=visibleVehicles();
-  let html=vis.map(v=>`<button onclick="switchLocation('${v}')" class="px-4 py-2 rounded-lg text-base font-black border transition-all whitespace-nowrap flex items-center gap-2 ${v===currentLocation&&currentTab!==2&&currentTab!==7?"bg-red-600 text-white border-red-600":"bg-zinc-900 text-zinc-300 border-zinc-800 hover:border-zinc-700 hover:text-white"}">${vehicleIcon(vehicleType(v),26)} ${v}</button>`).join("");
+  const noVan=currentUser&&currentUser.role==="tech"&&vis.length===0;
+  let html=(noVan?`<div class="w-full rounded-lg border border-amber-700/60 bg-amber-950/30 text-amber-300 text-sm font-black px-4 py-3"><i class="fa-solid fa-triangle-exclamation mr-2"></i>No vehicle is assigned to you (${currentUser.vehicle?"\""+currentUser.vehicle+"\" no longer exists":"none set"}). Ask Sean to pick your vehicle in Accounts.</div>`:"")+vis.map(v=>`<button onclick="switchLocation('${v}')" class="px-4 py-2 rounded-lg text-base font-black border transition-all whitespace-nowrap flex items-center gap-2 ${v===currentLocation&&currentTab!==2&&currentTab!==7?"bg-red-600 text-white border-red-600":"bg-zinc-900 text-zinc-300 border-zinc-800 hover:border-zinc-700 hover:text-white"}">${vehicleIcon(vehicleType(v),26)} ${v}</button>`).join("");
   html+=`<button onclick="switchToOffice()" class="px-4 py-2 rounded-lg text-base font-black border transition-all whitespace-nowrap flex items-center gap-2 ${currentTab===2?"bg-red-600 text-white border-red-600":"bg-zinc-900 text-zinc-300 border-zinc-800 hover:border-zinc-700 hover:text-white"}"><i class="fa-solid fa-warehouse"></i> Office / Shop Stock</button>`;
   if(isSupervisor())html+=`<button onclick="addNewVehicle()" class="ml-auto px-4 py-2 rounded-lg text-xs font-black bg-blue-950 border border-blue-800 text-blue-400 hover:bg-blue-900 hover:text-blue-300 transition flex items-center gap-1.5 whitespace-nowrap"><i class="fas fa-plus"></i> Add Vehicle</button>`;
   document.getElementById("location-tabs").innerHTML=html;
