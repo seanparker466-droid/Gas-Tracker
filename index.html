@@ -919,7 +919,8 @@ body.theme-company-colors .bottle-card svg stop[stop-color="#d4d4d8"]{stop-color
       <div class="flex items-center gap-2"><i class="fa-solid fa-sliders text-blue-400 text-xl"></i><h3 class="text-lg font-black text-white">Reorder Thresholds</h3></div>
       <button onclick="closeReorderModal()" class="text-zinc-500 hover:text-white transition"><i class="fa-solid fa-xmark text-xl"></i></button>
     </div>
-    <p class="text-xs text-zinc-500 font-bold mb-4">Set minimum quantity per gas. When fleet drops to or below threshold it appears on the Reorder List. Set 0 to disable.</p>
+    <p class="text-xs text-zinc-500 font-bold mb-4">Set the minimum quantity per gas, separately for small and large bottles (they are ordered separately). When the fleet drops below the minimum it appears on that size's Reorder List. Set 0 to disable.</p>
+    <div id="reorder-size-tabs" class="flex gap-2 mb-3"></div>
     <div class="overflow-y-auto custom-scrollbar flex-grow pr-1" id="reorder-threshold-list"></div>
     <div class="flex gap-3 mt-4 pt-3 border-t border-zinc-800 text-sm font-black">
       <button onclick="saveReorderThresholds()" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition py-3"><i class="fa-solid fa-floppy-disk mr-1"></i>Save Thresholds</button>
@@ -1262,7 +1263,7 @@ let vehicles=["Truck 21","Van 17","Van 18","Van 22"];let _bottleSort="default",_
 let currentLocation="Truck 21",currentTab=0;
 let selectedIndex=null,psiTargetIndex=null,retireTargetIndex=null;
 let activeReportFilter="all";
-let inventory={},cart={},officeStock=[],retiredStock=[],activityLog=[],reorderThresholds={},partsInventory={},customPartsCatalog={};
+let inventory={},cart={},officeStock=[],retiredStock=[],activityLog=[],reorderThresholds={},reorderThresholdsLarge={},partsInventory={},customPartsCatalog={};
 let vehicleMeta={},missingBin=[];
 
 // ── BOOT ──────────────────────────────────────────────────
@@ -1328,7 +1329,7 @@ function initAppData(){
         db.ref("gasTrackerData/customPartsCatalog").set(customPartsCatalog);
       }
       // Only load thresholds on first load — never let listener echo overwrite them
-      if(!_threshLoaded){vehicleThresholds=fbDecodeObj(data.vehicleThresholds||{});reorderThresholds=fbDecodeObj(data.reorderThresholds||{});_threshLoaded=true;console.log("LOAD from Firebase - vehicleThresholds:",JSON.stringify(vehicleThresholds),"reorderThresholds:",JSON.stringify(reorderThresholds));}else{console.log("LISTENER fired (echo) - thresholds NOT overwritten");}
+      if(!_threshLoaded){vehicleThresholds=fbDecodeObj(data.vehicleThresholds||{});reorderThresholds=fbDecodeObj(data.reorderThresholds||{});reorderThresholdsLarge=fbDecodeObj(data.reorderThresholdsLarge||{});_threshLoaded=true;console.log("LOAD from Firebase - vehicleThresholds:",JSON.stringify(vehicleThresholds),"reorderThresholds:",JSON.stringify(reorderThresholds));}else{console.log("LISTENER fired (echo) - thresholds NOT overwritten");}
       vehicles.forEach(v=>{inventory[v]=san(inventory[v]);cart[v]=san(cart[v]);});
       officeStock=san(officeStock);retiredStock=san(retiredStock);
       // A supervisor renamed this tech's vehicle while they were logged in → pick up the new assignment
@@ -1387,14 +1388,19 @@ function migratePartsInventoryKeys(pInvAll){
   return out;
 }
 
-function saveToDatabase(){db.ref("gasTrackerData").set({vehicles,officeStock,inventory,cart,retiredStock,activityLog,reorderThresholds:fbEncodeObj(reorderThresholds),vehicleThresholds:fbEncodeObj(vehicleThresholds),partsInventory,customPartsCatalog,vehicleMeta,missingBin});}
+function saveToDatabase(){db.ref("gasTrackerData").set({vehicles,officeStock,inventory,cart,retiredStock,activityLog,reorderThresholds:fbEncodeObj(reorderThresholds),reorderThresholdsLarge:fbEncodeObj(reorderThresholdsLarge),vehicleThresholds:fbEncodeObj(vehicleThresholds),partsInventory,customPartsCatalog,vehicleMeta,missingBin});}
 
 // ── HELPERS ───────────────────────────────────────────────
 function logEvent(action,bottle,from,to){activityLog.unshift({ts:Date.now(),action,gasType:bottle.type,capacity:bottle.capacity,partNum:bottle.partNum||"",sageNum:bottle.sageNum||"",from:from||"",to:to||"",user:currentUser?currentUser.displayName:""});if(activityLog.length>500)activityLog=activityLog.slice(0,500);}
 function getMostUsedGases(){const d={},r={};activityLog.forEach(e=>{if(e.action==="Deployed")d[e.gasType]=(d[e.gasType]||0)+1;if(e.action==="Returned")r[e.gasType]=(r[e.gasType]||0)+1;});return Object.entries(d).map(([type,deploys])=>({type,deploys,returns:r[type]||0})).sort((a,b)=>b.deploys-a.deploys).slice(0,15);}
-function fleetCountByGas(){const c={};gasTypes.forEach(t=>c[t]=0);const all=[...officeStock];vehicles.forEach(v=>all.push(...(inventory[v]||[]),...(cart[v]||[])));all.forEach(b=>{if(b.capacity==="Large")return;if(c[b.type]!==undefined)c[b.type]++;else c[b.type]=(c[b.type]||0)+1;});return c;}
-function getReorderList(){const c=fleetCountByGas();return gasTypes.filter(t=>(reorderThresholds[t]||0)>0&&c[t]<(reorderThresholds[t]||0)).map(t=>({type:t,count:c[t]||0,threshold:reorderThresholds[t]||0,need:(reorderThresholds[t]||0)-(c[t]||0)}));}
-function getAtThresholdList(){const c=fleetCountByGas();return gasTypes.filter(t=>(reorderThresholds[t]||0)>0&&c[t]===(reorderThresholds[t]||0)).map(t=>({type:t,count:c[t]||0,threshold:reorderThresholds[t]||0}));}
+function fleetCountBySize(large){const c={};gasTypes.forEach(t=>c[t]=0);const all=[...officeStock];vehicles.forEach(v=>all.push(...(inventory[v]||[]),...(cart[v]||[])));all.forEach(b=>{if((b.capacity==="Large")!==large)return;c[b.type]=(c[b.type]||0)+1;});return c;}
+function fleetCountByGas(){return fleetCountBySize(false);}   // small / regular bottles
+function reorderTypesFor(large){return large?gasTypes.filter(t=>LARGE_BOTTLE_TYPES.has(t)):gasTypes;}
+function reorderListFor(large){const c=fleetCountBySize(large),th=large?reorderThresholdsLarge:reorderThresholds;return reorderTypesFor(large).filter(t=>(th[t]||0)>0&&c[t]<th[t]).map(t=>({type:t,count:c[t]||0,threshold:th[t],need:th[t]-c[t],large}));}
+function atThresholdListFor(large){const c=fleetCountBySize(large),th=large?reorderThresholdsLarge:reorderThresholds;return reorderTypesFor(large).filter(t=>(th[t]||0)>0&&c[t]===th[t]).map(t=>({type:t,count:c[t]||0,threshold:th[t],large}));}
+function getReorderList(){return reorderListFor(false);}
+function getReorderListLarge(){return reorderListFor(true);}
+function getAtThresholdList(){return atThresholdListFor(false);}
 function setDefaultDate(){const t=new Date();t.setFullYear(t.getFullYear()+1);const v=t.toISOString().split("T")[0];["exp-date","bulk-exp-date"].forEach(id=>{const el=document.getElementById(id);if(el)el.value=v;});}
 function checkExpired(d){return d?new Date(d)<new Date():false;}
 function getExpStatus(d){if(!d)return"none";const now=new Date(),exp=new Date(d);if(exp<now)return"expired";const days=Math.ceil((exp-now)/86400000);if(days<=30)return"exp30";if(days<=60)return"exp60";if(days<=90)return"exp90";return"ok";}
@@ -1414,7 +1420,7 @@ function updateLiveCounters(){
   const exp=all.filter(b=>["exp30","exp60","exp90"].includes(getExpStatus(b.expDate))).length;
   const expEl=document.getElementById("ticker-expiring");expEl.textContent=exp;
   expEl.className=all.some(b=>getExpStatus(b.expDate)==="exp30")?"text-orange-400 font-black":exp>0?"text-amber-400 font-black":"text-zinc-500 font-black";
-  const ro=getReorderList().length;const roEl=document.getElementById("ticker-reorder");roEl.textContent=ro;roEl.className=ro>0?"text-blue-400 font-black":"text-zinc-500 font-black";
+  const ro=getReorderList().length+getReorderListLarge().length;const roEl=document.getElementById("ticker-reorder");roEl.textContent=ro;roEl.className=ro>0?"text-blue-400 font-black":"text-zinc-500 font-black";
 }
 
 // ── FORM ──────────────────────────────────────────────────
@@ -2179,7 +2185,7 @@ function renderOverview(){
   let maxTruck={name:"N/A",total:-1},minTruck={name:"N/A",total:Infinity};
   vehicleLoads.forEach(v=>{if(v.total>maxTruck.total)maxTruck=v;if(v.total<minTruck.total)minTruck=v;});
   if(vehicleLoads.length===0){minTruck={name:"N/A",total:0};maxTruck={name:"N/A",total:0};}
-  const reorderItems=getReorderList();
+  const reorderItems=[...getReorderList(),...getReorderListLarge()];
   const area=document.getElementById("content-area");
   const allLedgerKeys=new Set([...Object.keys(dynamicLedger),...Object.keys(dynamicLedgerLarge)]);
   const hasAnyLargeFleet=[...allLedgerKeys].some(k=>(dynamicLedgerLarge[k]||0)>0);
@@ -2264,12 +2270,45 @@ function renderOverview(){
   </div>`;
 }
 
-function generateReorderTable(items){
-  const atThresh=getAtThresholdList();
-  if(items.length===0&&atThresh.length===0)return`<div class="bg-zinc-950 border border-zinc-800 p-6 rounded-xl text-center"><p class="text-sm font-black text-zinc-500 uppercase"><i class="fa-solid fa-circle-check text-emerald-500 mr-1"></i> All gases above reorder thresholds</p></div>`;
-  const rows=items.map(item=>{const entry=gasCatalog[item.type]||{},color=entry.color||"#71717a";return`<tr class="border-b border-zinc-900 hover:bg-zinc-900/30 font-bold text-sm"><td class="p-3 font-black uppercase tracking-tight"><span style="color:${color}">${item.type}</span></td><td class="p-3 text-zinc-400 font-mono text-xs">${entry.partNum||"—"}</td><td class="p-3 text-zinc-400 font-mono text-xs">${entry.sageNum||"—"}</td><td class="p-3 font-mono font-black text-blue-400">${item.count}</td><td class="p-3 font-mono text-zinc-500">${item.threshold}</td><td class="p-3 font-black text-amber-400">Order ${item.need}</td></tr>`;}).join("");
-  const atRows=atThresh.map(item=>{const entry=gasCatalog[item.type]||{},color=entry.color||"#71717a";return`<tr class="border-b border-zinc-900/40 hover:bg-zinc-900/20 font-bold text-sm opacity-60"><td class="p-3 font-black uppercase tracking-tight"><span style="color:${color}">${item.type}</span></td><td class="p-3 text-zinc-400 font-mono text-xs">${entry.partNum||"—"}</td><td class="p-3 text-zinc-400 font-mono text-xs">${entry.sageNum||"—"}</td><td class="p-3 font-mono font-black text-zinc-400">${item.count}</td><td class="p-3 font-mono text-zinc-500">${item.threshold}</td><td class="p-3 font-black text-zinc-500">At minimum</td></tr>`;}).join("");
-  return`<div class="dash-panel border border-blue-900/40 rounded-xl p-5 shadow-xl"><div class="flex items-center justify-between mb-4 border-b border-zinc-900 pb-2.5"><h3 class="text-sm font-black uppercase tracking-wider text-zinc-100 flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse"></span>Reorder List</h3><div class="flex gap-3 items-center">${isSupervisor()?`<button onclick="openReorderModal()" class="text-xs font-black text-blue-400 hover:text-white transition"><i class="fa-solid fa-sliders mr-1"></i>Edit Thresholds</button>`:""}<button onclick="toggleReportFilter('all')" class="text-xs uppercase font-black tracking-widest text-zinc-500 hover:text-zinc-300 transition"><i class="fa-solid fa-xmark mr-1"></i>Clear</button></div></div><div class="overflow-x-auto custom-scrollbar"><table class="w-full text-left border-collapse"><thead><tr class="border-b border-zinc-800 text-xs uppercase text-zinc-400 font-black tracking-wider"><th class="p-3">Gas Type</th><th class="p-3">Part #</th><th class="p-3">Sage #</th><th class="p-3">Current Stock</th><th class="p-3">Min Threshold</th><th class="p-3">Action Needed</th></tr></thead><tbody>${rows}${atRows}</tbody></table></div></div>`;
+function reorderRowsHtml(items,faded){
+  return items.map(item=>{const cat=item.large?(largeCatalog[item.type]||{}):(gasCatalog[item.type]||{}),entry=gasCatalog[item.type]||{},color=entry.color||"#71717a";
+    return`<tr class="border-b border-zinc-900${faded?"/40 opacity-60":""} hover:bg-zinc-900/30 font-bold text-sm"><td class="p-3 font-black uppercase tracking-tight"><span style="color:${color}">${item.type}</span></td><td class="p-3 text-zinc-400 font-mono text-xs">${cat.partNum||"—"}</td><td class="p-3 text-zinc-400 font-mono text-xs">${cat.sageNum||"—"}</td><td class="p-3 font-mono font-black ${faded?"text-zinc-400":"text-blue-400"}">${item.count}</td><td class="p-3 font-mono text-zinc-500">${item.threshold}</td><td class="p-3 font-black ${faded?"text-zinc-500":"text-amber-400"}">${faded?"At minimum":"Order "+item.need}</td></tr>`;}).join("");
+}
+function reorderSectionHtml(large){
+  const items=reorderListFor(large),at=atThresholdListFor(large);
+  const label=large?"Large Bottles (2000 PSI)":"Small Bottles",icon=large?"text-green-400":"text-blue-400";
+  const totalQty=items.reduce((n,i)=>n+i.need,0);
+  const body=(items.length===0&&at.length===0)
+    ?`<div class="bg-zinc-950 border border-zinc-800 p-5 rounded-xl text-center"><p class="text-sm font-black text-zinc-500 uppercase"><i class="fa-solid fa-circle-check text-emerald-500 mr-1"></i> ${large&&Object.keys(reorderThresholdsLarge).length===0?"No minimums set yet — use Edit Thresholds to set them for large bottles":"Everything above its minimum"}</p></div>`
+    :`<div class="overflow-x-auto custom-scrollbar"><table class="w-full text-left border-collapse"><thead><tr class="border-b border-zinc-800 text-xs uppercase text-zinc-400 font-black tracking-wider"><th class="p-3">Gas Type</th><th class="p-3">Part #</th><th class="p-3">Sage #</th><th class="p-3">In Stock</th><th class="p-3">Minimum</th><th class="p-3">Order</th></tr></thead><tbody>${reorderRowsHtml(items,false)}${reorderRowsHtml(at,true)}</tbody></table></div>`;
+  return`<div class="dash-panel border ${large?"border-green-900/40":"border-blue-900/40"} rounded-xl p-5 shadow-xl"><div class="flex items-center justify-between gap-2 flex-wrap mb-4 border-b border-zinc-900 pb-2.5"><h3 class="text-sm font-black uppercase tracking-wider text-zinc-100 flex items-center gap-1.5"><i class="fa-solid ${large?"fa-gas-pump":"fa-bottle-droplet"} ${icon}"></i>${label} — Reorder<span class="text-xs font-mono text-zinc-500 normal-case ml-1">${items.length} item${items.length===1?"":"s"} · ${totalQty} to order</span></h3><button onclick="printReorderOrder('${large?"large":"small"}')" class="bg-zinc-800 border border-zinc-700 hover:bg-zinc-700 text-zinc-200 text-xs font-black px-3 h-9 rounded-lg transition whitespace-nowrap"><i class="fa-solid fa-print mr-1"></i>Print ${large?"Large":"Small"} Order</button></div>${body}</div>`;
+}
+function generateReorderTable(){
+  return`<div class="flex flex-col gap-4"><div class="flex items-center justify-between gap-2 flex-wrap"><h3 class="text-sm font-black uppercase tracking-wider text-zinc-100 flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse"></span>Reorder List</h3><div class="flex gap-2 items-center flex-wrap">${isSupervisor()?`<button onclick="openReorderModal()" class="text-xs font-black text-blue-400 hover:text-white transition"><i class="fa-solid fa-sliders mr-1"></i>Edit Thresholds</button>`:""}<button onclick="printReorderOrder('both')" class="bg-zinc-800 border border-zinc-700 hover:bg-zinc-700 text-zinc-200 text-xs font-black px-3 h-9 rounded-lg transition whitespace-nowrap"><i class="fa-solid fa-print mr-1"></i>Print Both</button><button onclick="toggleReportFilter('all')" class="text-xs uppercase font-black tracking-widest text-zinc-500 hover:text-zinc-300 transition"><i class="fa-solid fa-xmark mr-1"></i>Clear</button></div></div>${reorderSectionHtml(false)}${reorderSectionHtml(true)}</div>`;
+}
+// Printable order sheets — small and large are ordered separately, so each prints on its own page.
+function printReorderOrder(which){
+  const now=new Date().toLocaleString(),who=currentUser?currentUser.displayName:"";
+  const sheet=large=>{
+    const items=reorderListFor(large),title=large?"Large Bottle Order (2000 PSI)":"Small Bottle Order";
+    const total=items.reduce((n,i)=>n+i.need,0);
+    const rows=items.map(i=>{const cat=large?(largeCatalog[i.type]||{}):(gasCatalog[i.type]||{});return`<tr><td><strong>${i.type}</strong></td><td class="m">${cat.partNum||"—"}</td><td class="m">${cat.sageNum||"—"}</td><td class="n">${i.count}</td><td class="n">${i.threshold}</td><td class="n q">${i.need}</td></tr>`;}).join("");
+    return `<section><h1>${title}</h1><p class="sub">Prepared ${now}${who?" by "+who:""} · fleet stock vs. minimums (office + all vehicles)</p>${items.length?`<table><thead><tr><th>Gas Type</th><th>Part #</th><th>Sage #</th><th class="n">In Stock</th><th class="n">Minimum</th><th class="n">Order Qty</th></tr></thead><tbody>${rows}<tr class="tot"><td colspan="5">TOTAL TO ORDER</td><td class="n q">${total}</td></tr></tbody></table>`:`<p class="none">Nothing to order — everything is at or above its minimum.</p>`}<div class="sign"><div>PO # / Date Ordered</div><div>Ordered By</div></div></section>`;
+  };
+  const parts=which==="both"?[sheet(false),sheet(true)]:[sheet(which==="large")];
+  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${which==="large"?"Large":which==="small"?"Small":"Small + Large"} Bottle Order</title><style>
+  body{font-family:system-ui,sans-serif;padding:24px;color:#111;background:#fff;font-size:13px;}
+  section{page-break-after:always;} section:last-child{page-break-after:auto;}
+  h1{font-size:20px;font-weight:900;margin:0 0 4px;} p.sub{color:#555;margin:0 0 16px;font-size:12px;}
+  table{width:100%;border-collapse:collapse;} th{background:#f4f4f5;font-weight:900;text-transform:uppercase;font-size:10px;letter-spacing:.05em;padding:7px 10px;border-bottom:2px solid #18181b;text-align:left;}
+  td{padding:7px 10px;border-bottom:1px solid #d4d4d8;font-weight:600;font-size:12px;} td.m{font-family:monospace;font-size:11px;} .n{text-align:right;} td.q{font-weight:900;font-size:14px;}
+  tr.tot td{border-top:2px solid #18181b;border-bottom:none;font-weight:900;background:#fafafa;} p.none{color:#777;font-style:italic;margin:12px 0;}
+  .sign{margin-top:40px;display:flex;gap:40px;} .sign div{flex:1;border-top:1.5px solid #18181b;padding-top:5px;font-size:10px;font-weight:900;text-transform:uppercase;color:#52525b;letter-spacing:.05em;}
+  @media print{body{padding:0;}}
+  </style></head><body>${parts.join("")}<script>window.onload=()=>{window.print();}<\/script></body></html>`;
+  const w=window.open("","_blank","width=900,height=700");
+  if(!w){alert("Pop-up blocked — allow pop-ups for this site to print the order sheet.");return;}
+  w.document.write(html);w.document.close();
 }
 
 function generateAlertTable(title,targetBottles,mode){
@@ -2509,11 +2548,19 @@ function restoreRetired(i){
 }
 
 // Reorder Modal
+let _reorderSize="small";
+function setReorderSize(sz){applyReorderInputs();_reorderSize=sz;openReorderModal();}
+function applyReorderInputs(){
+  const large=_reorderSize==="large",th=large?reorderThresholdsLarge:reorderThresholds;
+  document.querySelectorAll(".reorder-input").forEach(input=>{const gas=input.getAttribute("data-gas"),val=parseInt(input.value)||0;if(val>0)th[gas]=val;else delete th[gas];});
+}
 function openReorderModal(){
   if(!isSupervisor())return;
-  const counts=fleetCountByGas();
-  document.getElementById("reorder-threshold-list").innerHTML=gasTypes.map(t=>{
-    const entry=gasCatalog[t]||{},thresh=reorderThresholds[t]||0,count=counts[t]||0,isBelow=thresh>0&&count<=thresh;
+  const large=_reorderSize==="large",counts=fleetCountBySize(large),th=large?reorderThresholdsLarge:reorderThresholds;
+  const tab=(sz,l)=>`<button onclick="setReorderSize('${sz}')" class="flex-1 text-sm font-black h-10 rounded-lg border-2 transition ${_reorderSize===sz?"border-blue-500 bg-blue-950/30 text-blue-300":"border-zinc-800 bg-zinc-900 text-zinc-400 hover:border-zinc-600"}">${l}</button>`;
+  document.getElementById("reorder-size-tabs").innerHTML=tab("small","Small bottles")+tab("large","Large bottles (2000 PSI)");
+  document.getElementById("reorder-threshold-list").innerHTML=reorderTypesFor(large).map(t=>{
+    const entry=gasCatalog[t]||{},thresh=th[t]||0,count=counts[t]||0,isBelow=thresh>0&&count<=thresh;
     return`<div class="flex items-center justify-between py-2 border-b border-zinc-900 gap-3">
       <div class="flex items-center gap-2 min-w-0 flex-1"><span class="w-2.5 h-2.5 rounded-full shrink-0" style="background-color:${entry.color||"#71717a"}"></span><span class="text-xs font-black text-zinc-200 uppercase tracking-tight truncate">${t}</span></div>
       <span class="text-xs font-mono text-zinc-500 shrink-0">Stock: <span class="${isBelow?"text-red-400 font-black":"text-zinc-300"}">${count}</span></span>
@@ -2523,10 +2570,7 @@ function openReorderModal(){
   document.getElementById("reorder-modal").classList.remove("hidden");
 }
 function saveReorderThresholds(){
-  const inputs=document.querySelectorAll(".reorder-input");
-  console.log("REORDER SAVE: found",inputs.length,"inputs");
-  inputs.forEach(input=>{const gas=input.getAttribute("data-gas"),val=parseInt(input.value)||0;console.log("  gas:",gas,"val:",val);if(val>0)reorderThresholds[gas]=val;else delete reorderThresholds[gas];});
-  console.log("SAVING reorderThresholds:",JSON.stringify(reorderThresholds));
+  applyReorderInputs();
   saveToDatabase();closeReorderModal();
 }
 function closeReorderModal(){document.getElementById("reorder-modal").classList.add("hidden");}
