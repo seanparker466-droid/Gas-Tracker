@@ -2148,7 +2148,7 @@ function filterHistoryLog(evt){
 // ── OVERVIEW ──────────────────────────────────────────────
 function renderOverview(){
   let officeCount=officeStock.length,totalTrucksCount=0,totalCartCount=0,expiredCount=0,lowPSICount=0,exp30Count=0,exp60Count=0,exp90Count=0;
-  let matrix={combustible:0,toxic:0,refrigerant:0,inert:0},vehicleLoads=[],dynamicLedger={},dynamicLedgerLarge={},ledgerLocs={};
+  let matrix={combustible:0,toxic:0,refrigerant:0,inert:0},vehicleLoads=[],dynamicLedger={},dynamicLedgerLarge={};
   gasTypes.forEach(t=>{dynamicLedger[t]=0;dynamicLedgerLarge[t]=0;});
   let flatExpiredList=[],flatLowPSIlist=[],flatExpiringSoonList=[];
   const proc=(b,loc)=>{
@@ -2156,7 +2156,6 @@ function renderOverview(){
     if(s==="expired"){expiredCount++;flatExpiredList.push({...b,loc});}
     if(["exp30","exp60","exp90"].includes(s)){flatExpiringSoonList.push({...b,loc,expStatus:s});if(s==="exp30")exp30Count++;else if(s==="exp60")exp60Count++;else exp90Count++;}
     if(b.currentPSI<300){lowPSICount++;flatLowPSIlist.push({...b,loc});}
-    (ledgerLocs[b.type]=ledgerLocs[b.type]||[]).push({loc,b});
     if(b.capacity==="Large"){if(dynamicLedgerLarge[b.type]!==undefined)dynamicLedgerLarge[b.type]++;else dynamicLedgerLarge[b.type]=1;}
     else{if(dynamicLedger[b.type]!==undefined)dynamicLedger[b.type]++;else dynamicLedger[b.type]=1;}
     const t=b.type.toUpperCase();
@@ -2179,8 +2178,7 @@ function renderOverview(){
     const entry=gasCatalog[gasName]||{},dotColor=entry.color||"#3f3f46",thresh=reorderThresholds[gasName]||0,isBelow=thresh>0&&s<=thresh;
     const total=s+l;
     const isLargeCapable=LARGE_BOTTLE_TYPES.has(gasName);
-    const where=ledgerWhereHtml(ledgerLocs[gasName]||[]);
-    return`<div class="ledger-item dash-panel p-3 border cursor-pointer ${isBelow?"border-blue-800/60":"border-zinc-800/80"} rounded-lg font-black ${total===0?"opacity-40":""}" data-gas="${gasName.toLowerCase()}" onclick="toggleLedgerRow(this)"><div class="flex items-center justify-between"><div class="flex items-center gap-2 min-w-0"><span class="w-3 h-3 rounded-full shrink-0" style="background-color:${dotColor}"></span><span class="text-zinc-100 truncate uppercase tracking-tight text-base">${gasName}</span>${isBelow?`<span class="text-xs text-blue-400 font-black whitespace-nowrap">⬇ REORDER</span>`:""}</div><div class="flex items-center gap-2 shrink-0"><span class="inline-flex items-baseline px-2.5 py-1 rounded font-mono font-black text-lg ${isBelow?"bg-blue-950 border border-blue-700 text-blue-200":"bg-zinc-800 border border-zinc-600 text-zinc-100"}">${s}</span>${isLargeCapable?`<span class="inline-flex items-baseline gap-0.5 px-2.5 py-1 rounded font-mono font-black text-base bg-green-900 border border-green-600 text-green-200">${l}<span class="text-xs font-bold ml-0.5 text-green-400">L</span></span>`:""}</div></div>${where}</div>`;
+    return`<div class="ledger-item dash-panel flex items-center justify-between p-3 border ${isBelow?"border-blue-800/60":"border-zinc-800/80"} rounded-lg font-black ${total===0?"opacity-40":""}" data-gas="${gasName.toLowerCase()}"><div class="flex items-center gap-2 min-w-0"><span class="w-3 h-3 rounded-full shrink-0" style="background-color:${dotColor}"></span><span class="text-zinc-100 truncate uppercase tracking-tight text-base">${gasName}</span>${isBelow?`<span class="text-xs text-blue-400 font-black whitespace-nowrap">⬇ REORDER</span>`:""}</div><div class="flex items-center gap-2 shrink-0"><span class="inline-flex items-baseline px-2.5 py-1 rounded font-mono font-black text-lg ${isBelow?"bg-blue-950 border border-blue-700 text-blue-200":"bg-zinc-800 border border-zinc-600 text-zinc-100"}">${s}</span>${isLargeCapable?`<span class="inline-flex items-baseline gap-0.5 px-2.5 py-1 rounded font-mono font-black text-base bg-green-900 border border-green-600 text-green-200">${l}<span class="text-xs font-bold ml-0.5 text-green-400">L</span></span>`:""}</div></div>`;
   }).join("");
   let subReportTableHtml="";
   if(activeReportFilter==="expired")subReportTableHtml=generateAlertTable("Expired Fleet Cylinders",flatExpiredList,"expired");
@@ -2303,21 +2301,6 @@ function generateAlertTable(title,targetBottles,mode){
 }
 
 function toggleReportFilter(f){activeReportFilter=activeReportFilter===f?"all":f;renderOverview();}
-// Where is each gas? Summary line per row + tap-to-expand list of every bottle (asset #, PSI, expiry) by location.
-function ledgerBase(loc){return loc.replace(/ \(On Cart\)$/,"").replace(/ Stock$/,"");}
-function ledgerWhereHtml(entries){
-  if(!entries.length)return"";
-  const byBase={},order=[];
-  entries.forEach(({loc,b})=>{const k=ledgerBase(loc);if(!byBase[k]){byBase[k]=[];order.push(k);}byBase[k].push({loc,b});});
-  order.sort((a,b)=>(a==="Office"?-1:b==="Office"?1:0)||byBase[b].length-byBase[a].length||a.localeCompare(b));
-  const summary=order.map(k=>`<span class="whitespace-nowrap"><span class="text-zinc-300">${k}</span> <span class="text-zinc-100 font-mono">${byBase[k].length}</span></span>`).join(`<span class="text-zinc-700 mx-1.5">·</span>`);
-  const detail=order.map(k=>{
-    const rows=byBase[k].slice().sort((x,y)=>(x.loc.includes("Cart")?1:0)-(y.loc.includes("Cart")?1:0)||(parseInt(x.b.assetNum)||1e9)-(parseInt(y.b.assetNum)||1e9)).map(({loc,b})=>`<span class="inline-flex items-center gap-1 px-2 py-1 rounded bg-zinc-900 border border-zinc-800 text-xs font-mono font-bold text-zinc-300">${b.assetNum?`<span class="text-blue-400">#${b.assetNum}</span>`:`<span class="text-zinc-600">no tag</span>`}<span class="text-zinc-500">${b.currentPSI}psi</span>${b.capacity==="Large"?`<span class="text-green-400">L</span>`:""}${loc.includes("Cart")?`<span class="text-amber-400">cart</span>`:""}${checkExpired(b.expDate)?`<span class="text-red-400">EXP</span>`:""}${b.unverified?`<span class="text-amber-400">?</span>`:""}</span>`).join("");
-    return`<div class="mb-2"><p class="text-xs font-black uppercase tracking-wider text-zinc-400 mb-1">${k} <span class="text-zinc-600 font-mono">${byBase[k].length}</span></p><div class="flex flex-wrap gap-1.5">${rows}</div></div>`;
-  }).join("");
-  return`<div class="text-xs font-bold text-zinc-500 mt-2 pl-5 leading-relaxed"><i class="fa-solid fa-location-dot mr-1 text-zinc-600"></i>${summary}<span class="ledger-chev text-zinc-600 ml-2">▾ details</span></div><div class="ledger-detail hidden mt-3 pt-3 border-t border-zinc-800/80 pl-5 font-normal">${detail}</div>`;
-}
-function toggleLedgerRow(el){const d=el.querySelector(".ledger-detail");if(d)d.classList.toggle("hidden");}
 function filterLedger(){const q=document.getElementById("ledger-search").value.toLowerCase().trim();document.querySelectorAll(".ledger-item").forEach(item=>item.classList.toggle("hidden",!item.getAttribute("data-gas").includes(q)));}
 function filterFleetLocator(){
   const q=(document.getElementById("fleet-locator-search")||{}).value||"";
