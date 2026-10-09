@@ -1453,7 +1453,7 @@ function renderLocationTabs(){
   const vis=visibleVehicles();
   const noVan=currentUser&&currentUser.role==="tech"&&vis.length===0;
   let html=(noVan?`<div class="w-full rounded-lg border border-amber-700/60 bg-amber-950/30 text-amber-300 text-sm font-black px-4 py-3"><i class="fa-solid fa-triangle-exclamation mr-2"></i>No vehicle is assigned to you (${currentUser.vehicle?"\""+currentUser.vehicle+"\" no longer exists":"none set"}). Ask Sean to pick your vehicle in Accounts.</div>`:"")+vis.map(v=>`<button onclick="switchLocation('${v}')" class="px-4 py-2 rounded-lg text-base font-black border transition-all whitespace-nowrap flex items-center gap-2 ${v===currentLocation&&currentTab!==2&&currentTab!==7?"bg-red-600 text-white border-red-600":"bg-zinc-900 text-zinc-300 border-zinc-800 hover:border-zinc-700 hover:text-white"}">${vehicleIcon(vehicleType(v),26)} ${v}</button>`).join("");
-  html+=`<button onclick="switchToOffice()" class="px-4 py-2 rounded-lg text-base font-black border transition-all whitespace-nowrap flex items-center gap-2 ${currentTab===2?"bg-red-600 text-white border-red-600":"bg-zinc-900 text-zinc-300 border-zinc-800 hover:border-zinc-700 hover:text-white"}"><i class="fa-solid fa-warehouse"></i> Office / Shop Stock</button>`;
+  html+=`<button onclick="switchToOffice()" class="px-4 py-2 rounded-lg text-base font-black border transition-all whitespace-nowrap flex items-center gap-2 ${currentTab===2||(currentTab===10&&currentLocation==="Office Stock")?"bg-red-600 text-white border-red-600":"bg-zinc-900 text-zinc-300 border-zinc-800 hover:border-zinc-700 hover:text-white"}"><i class="fa-solid fa-warehouse"></i> Office / Shop Stock</button>`;
   if(isSupervisor())html+=`<button onclick="addNewVehicle()" class="ml-auto px-4 py-2 rounded-lg text-xs font-black bg-blue-950 border border-blue-800 text-blue-400 hover:bg-blue-900 hover:text-blue-300 transition flex items-center gap-1.5 whitespace-nowrap"><i class="fas fa-plus"></i> Add Vehicle</button>`;
   document.getElementById("location-tabs").innerHTML=html;
 }
@@ -1479,7 +1479,8 @@ function renderMainTabs(){
     ${isOfficeLoc
       ?`<button onclick="switchToOffice()" class="px-4 py-2 rounded-md transition ${currentTab===2?"bg-red-600 text-white":"text-zinc-400 hover:text-white"}">Office Stock</button>
          <button onclick="setTab(7)" class="px-4 py-2 rounded-md transition ${currentTab===7?"bg-red-600 text-white":"text-zinc-400 hover:text-white"}"><i class="fa-solid fa-list-check mr-1 text-amber-400"></i>Office Summary</button>
-         <button onclick="setTab(9)" class="px-4 py-2 rounded-md transition ${currentTab===9?"bg-red-600 text-white":"text-zinc-400 hover:text-white"}"><i class="fa-solid fa-toolbox mr-1 text-cyan-400"></i>Parts</button>`
+         <button onclick="setTab(9)" class="px-4 py-2 rounded-md transition ${currentTab===9?"bg-red-600 text-white":"text-zinc-400 hover:text-white"}"><i class="fa-solid fa-toolbox mr-1 text-cyan-400"></i>Parts</button>
+         <button onclick="setTab(10)" class="px-4 py-2 rounded-md transition ${currentTab===10?"bg-red-600 text-white":"text-zinc-400 hover:text-white"}"><i class="fa-solid fa-clipboard-check mr-1 text-indigo-400"></i>Count${auditTabBadge()}</button>`
       :`<button onclick="setTab(0)" class="px-4 py-2 rounded-md transition ${currentTab===0?"bg-red-600 text-white":"text-zinc-400 hover:text-white"}">Truck Stock</button>
         <button onclick="setTab(1)" class="px-4 py-2 rounded-md transition ${currentTab===1?"bg-red-600 text-white":"text-zinc-400 hover:text-white"}">In Use (Cart)</button>
         <button onclick="setTab(6)" class="px-4 py-2 rounded-md transition ${currentTab===6?"bg-red-600 text-white":"text-zinc-400 hover:text-white"}"><i class="fa-solid fa-list-check mr-1 text-emerald-400"></i>Summary</button>
@@ -3171,6 +3172,13 @@ function initAudits(){
   });
 }
 function auditKey(v){return fbEncodeKey(v);}
+const AUDIT_OFFICE="Office Stock";
+function auditIsOffice(v){return v===AUDIT_OFFICE;}
+function auditPartsKey(v){return auditIsOffice(v)?"Office":v;}   // office parts are stored under "Office"
+function auditLocChip(lt,big){
+  const m=lt==="cart"?["ON CART","bg-amber-950/60 text-amber-400 border border-amber-900/50"]:lt==="office"?["OFFICE","bg-indigo-950/60 text-indigo-300 border border-indigo-900/50"]:["TRUCK","bg-zinc-800 text-zinc-400 border border-zinc-700"];
+  return `<span class="text-[10px] font-black ${big?"px-2":"px-1.5"} py-0.5 rounded ${m[1]}">${m[0]}</span>`;
+}
 function getActiveAudit(v){const s=audits.active?audits.active[auditKey(v)]:null;return s?normalizeAudit(s):null;}
 function normalizeAudit(s){
   s.items=(s.items||[]).map(it=>{
@@ -3187,7 +3195,7 @@ function normalizeAudit(s){
 function pendingAuditCount(){
   return Object.values(audits.active||{}).filter(s=>s.status==="pending").length;
 }
-function canRunAudit(v){return isSupervisor()||currentUser.vehicle===v;}
+function canRunAudit(v){return isSupervisor()||currentUser.vehicle===v||(isOfficeRole()&&auditIsOffice(v));}
 function canCommitAudit(){return isSupervisor();}
 
 function saveAuditSession(){
@@ -3199,8 +3207,11 @@ function saveAuditSession(){
 // ── Queue construction ────────────────────────────────────
 function buildAuditQueue(vehicle,mode,scope){
   const items=[],sources=[];
-  if(scope.truck)sources.push({listType:"truck",list:inventory[vehicle]||[]});
-  if(scope.cart)sources.push({listType:"cart",list:cart[vehicle]||[]});
+  if(auditIsOffice(vehicle)){if(scope.truck)sources.push({listType:"office",list:officeStock});}   // office: "truck" flag = office stock
+  else{
+    if(scope.truck)sources.push({listType:"truck",list:inventory[vehicle]||[]});
+    if(scope.cart)sources.push({listType:"cart",list:cart[vehicle]||[]});
+  }
   sources.forEach(src=>{
     if(mode==="bottle"){
       src.list.forEach((b,i)=>items.push({
@@ -3234,7 +3245,7 @@ function buildAuditQueue(vehicle,mode,scope){
   return items;
 }
 function buildAuditParts(vehicle){
-  const pInv=partsInventory[vehicle]||{},out=[];
+  const pInv=partsInventory[auditPartsKey(vehicle)]||{},out=[];
   Object.keys(customPartsCatalog).forEach(cat=>{
     (customPartsCatalog[cat]||[]).forEach(p=>{
       const pId=getPartId(p);
@@ -3257,10 +3268,10 @@ function toggleAuditScope(k){_auditScope[k]=!_auditScope[k];renderAuditTab();}
 function startAudit(){
   const v=currentLocation;
   if(!canRunAudit(v))return;
-  if(!_auditScope.truck&&!_auditScope.cart&&!_auditScope.parts){alert("Select at least one thing to count.");return;}
+  if(!_auditScope.truck&&(auditIsOffice(v)||!_auditScope.cart)&&!_auditScope.parts){alert("Select at least one thing to count.");return;}
   const existing=getActiveAudit(v);
   if(existing&&existing.status==="pending"){alert("A count for "+v+" is already waiting on supervisor review. It has to be reviewed or discarded before a new one can start.");return;}
-  const scope={truck:!!_auditScope.truck,cart:!!_auditScope.cart,parts:!!_auditScope.parts};
+  const scope={truck:!!_auditScope.truck,cart:auditIsOffice(v)?false:!!_auditScope.cart,parts:!!_auditScope.parts};
   _auditSession={
     id:auditKey(v)+"-"+Date.now(),
     vehicle:v,mode:_auditStartMode,scope,
@@ -3411,7 +3422,7 @@ function auditAddFound(){
   auditReadRowsFromDom();auditConfirmCatSilent();
   _auditSession.found.push({type:gasTypes[0]||"UNKNOWN GAS",capacity:"Regular",
     expDate:new Date(Date.now()+31536000000).toISOString().split("T")[0],
-    currentPSI:1000,maxPSI:1000,assetNum:"",listType:"truck"});
+    currentPSI:1000,maxPSI:1000,assetNum:"",listType:auditIsOffice(_auditSession.vehicle)?"office":"truck"});
   saveAuditSession();renderAuditTab();
 }
 function auditSetFound(i,field,val){
@@ -3480,7 +3491,7 @@ function computeAuditVariances(s){
   });
   (s.found||[]).forEach((f,fi)=>{
     add({kind:"found",fi,f,label:`${f.type} · ${f.capacity} · EXP ${formatDate(f.expDate)}`,
-      detail:`Found on ${f.listType==="cart"?"cart":"truck"}, not in the app`});
+      detail:`Found ${auditIsOffice(s.vehicle)?"in the office stock":"on the "+(f.listType==="cart"?"cart":"truck")}, not in the app`});
   });
   (s.parts||[]).forEach((p,pi)=>{
     if(!p.done||p.actual<0)return;
@@ -3498,9 +3509,8 @@ function computeAuditVariances(s){
   return V;
 }
 function auditItemLabel(it){
-  const loc=it.listType==="cart"?"CART":"TRUCK";
   const tag=it.kind==="bottle"&&it.assetNum?` · #${it.assetNum}`:"";
-  return `<span class="text-[10px] font-black px-1.5 py-0.5 rounded ${it.listType==="cart"?"bg-amber-950/60 text-amber-400 border border-amber-900/50":"bg-zinc-800 text-zinc-400 border border-zinc-700"}">${loc}</span> ${it.type} · ${it.capacity} · EXP ${formatDate(it.expDate)}${tag}`;
+  return `${auditLocChip(it.listType)} ${it.type} · ${it.capacity} · EXP ${formatDate(it.expDate)}${tag}`;
 }
 
 // ── Submit / commit ───────────────────────────────────────
@@ -3556,6 +3566,7 @@ function auditFindLive(list,crit,used){
   return list.find(b=>base(b))||null;
 }
 function auditLiveList(s,listType){
+  if(auditIsOffice(s.vehicle))return officeStock;
   if(listType==="cart"){if(!cart[s.vehicle])cart[s.vehicle]=[];return cart[s.vehicle];}
   if(!inventory[s.vehicle])inventory[s.vehicle]=[];return inventory[s.vehicle];
 }
@@ -3611,7 +3622,7 @@ function commitAudit(){
       if(at<0)break;
       list.splice(at,1);
       if(!b.id)b.id=newBottleId();
-      const fromLbl=`${s.vehicle} (${v.it.listType==="cart"?"On Cart":"Truck"})`;
+      const fromLbl=locLabelFor(s.vehicle,v.it.listType);
       missingBin.push({bottle:b,lastLocation:s.vehicle,where:v.it.listType,by:s.startedBy||"",ts:Date.now(),reason:"Not found during inventory count"});
       logEvent("Missing",b,fromLbl,"Missing Box");
       used.add(b);tally.missing++;
@@ -3642,9 +3653,10 @@ function commitAudit(){
     tally.extra++;
   });
   applied.filter(v=>v.kind==="part").forEach(v=>{
-    if(!partsInventory[s.vehicle])partsInventory[s.vehicle]={};
-    if(v.p.actual>0)partsInventory[s.vehicle][v.p.pId]=v.p.actual;
-    else delete partsInventory[s.vehicle][v.p.pId];
+    const pk=auditPartsKey(s.vehicle);
+    if(!partsInventory[pk])partsInventory[pk]={};
+    if(v.p.actual>0)partsInventory[pk][v.p.pId]=v.p.actual;
+    else delete partsInventory[pk][v.p.pId];
     tally.parts++;
   });
 
@@ -3686,8 +3698,11 @@ function exportAuditSummary(s,stamp){
   const V=computeAuditVariances(s);
   const gasRows=[];
   const push=(lt,list)=>list.forEach(b=>gasRows.push({loc:lt,...b}));
-  if(s.scope.truck)push("Truck",inventory[s.vehicle]||[]);
-  if(s.scope.cart)push("Cart",cart[s.vehicle]||[]);
+  if(auditIsOffice(s.vehicle)){if(s.scope.truck)push("Office",officeStock);}
+  else{
+    if(s.scope.truck)push("Truck",inventory[s.vehicle]||[]);
+    if(s.scope.cart)push("Cart",cart[s.vehicle]||[]);
+  }
   gasRows.sort((a,b)=>a.loc.localeCompare(b.loc)||a.type.localeCompare(b.type)||String(a.expDate).localeCompare(String(b.expDate)));
 
   const gasTable=gasRows.length?`<table>
@@ -3702,7 +3717,7 @@ function exportAuditSummary(s,stamp){
 
   let partsTable="";
   if(s.scope.parts){
-    const pInv=partsInventory[s.vehicle]||{};
+    const pInv=partsInventory[auditPartsKey(s.vehicle)]||{};
     let tot=0;
     const secs=Object.keys(customPartsCatalog).map(cat=>{
       const rows=(customPartsCatalog[cat]||[]).map(p=>{
@@ -3831,10 +3846,11 @@ function auditHomeHtml(v){
       </div></div>`);
   }
 
-  if(!allowed)return auditPanel(head+queue+`<div class="text-center py-14 text-zinc-500 font-bold text-sm"><i class="fa-solid fa-lock mb-3 block text-2xl text-zinc-700"></i>Only ${v}'s tech or a supervisor can run a count here.</div>`);
+  if(!allowed)return auditPanel(head+queue+`<div class="text-center py-14 text-zinc-500 font-bold text-sm"><i class="fa-solid fa-lock mb-3 block text-2xl text-zinc-700"></i>${isOff?"Only the office account or a supervisor":"Only "+v+"'s tech or a supervisor"} can run a count here.</div>`);
 
-  const truckN=(inventory[v]||[]).length,cartN=(cart[v]||[]).length;
-  const partN=Object.keys(partsInventory[v]||{}).length;
+  const isOff=auditIsOffice(v);
+  const truckN=isOff?officeStock.length:(inventory[v]||[]).length,cartN=isOff?0:(cart[v]||[]).length;
+  const partN=Object.keys(partsInventory[auditPartsKey(v)]||{}).length;
   const mBtn=(m,icon,title,sub)=>`<button onclick="setAuditMode('${m}')" class="flex-1 min-w-[220px] text-left rounded-xl border-2 p-4 transition ${_auditStartMode===m?"border-indigo-500 bg-indigo-950/30":"border-zinc-800 bg-zinc-900/40 hover:border-zinc-700"}">
     <div class="flex items-center gap-2 mb-1"><i class="fa-solid ${icon} ${_auditStartMode===m?"text-indigo-400":"text-zinc-500"}"></i><span class="font-black text-sm ${_auditStartMode===m?"text-white":"text-zinc-300"}">${title}</span>${_auditStartMode===m?`<i class="fa-solid fa-circle-check text-indigo-400 ml-auto"></i>`:""}</div>
     <p class="text-xs font-bold text-zinc-500 leading-snug">${sub}</p></button>`;
@@ -3842,7 +3858,7 @@ function auditHomeHtml(v){
     <i class="fa-solid ${_auditScope[k]?"fa-square-check":"fa-square"} ${_auditScope[k]?"text-emerald-400":"text-zinc-600"}"></i><i class="fa-solid ${icon}"></i> ${label} <span class="text-xs font-mono opacity-70">${n}</span></button>`;
 
   return auditPanel(head+queue+`
-    <p class="text-xs text-zinc-500 font-bold mb-4 leading-relaxed">Walk the vehicle and count what's actually there. Nothing changes in the app until a supervisor approves the results, and you can stop and pick back up any time.</p>
+    <p class="text-xs text-zinc-500 font-bold mb-4 leading-relaxed">${isOff?"Walk the office / shop shelves":"Walk the vehicle"} and count what's actually there. Nothing changes in the app until a supervisor approves the results, and you can stop and pick back up any time.</p>
     <h4 class="text-xs font-black uppercase tracking-wider text-zinc-400 mb-2">1 · Count style</h4>
     <div class="flex gap-3 flex-wrap mb-5">
       ${mBtn("group","fa-layer-group","By gas type","One card per gas + size + expiry. Fastest — count a whole rack at once.")}
@@ -3850,8 +3866,8 @@ function auditHomeHtml(v){
     </div>
     <h4 class="text-xs font-black uppercase tracking-wider text-zinc-400 mb-2">2 · What to count</h4>
     <div class="flex gap-2 flex-wrap mb-6">
-      ${sBtn("truck","fa-truck","Truck stock",truckN)}
-      ${sBtn("cart","fa-cart-flatbed","In use (cart)",cartN)}
+      ${isOff?sBtn("truck","fa-warehouse","Office stock",truckN):sBtn("truck","fa-truck","Truck stock",truckN)}
+      ${isOff?"":sBtn("cart","fa-cart-flatbed","In use (cart)",cartN)}
       ${sBtn("parts","fa-toolbox","Parts &amp; filters",partN)}
     </div>
     <button onclick="startAudit()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-black text-base h-14 rounded-xl transition shadow-lg flex items-center justify-center gap-2"><i class="fa-solid fa-play"></i> Start Count</button>
@@ -3914,7 +3930,7 @@ function auditFlagDate(el,expected){
 
 function auditItemCardHtml(s,it){
   const e=gasCatalog[it.type]||{},color=e.color||"#71717a";
-  const locChip=`<span class="text-[10px] font-black px-2 py-0.5 rounded ${it.listType==="cart"?"bg-amber-950/60 text-amber-400 border border-amber-900/50":"bg-zinc-800 text-zinc-400 border border-zinc-700"}">${it.listType==="cart"?"ON CART":"TRUCK"}</span>`;
+  const locChip=auditLocChip(it.listType,true);
   const expWarn=checkExpired(it.expDate)?`<div class="mb-3 rounded-lg border border-red-900/60 bg-red-950/30 px-3 py-2 text-xs font-black text-red-400"><i class="fa-solid fa-triangle-exclamation mr-1.5"></i>EXPIRED — pull this bottle while you have it in hand.</div>`
     :["exp30","exp60"].includes(getExpStatus(it.expDate))?`<div class="mb-3 rounded-lg border border-amber-900/50 bg-amber-950/20 px-3 py-2 text-xs font-black text-amber-400"><i class="fa-solid fa-clock mr-1.5"></i>Expires in ${daysUntilExp(it.expDate)} days.</div>`:"";
 
@@ -3998,7 +4014,7 @@ function auditFoundListHtml(s){
     ${s.found.map((f,i)=>`<div class="flex items-center gap-2 flex-wrap py-2 ${i?"border-t border-zinc-900":""}">
       <select onchange="auditSetFound(${i},'type',this.value)" class="bg-zinc-950 border-2 border-zinc-800 rounded-lg h-11 px-2 text-xs font-black text-zinc-100 max-w-[190px]">${gasTypes.map(t=>`<option value="${t}" ${f.type===t?"selected":""}>${t}</option>`).join("")}</select>
       <select onchange="auditSetFound(${i},'capacity',this.value)" class="bg-zinc-950 border-2 border-zinc-800 rounded-lg h-11 px-2 text-xs font-black text-zinc-100"><option value="Regular" ${f.capacity==="Regular"?"selected":""}>Regular</option><option value="Large" ${f.capacity==="Large"?"selected":""}>Large</option></select>
-      <select onchange="auditSetFound(${i},'listType',this.value)" class="bg-zinc-950 border-2 border-zinc-800 rounded-lg h-11 px-2 text-xs font-black text-zinc-100"><option value="truck" ${f.listType==="truck"?"selected":""}>Truck</option><option value="cart" ${f.listType==="cart"?"selected":""}>Cart</option></select>
+      ${auditIsOffice(s.vehicle)?"":`<select onchange="auditSetFound(${i},'listType',this.value)" class="bg-zinc-950 border-2 border-zinc-800 rounded-lg h-11 px-2 text-xs font-black text-zinc-100"><option value="truck" ${f.listType==="truck"?"selected":""}>Truck</option><option value="cart" ${f.listType==="cart"?"selected":""}>Cart</option></select>`}
       <input type="number" inputmode="numeric" value="${f.currentPSI}" onchange="auditSetFound(${i},'currentPSI',this.value)" class="bg-zinc-950 border-2 border-zinc-800 rounded-lg h-11 w-20 text-center text-base font-black text-zinc-100" placeholder="PSI">
       <input type="date" value="${f.expDate}" onchange="auditSetFound(${i},'expDate',this.value)" class="bg-zinc-950 border-2 border-zinc-800 rounded-lg h-11 px-2 text-sm font-bold text-zinc-100 w-[150px]">
       <button onclick="auditRemoveFound(${i})" class="w-11 h-11 rounded-lg bg-zinc-900 border border-zinc-800 hover:border-red-900 text-red-500 shrink-0"><i class="fa-solid fa-trash-can"></i></button>
@@ -4081,7 +4097,7 @@ function auditReviewHtml(s){
   // Flag rows whose baseline moved since the count was submitted.
   const stale=v=>{
     if(!v.it||v.kind==="found"||v.kind==="part")return false;
-    const list=v.it.listType==="cart"?(cart[s.vehicle]||[]):(inventory[s.vehicle]||[]);
+    const list=auditIsOffice(s.vehicle)?officeStock:(v.it.listType==="cart"?(cart[s.vehicle]||[]):(inventory[s.vehicle]||[]));
     const n=list.filter(b=>b.type===v.it.type&&(b.capacity||"")===(v.it.capacity||"")&&(b.expDate||"")===(v.it.expDate||"")).length;
     return n!==v.it.expected;
   };
@@ -4178,7 +4194,7 @@ function auditListRowsHtml(s){
     if(!done)status=chip("TO COUNT","bg-zinc-900 text-zinc-500 border-zinc-700");
     else if(it.kind==="group"){const act=it.actual<0?it.expected:it.actual;status=act===it.expected?chip(`<i class="fa-solid fa-check mr-1"></i>${act} counted`,"bg-emerald-950/60 text-emerald-400 border-emerald-900/60"):chip(`${act} of ${it.expected}`,"bg-amber-950/60 text-amber-400 border-amber-900/60");}
     else status=it.present===0?chip("NOT HERE","bg-red-950/60 text-red-400 border-red-900/60"):chip(`<i class="fa-solid fa-check mr-1"></i>found`,"bg-emerald-950/60 text-emerald-400 border-emerald-900/60");
-    const loc=it.listType==="cart"?chip("CART","bg-amber-950/60 text-amber-400 border-amber-900/50"):chip("TRUCK","bg-zinc-800 text-zinc-400 border-zinc-700");
+    const loc=it.listType==="cart"?chip("CART","bg-amber-950/60 text-amber-400 border-amber-900/50"):it.listType==="office"?chip("OFFICE","bg-indigo-950/60 text-indigo-300 border-indigo-900/50"):chip("TRUCK","bg-zinc-800 text-zinc-400 border-zinc-700");
     rows.push(`<button onclick="auditPick(${i})" class="w-full text-left flex items-center gap-2 flex-wrap px-3 py-3 rounded-xl border ${done?"border-emerald-900/50":"border-zinc-800"} bg-zinc-900/40 hover:border-indigo-600 transition">
       <span class="w-3 h-3 rounded-full shrink-0" style="background:${color}"></span>
       <span class="flex-1 min-w-[150px]"><span class="block font-black uppercase text-sm leading-tight" style="color:${color}">${it.type}</span><span class="block text-xs font-bold text-zinc-500">${it.capacity} · EXP ${formatDate(it.expDate)}${it.kind==="group"?` · expects ${it.expected}`:(it.assetNum?` · <span class="text-blue-400">#${it.assetNum}</span>`:"")}</span></span>
@@ -4305,6 +4321,7 @@ function confirmResolve(brandNew){
 function setTab(tab){
   if(tab!==2&&tab!==7&&tab!==9)_bottleSearch="";
   if(currentTab===10&&tab!==10){_auditSession=null;_auditReviewOnly=false;}
+  if(tab===10&&currentLocation==="Office Stock")_auditStartMode="bottle";
   currentTab=tab;
   updateSystemCanvas();
 }
@@ -4322,7 +4339,6 @@ function switchLocation(v){
   // Count tab follows the selected vehicle; drop any open session first
   if(currentTab===10) {
       _auditSession=null;_auditReviewOnly=false;
-      if(v==="Office Stock"){currentTab=0;}
       updateSystemCanvas();
       return;
   }
@@ -4332,6 +4348,10 @@ function switchLocation(v){
 }
 function switchToOffice(){
   _bottleSearch="";
+  if(currentTab===10){   // Count tab follows the selected location
+    _auditSession=null;_auditReviewOnly=false;_auditStartMode="bottle";   // office: ask for each bottle, you confirm
+    currentLocation="Office Stock";updateSystemCanvas();return;
+  }
   
   if(currentTab===9) {
       // Stay on parts tab but switch context to office
