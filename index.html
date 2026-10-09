@@ -1004,7 +1004,7 @@ function openAccountsModal(){
       ?`<span class="text-emerald-400 font-black text-xs">Supervisor</span>`
       :a.role==="office"
       ?`<span class="text-amber-400 font-black text-xs">Office Display</span>`
-      :`<select onchange="reassignVehicle('${u}',this.value)" class="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-zinc-300 text-xs font-black">${vehicles.map(v=>`<option value="${v}" ${v===assignedVehicle?"selected":""}>${v}</option>`).join("")}</select>`;
+      :`<select onchange="reassignVehicle('${u}',this.value)" class="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-zinc-300 text-xs font-black">${vehicles.includes(assignedVehicle)?"":`<option value="" selected disabled>⚠ ${assignedVehicle?assignedVehicle+" (no longer exists)":"none assigned"} — pick a vehicle</option>`}${vehicles.map(v=>`<option value="${v}" ${v===assignedVehicle?"selected":""}>${v}</option>`).join("")}</select>`;
     return`<div class="flex items-center justify-between py-3 border-b border-zinc-900"><div><p class="text-sm font-black text-white">${a.displayName} <span class="text-zinc-600 font-normal">@${u}</span></p>${badge}</div><span class="text-xs font-mono ${hasPass==="Set"?"text-emerald-400":"text-red-400"}">${hasPass}</span></div>`;
   }).join("");
   document.getElementById("accounts-modal").classList.remove("hidden");
