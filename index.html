@@ -2327,7 +2327,7 @@ function openLedgerModal(enc){
   const order=[],by={};
   items.forEach(x=>{if(!by[x.base]){by[x.base]=[];order.push(x.base);}by[x.base].push(x);});
   order.sort((a,b)=>(a.startsWith("Office")?-1:b.startsWith("Office")?1:0)||by[b].length-by[a].length||a.localeCompare(b));
-  const chip=(t,c)=>`<span class="text-[11px] font-black px-1.5 py-0.5 rounded border whitespace-nowrap ${c}">${t}</span>`;
+  const chip=(t,st)=>`<span class="text-[11px] font-black px-1.5 py-0.5 rounded whitespace-nowrap" style="${st}">${t}</span>`;   // solid pastel chips read the same on dark and light themes
   const sections=order.map(base=>{
     const rows=by[base].slice().sort((x,y)=>(x.sub==="Cart"?1:0)-(y.sub==="Cart"?1:0)||(parseInt(x.b.assetNum)||1e9)-(parseInt(y.b.assetNum)||1e9)).map(({sub,b})=>{
       const exp=checkExpired(b.expDate);
@@ -2335,10 +2335,10 @@ function openLedgerModal(enc){
         <span class="min-w-[64px]">${b.assetNum?`<span class="bg-blue-600 border border-blue-400 text-white text-xs px-2 py-0.5 rounded font-black font-mono">#${b.assetNum}</span>`:`<span class="text-xs font-bold text-zinc-600">no tag</span>`}</span>
         <span class="text-sm font-black font-mono ${b.currentPSI<150?"text-red-400":b.currentPSI<300?"text-amber-400":"text-zinc-100"}">${b.currentPSI}<span class="text-xs text-zinc-500 font-bold ml-0.5">PSI</span></span>
         <span class="text-xs font-bold ${exp?"text-red-400":"text-zinc-400"}">EXP ${formatDate(b.expDate)}${exp?" ⚠":""}</span>
-        <span class="flex flex-wrap gap-1 ml-auto">${b.capacity==="Large"?chip("LARGE","bg-green-950/60 text-green-400 border-green-900/60"):""}${sub==="Cart"?chip("ON CART","bg-amber-950/60 text-amber-400 border-amber-900/50"):""}${b.unverified?chip("UNVERIFIED","bg-amber-500 text-black border-amber-500"):""}</span>
+        <span class="flex flex-wrap gap-1 ml-auto">${b.capacity==="Large"?chip("LARGE","background:#dcfce7;color:#166534;border:1px solid #86efac"):""}${sub==="Cart"?chip("ON CART","background:#fef3c7;color:#92400e;border:1px solid #fcd34d"):""}${b.unverified?chip("UNVERIFIED","background:#f59e0b;color:#000;border:1px solid #f59e0b"):""}</span>
       </div>`;}).join("");
     return `<div class="mb-3 rounded-xl border border-zinc-800 overflow-hidden">
-      <div class="flex items-center justify-between px-3 py-2 bg-zinc-900/70"><span class="text-sm font-black text-white flex items-center gap-2"><i class="fa-solid ${base.startsWith("Office")?"fa-warehouse text-amber-400":"fa-truck text-zinc-400"}"></i>${base}</span><span class="text-sm font-black font-mono text-zinc-300">${by[base].length}</span></div>
+      <div class="flex items-center justify-between px-3 py-2" style="background:rgba(127,127,127,.16)"><span class="text-sm font-black flex items-center gap-2"><i class="fa-solid ${base.startsWith("Office")?"fa-warehouse text-amber-400":"fa-truck text-zinc-400"}"></i>${base}</span><span class="text-sm font-black font-mono" style="opacity:.8">${by[base].length}</span></div>
       ${rows}</div>`;
   }).join("");
   document.getElementById("ledger-modal-title").innerHTML=`<span class="w-3.5 h-3.5 rounded-full shrink-0" style="background:${color}"></span><span class="uppercase">${gasName}</span>`;
