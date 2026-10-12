@@ -1,7 +1,7 @@
 {
-  "name": "Gas Bottle Tracker",
-  "short_name": "Gas Tracker",
-  "description": "Parker HVAC Gas Cylinder Fleet Inventory",
+  "name": "Ino-Tek Inventory Management",
+  "short_name": "Ino-Tek Inventory",
+  "description": "Ino-Tek Gas Cylinder Fleet Inventory",
   "start_url": "/Gas-Tracker/",
   "scope": "/Gas-Tracker/",
   "display": "standalone",
