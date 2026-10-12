@@ -1713,6 +1713,7 @@ function renderBottleGrid(){
       <table class="w-full text-left border-collapse text-sm font-bold">
         <thead><tr class="border-b border-zinc-800 text-zinc-500 uppercase tracking-wider text-xs">
           <th class="px-4 py-3">Gas Type</th>
+          <th class="px-4 py-3 whitespace-nowrap" style="width:1%">Asset #</th>
           <th class="px-4 py-3">Size</th>
           <th class="px-4 py-3">PSI</th>
           <th class="px-4 py-3 hidden sm:table-cell">Part #</th>
@@ -1734,10 +1735,10 @@ function renderBottleGrid(){
         <td class="px-4 py-3">
           <div class="flex items-center gap-2">
             <span class="font-black uppercase text-sm" style="color:${color}">${b.type}</span>
-            ${b.assetNum ? `<span class="asset-badge text-sm px-2.5 py-0.5 rounded-full font-black font-mono shadow-sm shrink-0">#${b.assetNum}</span>` : ""}
           </div>
           ${b.checkedOutBy ? `<div class="text-[10px] text-purple-400 mt-0.5 font-black"><i class="fa-solid fa-user-check"></i> Out: ${b.checkedOutBy}</div>` : ''}
         </td>
+        <td class="px-4 py-3 whitespace-nowrap">${b.assetNum ? `<span class="asset-badge inline-block text-sm px-2.5 py-0.5 rounded-full font-black font-mono shadow-sm text-center" style="min-width:4.25rem">#${b.assetNum}</span>` : `<span class="text-zinc-600 text-xs font-bold">—</span>`}</td>
         <td class="px-4 py-3 text-zinc-400">${b.capacity==="Large"?`<span class="text-green-400 font-black">Large</span>`:"Reg"}</td>
         <td class="px-4 py-3">
           <div class="flex items-center gap-2">
