@@ -647,7 +647,8 @@ body.theme-company-colors .bottle-card svg stop[stop-color="#d4d4d8"]{stop-color
   <div class="dash-panel rounded-xl p-6 w-full max-w-md shadow-2xl">
     <div class="flex items-center justify-between mb-5 pb-3 border-b border-zinc-800">
       <div class="flex items-center gap-2"><i class="fa-solid fa-box-open text-cyan-400 text-xl"></i><h3 class="text-lg font-black text-white" id="pdm-title">Part Details</h3></div>
-      <button onclick="closePartDetailModal()" class="text-zinc-500 hover:text-white transition"><i class="fa-solid fa-xmark text-xl"></i></button>
+      <div class="flex items-center gap-2"><button id="pdm-edit-btn" onclick="editFromDetail()" class="hidden bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 hover:border-cyan-600 text-cyan-400 font-black text-xs px-3 py-1.5 rounded-lg transition"><i class="fa-solid fa-pen mr-1"></i>Edit</button>
+      <button onclick="closePartDetailModal()" class="text-zinc-500 hover:text-white transition"><i class="fa-solid fa-xmark text-xl"></i></button></div>
     </div>
     <!-- Info block -->
     <div class="bg-zinc-950 border border-zinc-800 rounded-xl p-4 mb-4 flex flex-col gap-2">
@@ -864,6 +865,66 @@ body.theme-company-colors .bottle-card svg stop[stop-color="#d4d4d8"]{stop-color
       <button onclick="closeLedgerModal()" class="text-zinc-500 hover:text-white transition w-9 h-9 shrink-0 flex items-center justify-center rounded-lg hover:bg-zinc-800"><i class="fa-solid fa-xmark text-xl"></i></button>
     </div>
     <div id="ledger-modal-body" class="overflow-y-auto custom-scrollbar flex-1 px-5 py-4"></div>
+  </div>
+</div>
+<div id="edit-part-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
+  <div class="dash-panel rounded-xl p-6 w-full max-w-lg shadow-2xl max-h-[92vh] overflow-y-auto">
+    <div class="flex items-center justify-between mb-5 pb-3 border-b border-zinc-800">
+      <div class="flex items-center gap-2"><i class="fa-solid fa-pen text-cyan-400 text-xl"></i><h3 class="text-lg font-black text-white">Edit Item</h3></div>
+      <button onclick="closeEditPartModal()" class="text-zinc-500 hover:text-white transition"><i class="fa-solid fa-xmark text-xl"></i></button>
+    </div>
+    <div class="flex flex-col gap-4">
+      <div><label class="text-xs font-black text-zinc-400 uppercase tracking-wider block mb-1.5">Category</label>
+        <div class="flex gap-2"><select id="ep-category" onchange="epCategoryChange()" class="bg-zinc-950 border border-zinc-700 rounded-lg px-3 text-white font-bold text-sm flex-1" style="min-height:44px;"></select>
+        <input id="ep-category-custom" type="text" placeholder="Category name" class="hidden bg-zinc-950 border border-zinc-700 rounded-lg px-3 text-white font-bold text-sm flex-1" style="min-height:44px;"></div></div>
+      <div><label class="text-xs font-black text-zinc-400 uppercase tracking-wider block mb-1.5">Brand / Manufacturer</label>
+        <input id="ep-mfg" type="text" class="bg-zinc-950 border border-zinc-700 rounded-lg px-3 text-white font-bold text-sm w-full" style="min-height:44px;"></div>
+      <div class="grid grid-cols-2 gap-3">
+        <div><label class="text-xs font-black text-zinc-400 uppercase tracking-wider block mb-1.5">Part # <span class="text-zinc-600 normal-case font-normal">(blank if none)</span></label>
+          <input id="ep-part" type="text" class="bg-zinc-950 border border-zinc-700 rounded-lg px-3 text-white font-bold text-sm w-full" style="min-height:44px;"></div>
+        <div><label class="text-xs font-black text-zinc-400 uppercase tracking-wider block mb-1.5">Type</label>
+          <input id="ep-type" type="text" class="bg-zinc-950 border border-zinc-700 rounded-lg px-3 text-white font-bold text-sm w-full" style="min-height:44px;"></div>
+      </div>
+      <div><label class="text-xs font-black text-zinc-400 uppercase tracking-wider block mb-1.5">Range</label>
+        <input id="ep-range" type="text" class="bg-zinc-950 border border-zinc-700 rounded-lg px-3 text-white font-bold text-sm w-full" style="min-height:44px;"></div>
+      <p class="text-xs text-zinc-500 font-bold">Changing the name or part # keeps the stock counts you've already recorded for this item.</p>
+      <p id="ep-error" class="hidden text-sm text-red-400 font-bold"></p>
+    </div>
+    <div class="flex items-center justify-between gap-3 mt-6 pt-4 border-t border-zinc-800">
+      <button onclick="deleteFromEdit()" class="text-red-400 hover:text-red-300 border border-zinc-800 hover:border-red-900 font-black px-4 py-2 rounded-lg transition text-sm"><i class="fa-solid fa-trash mr-1"></i>Delete</button>
+      <div class="flex gap-3"><button onclick="closeEditPartModal()" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-black px-5 py-2 rounded-lg transition text-sm">Cancel</button>
+      <button onclick="saveEditPart()" class="bg-cyan-600 hover:bg-cyan-500 text-zinc-950 font-black px-5 py-2 rounded-lg transition text-sm"><i class="fa-solid fa-floppy-disk mr-1"></i>Save</button></div>
+    </div>
+  </div>
+</div>
+<div id="parts-import-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
+  <div class="dash-panel rounded-xl p-6 w-full max-w-4xl shadow-2xl max-h-[94vh] flex flex-col">
+    <div class="flex items-center justify-between mb-3 pb-3 border-b border-zinc-800 shrink-0">
+      <div class="flex items-center gap-2"><i class="fa-solid fa-file-import text-cyan-400 text-xl"></i><h3 class="text-lg font-black text-white">Import Parts List</h3></div>
+      <button onclick="closePartsImport()" class="text-zinc-500 hover:text-white transition"><i class="fa-solid fa-xmark text-xl"></i></button>
+    </div>
+    <div class="overflow-y-auto custom-scrollbar flex-1 pr-1">
+      <p class="text-xs text-zinc-400 font-bold mb-2">Paste rows (or choose a CSV file) with columns <b>Category, Brand, Part #, Type, Range, Qty</b>. A header row is fine. Quantities go into <b>Office stock</b>.</p>
+      <textarea id="pi-text" rows="6" placeholder="Category,Brand,Part #,Type,Range,Qty&#10;Sensors,Drager,6809755,CO,0-200PPM,3" class="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-white font-mono text-xs outline-none focus:border-cyan-500 mb-2"></textarea>
+      <div class="flex flex-wrap items-center gap-2 mb-3">
+        <label class="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-200 font-black text-xs px-3 py-2 rounded-lg cursor-pointer"><i class="fa-solid fa-file-csv mr-1"></i>Choose CSV file<input type="file" accept=".csv,.tsv,.txt" class="hidden" onchange="piLoadFile(this)"></label>
+        <button onclick="piPreview()" class="bg-cyan-600 hover:bg-cyan-500 text-zinc-950 font-black text-xs px-4 py-2 rounded-lg"><i class="fa-solid fa-eye mr-1"></i>Preview</button>
+        <span id="pi-summary" class="text-xs font-black text-zinc-300"></span>
+      </div>
+      <div class="rounded-xl border border-zinc-800 p-3 mb-3">
+        <p class="text-xs font-black uppercase tracking-wider text-zinc-400 mb-2">If an item is already in the catalog</p>
+        <div class="flex flex-wrap gap-x-5 gap-y-2 text-sm font-bold">
+          <label class="flex items-center gap-2 cursor-pointer"><input type="radio" name="pi-mode" value="skip" checked onchange="piRender()" class="accent-cyan-500"> Leave it as is (skip)</label>
+          <label class="flex items-center gap-2 cursor-pointer"><input type="radio" name="pi-mode" value="set" onchange="piRender()" class="accent-cyan-500"> Set stock to the number on the list</label>
+          <label class="flex items-center gap-2 cursor-pointer"><input type="radio" name="pi-mode" value="add" onchange="piRender()" class="accent-cyan-500"> Add the list number to current stock</label>
+        </div>
+      </div>
+      <div id="pi-preview"></div>
+    </div>
+    <div class="flex justify-end gap-3 mt-4 pt-3 border-t border-zinc-800 shrink-0">
+      <button onclick="closePartsImport()" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-black px-5 py-2 rounded-lg transition text-sm">Cancel</button>
+      <button id="pi-go" onclick="runPartsImport()" class="hidden bg-emerald-600 hover:bg-emerald-500 text-zinc-950 font-black px-5 py-2 rounded-lg transition text-sm"><i class="fa-solid fa-check mr-1"></i>Import</button>
+    </div>
   </div>
 </div>
 <div id="asset-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
@@ -1354,6 +1415,7 @@ function fbDecodeKey(k){return k.replace(/_DOT_/g,".").replace(/_SLASH_/g,"/");}
 // part number use "N/A" as a placeholder, which would otherwise collide for every
 // such item — so fall back to the manufacturer name in that case.
 function getPartId(p){
+  if(p.id)return fbEncodeKey(String(p.id));
   const base=(p.part&&p.part!=="N/A")?p.part:p.mfg.replace(/\s+/g,'_');
   return fbEncodeKey(base);
 }
@@ -2995,7 +3057,7 @@ function renderPartsInventory() {
     <div class="flex items-center justify-between mb-4 border-b border-zinc-900 pb-3">
       <h3 class="text-sm font-black uppercase tracking-wider text-cyan-400 flex items-center gap-2"><i class="fa-solid fa-toolbox"></i> ${locLabel} - Parts & Filters</h3>
       <div class="flex items-center gap-2">
-        ${(isSup||(isOfficeParts&&isOfficeRole())) ? `<button onclick="openAddPartModal()" class="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 hover:border-cyan-600 text-cyan-400 font-black text-xs px-3 py-1.5 rounded-lg transition flex items-center gap-1.5"><i class="fa-solid fa-plus"></i> Add Item</button>` : ""}
+        ${(isSup||(isOfficeParts&&isOfficeRole())) ? `<button onclick="openAddPartModal()" class="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 hover:border-cyan-600 text-cyan-400 font-black text-xs px-3 py-1.5 rounded-lg transition flex items-center gap-1.5"><i class="fa-solid fa-plus"></i> Add Item</button><button onclick="openPartsImport()" class="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 hover:border-cyan-600 text-cyan-400 font-black text-xs px-3 py-1.5 rounded-lg transition flex items-center gap-1.5"><i class="fa-solid fa-file-import"></i> Import List</button>` : ""}
         <button onclick="exportPartsInventory('${locKey}')" class="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 hover:border-zinc-500 text-zinc-300 hover:text-white font-black text-xs px-3 py-1.5 rounded-lg transition flex items-center gap-1.5"><i class="fa-solid fa-print text-zinc-500"></i> Print</button>
         ${!isOfficeParts && canEdit ? `<button onclick="savePartsInventory('${locKey}')" class="bg-cyan-600 hover:bg-cyan-500 text-zinc-950 font-black text-xs px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 shadow-sm"><i class="fa-solid fa-floppy-disk"></i> Save Quantities</button>` : ""}
         ${isOfficeParts && canEdit ? `<button onclick="savePartsInventory('${locKey}')" class="bg-cyan-600 hover:bg-cyan-500 text-zinc-950 font-black text-xs px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 shadow-sm"><i class="fa-solid fa-floppy-disk"></i> Save Stock</button>` : ""}
@@ -3015,7 +3077,7 @@ function renderPartsInventory() {
   sortedCats.forEach(category => {
     const items = customPartsCatalog[category];
     html += `<div>
-      <h4 class="text-xs font-black text-zinc-500 uppercase tracking-widest mb-3 border-b border-zinc-800/50 pb-1">${category}</h4>`;
+      <h4 class="text-xs font-black text-zinc-500 uppercase tracking-widest mb-3 border-b border-zinc-800/50 pb-1 flex items-center justify-between gap-2"><span>${category}</span>${(isSup||isOfficeRole())?`<button data-cat="${category}" onclick="renameCategory(this.dataset.cat)" class="text-zinc-600 hover:text-cyan-400 transition normal-case tracking-normal" title="Rename category"><i class="fa-solid fa-pen text-xs"></i></button>`:""}</h4>`;
 
     if(isOfficeParts){
       // Office: clickable card grid
@@ -3049,7 +3111,7 @@ function renderPartsInventory() {
             <th class="pb-2 pr-3">Part #</th>
             <th class="pb-2 pr-3">Type / Range</th>
             <th class="pb-2 text-right">Qty</th>
-            ${isSup ? `<th class="pb-2 w-6"></th>` : ""}
+            ${(isSup||isOfficeRole()) ? `<th class="pb-2 w-12"></th>` : ""}
           </tr></thead>
           <tbody>`;
       items.forEach(p => {
@@ -3068,7 +3130,7 @@ function renderPartsInventory() {
                  </div>`
               : `<span class="inline-flex items-center justify-center font-mono font-black text-sm bg-zinc-900 border border-zinc-700 text-zinc-200 px-3 py-1 rounded min-w-[3rem]">${currentQty}</span>`}
           </td>
-          ${isSup ? `<td class="py-2.5 pl-2"><button onclick="deleteCustomPart('${category}','${pId}')" class="text-zinc-600 hover:text-red-400 transition text-xs" title="Remove from catalog"><i class="fa-solid fa-trash"></i></button></td>` : ""}
+          ${(isSup||isOfficeRole()) ? `<td class="py-2.5 pl-2 whitespace-nowrap"><button onclick="openEditPartModal('${category}','${pId}')" class="text-zinc-600 hover:text-cyan-400 transition text-xs mr-2" title="Edit item"><i class="fa-solid fa-pen"></i></button>${isSup?`<button onclick="deleteCustomPart('${category}','${pId}')" class="text-zinc-600 hover:text-red-400 transition text-xs" title="Remove from catalog"><i class="fa-solid fa-trash"></i></button>`:""}</td>` : ""}
         </tr>`;
       });
       html += `</tbody></table></div>`;
@@ -3093,6 +3155,7 @@ function openPartDetailModal(category,pId){
   const qtyColor=officeQty===0?"color:#f87171":officeQty<=2?"color:#fbbf24":"color:#34d399";
 
   document.getElementById("pdm-title").textContent=p.mfg;
+  document.getElementById("pdm-edit-btn").classList.toggle("hidden",!(isSupervisor()||isOfficeRole()));
   document.getElementById("pdm-mfg").textContent=p.mfg;
   document.getElementById("pdm-qty").textContent=officeQty;
   document.getElementById("pdm-qty").style.cssText=qtyColor;
@@ -3212,6 +3275,160 @@ function savePdmStock(){
   document.body.appendChild(toast);
   setTimeout(()=>{toast.remove();renderPartsInventory();},1500);
 }
+// ── Parts: match / edit / rename / import ──────────────────
+const partNorm=x=>String(x==null?"":x).trim().toLowerCase().replace(/\s+/g," ");
+function realPartNo(p){return p&&p.part&&p.part!=="N/A"&&String(p.part).trim()!==""?partNorm(p.part):"";}
+// Same item? Part # wins; with no part #, brand + type + range decides.
+function findExistingPart(item,ignore){
+  const no=realPartNo(item);
+  for(const cat of Object.keys(customPartsCatalog))for(const x of customPartsCatalog[cat]){
+    if(x===ignore)continue;
+    if(no){if(realPartNo(x)===no)return{category:cat,item:x};}
+    else if(!realPartNo(x)&&partNorm(x.mfg)===partNorm(item.mfg)&&partNorm(x.type)===partNorm(item.type)&&partNorm(x.range)===partNorm(item.range))return{category:cat,item:x};
+  }
+  return null;
+}
+// Several items from one brand with no part numbers would share an id — give the new one its own.
+function ensureUniqueId(item){
+  const ids=new Set();Object.values(customPartsCatalog).forEach(l=>l.forEach(p=>ids.add(getPartId(p))));
+  const probe={mfg:item.mfg,part:item.part};if(!ids.has(getPartId(probe)))return item;
+  const base=fbEncodeKey([item.mfg,item.type,item.range].filter(Boolean).join("_").replace(/\s+/g,"_"));
+  let id=base,n=2;while(ids.has(id))id=base+"_"+(n++);
+  item.id=id;return item;
+}
+const canEditCatalog=()=>isSupervisor()||isOfficeRole();
+let _epCat=null,_epPId=null;
+function editFromDetail(){const c=_pdmCategory,id=_pdmPId;closePartDetailModal();openEditPartModal(c,id);}
+function openEditPartModal(category,pId){
+  if(!canEditCatalog())return;
+  const p=(customPartsCatalog[category]||[]).find(x=>getPartId(x)===pId);if(!p)return;
+  _epCat=category;_epPId=pId;
+  document.getElementById("ep-category").innerHTML=Object.keys(customPartsCatalog).map(c=>`<option value="${outEsc(c)}" ${c===category?"selected":""}>${outEsc(c)}</option>`).join("")+`<option value="__new__">+ New Category...</option>`;
+  document.getElementById("ep-category-custom").value="";document.getElementById("ep-category-custom").classList.add("hidden");
+  document.getElementById("ep-mfg").value=p.mfg||"";
+  document.getElementById("ep-part").value=p.part&&p.part!=="N/A"?p.part:"";
+  document.getElementById("ep-type").value=p.type||"";
+  document.getElementById("ep-range").value=p.range||"";
+  document.getElementById("ep-error").classList.add("hidden");
+  document.getElementById("edit-part-modal").classList.remove("hidden");
+}
+function closeEditPartModal(){document.getElementById("edit-part-modal").classList.add("hidden");_epCat=null;_epPId=null;}
+function epCategoryChange(){const sel=document.getElementById("ep-category"),c=document.getElementById("ep-category-custom");c.classList.toggle("hidden",sel.value!=="__new__");if(sel.value==="__new__")c.focus();}
+function validCategoryName(n){return n&&n.length<=40&&!/[.#$\/\[\]'"\\<>&]/.test(n);}
+function saveEditPart(){
+  if(!canEditCatalog()||!_epCat)return;
+  const list=customPartsCatalog[_epCat]||[],p=list.find(x=>getPartId(x)===_epPId);if(!p)return;
+  const err=document.getElementById("ep-error"),fail=m=>{err.textContent=m;err.classList.remove("hidden");};
+  let cat=document.getElementById("ep-category").value;
+  if(cat==="__new__")cat=document.getElementById("ep-category-custom").value.trim();
+  const mfg=document.getElementById("ep-mfg").value.trim(),part=document.getElementById("ep-part").value.trim()||"N/A";
+  const type=document.getElementById("ep-type").value.trim(),range=document.getElementById("ep-range").value.trim();
+  if(!validCategoryName(cat))return fail("Category name is required (max 40 characters, no . # $ / [ ] ' \" \\ < > &).");
+  if(!mfg)return fail("Brand / manufacturer is required.");
+  const dupe=findExistingPart({mfg,part,type,range},p);
+  if(dupe)return fail("That matches an existing item ("+dupe.category+": "+dupe.item.mfg+(realPartNo(dupe.item)?" · "+dupe.item.part:"")+"). Edit that one instead.");
+  if(!p.id)p.id=_epPId;   // freeze the id: stock counts stay attached even if the part # / name changes
+  p.mfg=mfg;p.part=part;p.type=type;p.range=range;
+  if(cat!==_epCat){
+    customPartsCatalog[_epCat]=list.filter(x=>x!==p);
+    if(!customPartsCatalog[_epCat].length)delete customPartsCatalog[_epCat];
+    if(!customPartsCatalog[cat])customPartsCatalog[cat]=[];
+    customPartsCatalog[cat].push(p);
+  }
+  saveToDatabase();closeEditPartModal();renderPartsInventory();
+}
+function deleteFromEdit(){const c=_epCat,id=_epPId;if(!isSupervisor()){alert("Only a supervisor can delete items.");return;}closeEditPartModal();deleteCustomPart(c,id);}
+function renameCategory(oldName){
+  if(!canEditCatalog())return;
+  const nn=(prompt("Rename category:",oldName)||"").trim();
+  if(!nn||nn===oldName)return;
+  if(!validCategoryName(nn)){alert("Category names can't contain . # $ / [ ] ' \" \\ < > & (max 40 characters).");return;}
+  if(Object.keys(customPartsCatalog).some(c=>c!==oldName&&c.toLowerCase()===nn.toLowerCase())){alert("A category with that name already exists.");return;}
+  const rebuilt={};Object.keys(customPartsCatalog).forEach(c=>{rebuilt[c===oldName?nn:c]=customPartsCatalog[c];});
+  customPartsCatalog=rebuilt;saveToDatabase();renderPartsInventory();
+}
+
+// ── Import List (paste or CSV): adds new items, and handles ones that already exist ──
+let _piRows=[];
+function splitDelimited(line,delim){
+  const out=[];let cur="",q=false;
+  for(let i=0;i<line.length;i++){const ch=line[i];
+    if(q){if(ch==='"'){if(line[i+1]==='"'){cur+='"';i++;}else q=false;}else cur+=ch;}
+    else if(ch==='"')q=true;else if(ch===delim){out.push(cur);cur="";}else cur+=ch;}
+  out.push(cur);return out.map(x=>x.trim());
+}
+function parsePartsImport(text){
+  const lines=String(text||"").replace(/\r/g,"").split("\n").filter(l=>l.trim());
+  if(!lines.length)return[];
+  const delim=lines.some(l=>l.includes("\t"))?"\t":",";
+  const rows=lines.map(l=>splitDelimited(l,delim));
+  const names={category:["category","cat","section","group"],mfg:["brand","manufacturer","mfg","item","description","name","make"],part:["part #","part#","part number","part no","part","p/n","pn"],type:["type"],range:["range"],qty:["qty","quantity","count","stock","on hand","amount","#"]};
+  const first=rows[0].map(x=>x.toLowerCase());
+  const hasHeader=first.some(c=>Object.values(names).flat().includes(c))&&first.every(c=>isNaN(Number(c)));
+  let map;
+  if(hasHeader){map={};Object.entries(names).forEach(([k,al])=>{const ix=first.findIndex(c=>al.includes(c));if(ix>=0)map[k]=ix;});rows.shift();}
+  else{const n=rows[0].length;map=n>=6?{category:0,mfg:1,part:2,type:3,range:4,qty:5}:n===5?{category:0,mfg:1,part:2,type:3,qty:4}:n===4?{category:0,mfg:1,type:2,qty:3}:{category:0,mfg:1,qty:n-1};}
+  const get=(r,k)=>map[k]!=null?(r[map[k]]||"").trim():"";
+  const merged=[],byKey={};
+  rows.forEach(r=>{
+    const mfg=get(r,"mfg");if(!mfg)return;
+    const part=get(r,"part"),qty=Math.max(0,parseInt(get(r,"qty"))||0);
+    const row={category:get(r,"category")||"Miscellaneous",mfg,part:part||"N/A",type:get(r,"type"),range:get(r,"range"),qty,lines:1};
+    const key=(realPartNo(row)?"p:"+realPartNo(row):"m:"+partNorm(row.mfg)+"|"+partNorm(row.type)+"|"+partNorm(row.range));
+    if(byKey[key]){byKey[key].qty+=qty;byKey[key].lines++;}else{byKey[key]=row;merged.push(row);}
+  });
+  // snap category names to existing ones (case-insensitive) so "sensors" doesn't create a second category
+  const cats=Object.keys(customPartsCatalog);
+  merged.forEach(r=>{const hit=cats.find(c=>c.toLowerCase()===r.category.toLowerCase());if(hit)r.category=hit;});
+  return merged;
+}
+function openPartsImport(){
+  if(!canEditCatalog())return;
+  document.getElementById("pi-text").value="";document.getElementById("pi-preview").innerHTML="";
+  document.getElementById("pi-go").classList.add("hidden");document.getElementById("pi-summary").textContent="";
+  _piRows=[];document.getElementById("parts-import-modal").classList.remove("hidden");
+}
+function closePartsImport(){document.getElementById("parts-import-modal").classList.add("hidden");}
+function piLoadFile(inp){const f=inp.files&&inp.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{document.getElementById("pi-text").value=r.result;piPreview();};r.readAsText(f);inp.value="";}
+function piMode(){const el=document.querySelector('input[name="pi-mode"]:checked');return el?el.value:"skip";}
+function piPreview(){
+  const rows=parsePartsImport(document.getElementById("pi-text").value);
+  const office=partsInventory["Office"]||{};
+  _piRows=rows.map(r=>{const ex=findExistingPart(r);return{...r,ex,cur:ex?(office[getPartId(ex.item)]||0):0};});
+  piRender();
+}
+function piRender(){
+  const mode=piMode(),box=document.getElementById("pi-preview");
+  if(!_piRows.length){box.innerHTML=`<p class="text-sm text-zinc-500 font-bold text-center py-6">Nothing to import yet — paste a list or choose a CSV file.</p>`;document.getElementById("pi-go").classList.add("hidden");document.getElementById("pi-summary").textContent="";return;}
+  const nNew=_piRows.filter(r=>!r.ex).length,nEx=_piRows.length-nNew;
+  const result=r=>!r.ex?r.qty:mode==="add"?r.cur+r.qty:mode==="set"?r.qty:r.cur;
+  box.innerHTML=`<div class="overflow-x-auto custom-scrollbar"><table class="w-full text-left border-collapse text-sm"><thead><tr class="text-xs uppercase font-black tracking-wider border-b border-zinc-800 opacity-70"><th class="p-2">Status</th><th class="p-2">Category</th><th class="p-2">Brand</th><th class="p-2">Part #</th><th class="p-2">Type / Range</th><th class="p-2 text-right">On list</th><th class="p-2 text-right">Now</th><th class="p-2 text-right">After</th></tr></thead><tbody>${_piRows.map(r=>`<tr class="border-b border-zinc-800/60"><td class="p-2">${r.ex?`<span class="text-[11px] font-black px-1.5 py-0.5 rounded" style="background:#fef3c7;color:#92400e;border:1px solid #fcd34d">ALREADY HAVE</span>`:`<span class="text-[11px] font-black px-1.5 py-0.5 rounded" style="background:#dcfce7;color:#166534;border:1px solid #86efac">NEW</span>`}</td><td class="p-2 font-bold">${outEsc(r.ex?r.ex.category:r.category)}</td><td class="p-2 font-black">${outEsc(r.mfg)}${r.lines>1?` <span class="text-xs opacity-60 font-bold">(${r.lines} lines combined)</span>`:""}</td><td class="p-2 font-mono text-xs">${r.part&&r.part!=="N/A"?outEsc(r.part):"—"}</td><td class="p-2 text-xs">${outEsc([r.range,r.type].filter(Boolean).join(" "))||"—"}</td><td class="p-2 text-right font-mono font-black">${r.qty}</td><td class="p-2 text-right font-mono">${r.ex?r.cur:"—"}</td><td class="p-2 text-right font-mono font-black">${result(r)}</td></tr>`).join("")}</tbody></table></div>`;
+  document.getElementById("pi-summary").textContent=`${_piRows.length} items: ${nNew} new, ${nEx} already in the catalog`;
+  document.getElementById("pi-go").classList.remove("hidden");
+}
+function runPartsImport(){
+  if(!canEditCatalog()||!_piRows.length)return;
+  const mode=piMode();
+  if(!partsInventory["Office"])partsInventory["Office"]={};
+  let added=0,updated=0,skipped=0;
+  _piRows.forEach(r=>{
+    if(r.ex){
+      if(mode==="skip"){skipped++;return;}
+      const id=getPartId(r.ex.item),cur=partsInventory["Office"][id]||0,val=mode==="add"?cur+r.qty:r.qty;
+      if(val>0)partsInventory["Office"][id]=val;else delete partsInventory["Office"][id];
+      updated++;return;
+    }
+    const item={mfg:r.mfg,part:r.part||"N/A",type:r.type,range:r.range};
+    ensureUniqueId(item);
+    if(!customPartsCatalog[r.category])customPartsCatalog[r.category]=[];
+    customPartsCatalog[r.category].push(item);
+    if(r.qty>0)partsInventory["Office"][getPartId(item)]=r.qty;
+    added++;
+  });
+  saveToDatabase();closePartsImport();renderPartsInventory();
+  alert(`Import done: ${added} new item${added===1?"":"s"} added, ${updated} existing updated, ${skipped} skipped.`);
+}
+
 function openAddPartModal(){
   document.getElementById("new-part-mfg").value="";
   document.getElementById("new-part-num").value="";
@@ -3245,10 +3462,9 @@ function submitNewPart(){
   if(!mfg){alert("Manufacturer is required.");return;}
   const newItem={mfg,part,type,range};
   // Check pId uniqueness across catalog
-  const newPId=getPartId(newItem);
-  let collision=false;
-  Object.values(customPartsCatalog).forEach(list=>list.forEach(p=>{if(getPartId(p)===newPId)collision=true;}));
-  if(collision){alert("A catalog item with this Part # (or manufacturer name, if no part number) already exists.");return;}
+  const dupe=findExistingPart(newItem);
+  if(dupe){alert("That item already exists in the catalog ("+dupe.category+": "+dupe.item.mfg+(dupe.item.part&&dupe.item.part!=="N/A"?" · "+dupe.item.part:"")+").");return;}
+  ensureUniqueId(newItem);
   if(!customPartsCatalog[cat])customPartsCatalog[cat]=[];
   customPartsCatalog[cat].push(newItem);
   saveToDatabase();
@@ -3257,6 +3473,9 @@ function submitNewPart(){
 }
 function deleteCustomPart(category,pId){
   if(!customPartsCatalog[category])return;
+  const p=customPartsCatalog[category].find(x=>getPartId(x)===pId);
+  if(!confirm(`Delete ${p?p.mfg+(p.part&&p.part!=="N/A"?" · "+p.part:""):"this item"} from the catalog? Its stock counts (office and vehicles) are removed too.`))return;
+  Object.keys(partsInventory).forEach(loc=>{if(partsInventory[loc])delete partsInventory[loc][pId];});
   customPartsCatalog[category]=customPartsCatalog[category].filter(p=>getPartId(p)!==pId);
   if(customPartsCatalog[category].length===0)delete customPartsCatalog[category];
   saveToDatabase();
