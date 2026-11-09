@@ -3037,6 +3037,7 @@ function renderOfficeStockSummary(){
             <button onclick="setOfficeSumScope('office')" class="px-3 py-1.5 rounded-md transition ${!fleet?"bg-red-600 text-white":"text-zinc-400 hover:text-white"}">Office</button>
             <button onclick="setOfficeSumScope('fleet')" class="px-3 py-1.5 rounded-md transition ${fleet?"bg-red-600 text-white":"text-zinc-400 hover:text-white"}">Full fleet</button>
           </div>
+          <button onclick="printOfficeSummary()" class="px-3 py-1.5 rounded-lg border border-zinc-700 bg-zinc-900 text-xs font-black text-zinc-200 hover:border-zinc-500 hover:text-white transition"><i class="fa-solid fa-print mr-1"></i>Print</button>
           <div class="flex items-center gap-2 text-xs font-bold text-zinc-500">
             <span class="bg-zinc-900 border border-zinc-800 px-2 py-0.5 rounded">Regular: <span class="text-zinc-300">${totalSmall}</span></span>
             ${totalLarge>0?`<span class="bg-zinc-900 border border-zinc-800 px-2 py-0.5 rounded">Large: <span class="text-green-400 font-black">${totalLarge}<span class="text-xs ml-0.5">L</span></span></span>`:""}
@@ -3047,6 +3048,68 @@ function renderOfficeStockSummary(){
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5">${gridRows}</div>
     </div>
   </div>`;
+}
+
+// Printable quick-reference sheet for the Office Summary (respects the Office / Full fleet toggle)
+function printOfficeSummary(){
+  const fleet=_officeSumScope==="fleet";
+  const bottles=fleet?[...(officeStock||[]),...checkedOutStock,...vehicles.flatMap(v=>[...(inventory[v]||[]),...(cart[v]||[])])]:(officeStock||[]);
+  const h=x=>String(x==null?"":x).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+  const small={},large={};
+  gasTypes.forEach(t=>{small[t]=0;large[t]=0;});
+  let expired=0,exp30=0,lowPSI=0;
+  bottles.forEach(b=>{
+    const s=getExpStatus(b.expDate);
+    if(s==="expired")expired++;
+    if(s==="exp30")exp30++;
+    if(b.currentPSI<300)lowPSI++;
+    const m=b.capacity==="Large"?large:small;
+    m[b.type]=(m[b.type]||0)+1;
+  });
+  const types=[...new Set([...gasTypes,...Object.keys(small),...Object.keys(large)])];
+  const totalSmall=bottles.filter(b=>b.capacity!=="Large").length,totalLarge=bottles.length-totalSmall;
+  const rows=types.map(t=>{
+    const sc=small[t]||0,lc=large[t]||0,color=(gasCatalog[t]||{}).color||"#71717a";
+    const showL=LARGE_BOTTLE_TYPES.has(t);
+    return`<tr class="${sc+lc===0?"zero":""}"><td><span class="dot" style="background:${color}"></span><strong>${h(t)}</strong></td>
+      <td class="n">${sc}</td><td class="n">${showL?lc:"—"}</td><td class="n"><strong>${sc+lc}</strong></td></tr>`;
+  }).join("");
+  const now=new Date().toLocaleString();
+  const title=fleet?"Full Fleet — Gas Summary":"Office Stock — Gas Summary";
+  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${title}</title><style>
+  body{font-family:system-ui,sans-serif;padding:24px;color:#111;background:#fff;font-size:13px;}
+  h1{font-size:19px;font-weight:900;margin:0 0 4px;}
+  p.sub{color:#555;margin:0 0 14px;font-size:12px;}
+  .stats{display:flex;gap:10px;margin-bottom:16px;}
+  .stats div{flex:1;border:1.5px solid #18181b;border-radius:6px;padding:8px 10px;}
+  .stats b{display:block;font-size:20px;font-weight:900;}
+  .stats span{font-size:10px;font-weight:900;text-transform:uppercase;color:#52525b;letter-spacing:.05em;}
+  table{width:100%;border-collapse:collapse;}
+  th{background:#f4f4f5;font-weight:900;text-transform:uppercase;font-size:10px;letter-spacing:.05em;padding:6px 10px;border-bottom:2px solid #18181b;text-align:left;}
+  td{padding:5px 10px;border-bottom:1px solid #d4d4d8;font-weight:600;font-size:12px;}
+  .n{text-align:right;font-family:ui-monospace,monospace;}
+  tr.zero td{color:#a1a1aa;}
+  .total-row td{border-top:2px solid #18181b;border-bottom:none;font-weight:900;background:#fafafa;}
+  .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px;vertical-align:middle;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .note{margin-top:10px;font-size:10px;color:#666;}
+  @media print{body{padding:0;} tr{page-break-inside:avoid;}}
+  </style></head><body>
+  <h1>${title}</h1>
+  <p class="sub">${fleet?"Office + every vehicle (truck stock and cart)":"Office stock only"} · Printed ${now}</p>
+  <div class="stats">
+    <div><b>${bottles.length}</b><span>${fleet?"Total fleet":"Total"}</span></div>
+    <div><b>${expired}</b><span>Expired</span></div>
+    <div><b>${lowPSI}</b><span>Low PSI (&lt;300)</span></div>
+    <div><b>${exp30}</b><span>Exp &lt;30 days</span></div>
+  </div>
+  <table><thead><tr><th>Gas</th><th class="n">Regular</th><th class="n">Large</th><th class="n">Total</th></tr></thead>
+  <tbody>${rows}<tr class="total-row"><td>TOTAL</td><td class="n">${totalSmall}</td><td class="n">${totalLarge}</td><td class="n">${bottles.length}</td></tr></tbody></table>
+  <p class="note">Large = 2000 PSI bottles, tracked only for CH4, H2, Multi and Zero.</p>
+  <script>window.onload=()=>{window.print();}<\/script>
+  </body></html>`;
+  const w=window.open("","_blank","width=900,height=700");
+  if(!w){alert("Pop-up blocked — allow pop-ups for this site to print the summary.");return;}
+  w.document.write(html);w.document.close();
 }
 
 // ── PARTS INVENTORY ─────────────────────────────────────
