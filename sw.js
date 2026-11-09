@@ -1,4 +1,4 @@
-const CACHE = 'gas-tracker-v8';
+const CACHE = 'gas-tracker-v9';
 
 const SKIP = [
   'firebaseio.com', 'googleapis.com', 'gstatic.com',
